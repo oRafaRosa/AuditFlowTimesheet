@@ -179,7 +179,7 @@ export const ManagerDashboard: React.FC = () => {
                                                 onClick={() => navigate(`/manager/reports?userId=${p.userId}`)}
                                                 className="text-brand-600 hover:underline flex items-center gap-1"
                                             >
-                                                {p['userName']} <ArrowRight size={12} />
+                                                {p.userName} <ArrowRight size={12} />
                                             </button>
                                         </td>
                                         <td className="px-6 py-3">{p.month + 1}/{p.year}</td>

@@ -42,6 +42,7 @@ export interface TimesheetPeriod {
   managerId?: string;
   rejectionReason?: string;
   updatedAt: string;
+  userName?: string; // Propriedade opcional para exibição em listas
 }
 
 export interface Holiday {
