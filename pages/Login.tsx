@@ -42,7 +42,7 @@ export const Login: React.FC = () => {
           <img 
             src="./logo.png" 
             alt="AuditFlow" 
-            className="h-24 mx-auto mb-4 object-contain"
+            className="h-32 mx-auto mb-1 object-contain"
             onError={(e) => {
                 e.currentTarget.style.display = 'none';
                 // Fallback display if image is missing
