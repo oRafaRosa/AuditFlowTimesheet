@@ -105,7 +105,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           <img 
             src="./logo.png" 
             alt="AuditFlow" 
-            className={`${heightClass} w-auto object-contain`}
+            className={`h-28 w-auto object-contain`}
             onError={(e) => {
               // Fallback text if image fails to load
               e.currentTarget.style.display = 'none';
@@ -121,7 +121,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     <div className="min-h-screen bg-gray-50 flex">
       {/* Sidebar Desktop */}
       <aside className="hidden md:flex flex-col w-64 bg-white border-r border-gray-200 fixed h-full z-10">
-        <div className="p-6 border-b border-gray-100 flex justify-center">
+        <div className="p-0 border-b border-gray-100 flex justify-center">
             <BrandLogo />
         </div>
 
