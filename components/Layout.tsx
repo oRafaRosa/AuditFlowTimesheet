@@ -98,18 +98,31 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     </Link>
   );
 
+  const BrandLogo = ({ size = 'normal' }: { size?: 'normal' | 'small' }) => {
+     const heightClass = size === 'small' ? 'h-8' : 'h-10';
+     return (
+       <div className="flex items-center select-none">
+          <img 
+            src="./logo.png" 
+            alt="AuditFlow" 
+            className={`${heightClass} w-auto object-contain`}
+            onError={(e) => {
+              // Fallback text if image fails to load
+              e.currentTarget.style.display = 'none';
+              e.currentTarget.nextElementSibling?.classList.remove('hidden');
+            }}
+          />
+          <span className="hidden text-xl font-extrabold text-brand-600 tracking-tight ml-2">AUDITFLOW</span>
+       </div>
+     );
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex">
       {/* Sidebar Desktop */}
       <aside className="hidden md:flex flex-col w-64 bg-white border-r border-gray-200 fixed h-full z-10">
-        <div className="p-6 border-b border-gray-100 flex items-center gap-3">
-            <div className="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center text-white font-bold text-lg">
-                A
-            </div>
-            <div className="flex flex-col justify-center">
-                <span className="text-lg font-bold text-slate-800 leading-none">AuditFlow</span>
-                <span className="text-[10px] font-bold text-brand-600 uppercase tracking-widest mt-0.5">Timesheet</span>
-            </div>
+        <div className="p-6 border-b border-gray-100 flex justify-center">
+            <BrandLogo />
         </div>
 
         <nav className="flex-1 p-4 space-y-1">
@@ -160,10 +173,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       {/* Mobile Header */}
       <div className="md:hidden fixed top-0 w-full bg-white border-b border-gray-200 z-20 px-4 py-3 flex items-center justify-between">
          <div className="flex items-center gap-2">
-             <div className="w-6 h-6 bg-brand-600 rounded flex items-center justify-center text-white font-bold text-xs">
-                A
-            </div>
-            <span className="font-bold text-slate-800">AuditFlow <span className="text-slate-400 font-normal">| Timesheet</span></span>
+             <BrandLogo size="small" />
          </div>
          <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="p-2 text-slate-600">
             <Menu size={24} />

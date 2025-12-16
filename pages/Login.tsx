@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { store } from '../services/store';
-import { Loader2, Lock, Eye, EyeOff } from 'lucide-react';
+import { Loader2, Eye, EyeOff } from 'lucide-react';
 
 export const Login: React.FC = () => {
   const navigate = useNavigate();
@@ -36,13 +36,26 @@ export const Login: React.FC = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-brand-50 p-4">
       <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8">
+        
+        {/* Logo Section */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-brand-600 rounded-xl flex items-center justify-center text-white text-3xl font-bold mx-auto mb-4">
-            A
+          <img 
+            src="./logo.png" 
+            alt="AuditFlow" 
+            className="h-24 mx-auto mb-4 object-contain"
+            onError={(e) => {
+                e.currentTarget.style.display = 'none';
+                // Fallback display if image is missing
+                const fallback = document.getElementById('logo-fallback');
+                if(fallback) fallback.style.display = 'block';
+            }} 
+          />
+          {/* Fallback Text hidden by default, shown if image fails */}
+          <div id="logo-fallback" style={{display:'none'}} className="mb-4">
+              <span className="text-4xl font-extrabold text-brand-600">AUDITFLOW</span>
           </div>
-          <h1 className="text-2xl font-bold text-slate-900">AuditFlow</h1>
-          <p className="text-slate-500 mt-2 font-medium">Módulo de Timesheet</p>
-          <p className="text-xs text-slate-400 mt-1">Gestão de horas para Auditoria Interna e GRC</p>
+          
+          <p className="text-slate-500 font-medium">Gestão de Timesheet & GRC</p>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-4">
