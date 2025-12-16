@@ -181,7 +181,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   );
 
   const BrandLogo = ({ size = 'normal' }: { size?: 'normal' | 'small' }) => {
-     const heightClass = size === 'small' ? 'h-8' : 'h-10';
+     const heightClass = size === 'small' ? 'h-10' : 'h-14';
      return (
        <div className="flex items-center select-none">
           <img 

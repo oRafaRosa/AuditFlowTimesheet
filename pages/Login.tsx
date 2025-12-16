@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { store } from '../services/store';
@@ -42,7 +43,7 @@ export const Login: React.FC = () => {
           <img 
             src="./logo.png" 
             alt="AuditFlow" 
-            className="h-24 mx-auto mb-4 object-contain"
+            className="h-40 mx-auto mb-4 object-contain"
             onError={(e) => {
                 e.currentTarget.style.display = 'none';
                 // Fallback display if image is missing
@@ -55,7 +56,7 @@ export const Login: React.FC = () => {
               <span className="text-4xl font-extrabold text-brand-600">AUDITFLOW</span>
           </div>
           
-          <p className="text-slate-500 font-medium">Gestão de Timesheet & GRC</p>
+          <p className="text-slate-500 font-medium">Gestão de Timesheet e Projetos</p>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-4">
