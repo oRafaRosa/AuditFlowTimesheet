@@ -1,0 +1,5 @@
+{
+  "name": "AuditFlow Timesheet",
+  "description": "Módulo de gestão de horas e timesheet do ecossistema AuditFlow.",
+  "requestFramePermissions": []
+}
