@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { useLocation, Link, useNavigate } from 'react-router-dom'; 
 import { store } from '../services/store';
+import { NotificationService } from '../services/notifications';
 import { 
   LayoutDashboard, 
   Users, 
@@ -12,7 +14,10 @@ import {
   PieChart,
   Settings,
   Lock,
-  Loader2
+  Loader2,
+  FileBarChart,
+  Bell,
+  BookOpen
 } from 'lucide-react';
 
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -28,12 +33,92 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const [pwdSuccess, setPwdSuccess] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Notifications State
+  const [notifications, setNotifications] = useState<string[]>([]);
+  const [showNotificationPanel, setShowNotificationPanel] = useState(false);
+
   // Trigger modal automatically if default password is detected
   React.useEffect(() => {
     if (user?.isDefaultPassword) {
         setShowPasswordModal(true);
     }
   }, [user?.isDefaultPassword]);
+
+  // --- Notification Logic ---
+  useEffect(() => {
+      if (!user) return;
+
+      // 1. Request Permission on mount
+      NotificationService.requestPermission();
+
+      const checkNotifications = async () => {
+          const alerts: string[] = [];
+          const today = new Date();
+          
+          // A. Gestor: Aprovações Pendentes
+          if (user.role === 'MANAGER' || user.role === 'ADMIN') {
+              const pending = await store.getPendingApprovals(user.id);
+              if (pending.length > 0) {
+                  const msg = `Você tem ${pending.length} timesheets aguardando aprovação.`;
+                  alerts.push(msg);
+                  // Envia Push apenas se não tiver enviado recentemente (controle simples via session storage ou apenas disparar)
+                  if (!sessionStorage.getItem('notified_approvals')) {
+                      NotificationService.send('Aprovação Pendente', msg, 'approval_tag');
+                      sessionStorage.setItem('notified_approvals', 'true');
+                  }
+              }
+          }
+
+          // B. Usuário: Timesheet Rejeitado
+          const currentYear = today.getFullYear();
+          const currentMonth = today.getMonth();
+          const status = await store.getPeriodStatus(user.id, currentYear, currentMonth);
+          
+          if (status.status === 'REJECTED') {
+              const msg = `Atenção: Seu timesheet deste mês foi devolvido pelo gestor.`;
+              alerts.push(msg);
+              if (!sessionStorage.getItem('notified_rejected')) {
+                  NotificationService.send('Timesheet Devolvido', msg, 'rejected_tag');
+                  sessionStorage.setItem('notified_rejected', 'true');
+              }
+          }
+
+          // C. Usuário: Lembrete Diário (após as 16h)
+          // Verifica se é dia de semana
+          const dayOfWeek = today.getDay();
+          const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+          
+          if (!isWeekend && today.getHours() >= 16) {
+              const entries = await store.getEntries(user.id);
+              const todayStr = today.toISOString().split('T')[0];
+              const todayHours = entries
+                .filter(e => e.date === todayStr)
+                .reduce((acc, curr) => acc + curr.hours, 0);
+
+              if (todayHours < 8.8) {
+                  const msg = `Você lançou apenas ${todayHours}h hoje. Não esqueça de completar seu timesheet.`;
+                  alerts.push(msg);
+                   // Check para não floodar o usuário a cada refresh, usar timestamp no localStorage
+                   const lastReminded = localStorage.getItem('last_daily_reminder');
+                   const now = Date.now();
+                   // Notifica uma vez a cada 4 horas
+                   if (!lastReminded || (now - Number(lastReminded) > 4 * 60 * 60 * 1000)) {
+                       NotificationService.send('Lembrete Diário', msg, 'daily_tag');
+                       localStorage.setItem('last_daily_reminder', String(now));
+                   }
+              }
+          }
+
+          setNotifications(alerts);
+      };
+
+      checkNotifications();
+      
+      // Polling a cada 5 minutos
+      const interval = setInterval(checkNotifications, 1000 * 60 * 5); 
+
+      return () => clearInterval(interval);
+  }, [user]);
 
   if (!user) return <>{children}</>;
 
@@ -67,11 +152,8 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       if (success) {
           setPwdSuccess('Senha alterada com sucesso!');
           setPwdData({ newPassword: '', confirmPassword: '' });
-          // If it was a forced change, allow closing after a brief delay or manual close
           setTimeout(() => {
              if (user.isDefaultPassword) {
-                 // The store updates local storage, but we need to force a re-render or reload to clear the forced flag check effectively in the UI if we were relying solely on props. 
-                 // However, store.changePassword updates the local storage, so a reload is the safest way to reset app state perfectly.
                  window.location.reload(); 
              } else {
                  setShowPasswordModal(false);
@@ -105,9 +187,8 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           <img 
             src="./logo.png" 
             alt="AuditFlow" 
-            className={`h-28 w-auto object-contain`}
+            className={`${heightClass} w-auto object-contain`}
             onError={(e) => {
-              // Fallback text if image fails to load
               e.currentTarget.style.display = 'none';
               e.currentTarget.nextElementSibling?.classList.remove('hidden');
             }}
@@ -121,7 +202,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     <div className="min-h-screen bg-gray-50 flex">
       {/* Sidebar Desktop */}
       <aside className="hidden md:flex flex-col w-64 bg-white border-r border-gray-200 fixed h-full z-10">
-        <div className="p-0 border-b border-gray-100 flex justify-center">
+        <div className="p-6 border-b border-gray-100 flex justify-center">
             <BrandLogo />
         </div>
 
@@ -139,12 +220,17 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             <>
               <div className="px-4 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider mt-4">Gestão</div>
               <NavItem to="/manager" icon={PieChart} label="Dashboard Equipe" />
+              <NavItem to="/manager/reports" icon={FileBarChart} label="Relatórios" />
             </>
           )}
 
           <div className="px-4 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider mt-4">Meu Espaço</div>
           <NavItem to="/dashboard" icon={LayoutDashboard} label="Meu Dashboard" />
           <NavItem to="/timesheet" icon={Clock} label="Meus Lançamentos" />
+          
+          <div className="mt-4 border-t border-gray-100 pt-4">
+              <NavItem to="/help" icon={BookOpen} label="Ajuda & Sobre" />
+          </div>
         </nav>
 
         <div className="p-4 border-t border-gray-100">
@@ -170,15 +256,82 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         </div>
       </aside>
 
-      {/* Mobile Header */}
+      {/* Mobile Header (Updated with Bell) */}
       <div className="md:hidden fixed top-0 w-full bg-white border-b border-gray-200 z-20 px-4 py-3 flex items-center justify-between">
          <div className="flex items-center gap-2">
              <BrandLogo size="small" />
          </div>
-         <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="p-2 text-slate-600">
-            <Menu size={24} />
-         </button>
+         <div className="flex items-center gap-4">
+             {/* Mobile Bell */}
+             <div className="relative">
+                 <button onClick={() => setShowNotificationPanel(!showNotificationPanel)} className="p-2 text-slate-600 relative">
+                     <Bell size={20} />
+                     {notifications.length > 0 && (
+                         <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border border-white"></span>
+                     )}
+                 </button>
+             </div>
+             <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="p-2 text-slate-600">
+                <Menu size={24} />
+             </button>
+         </div>
       </div>
+
+      {/* Desktop Top Bar (For Notifications) - Absolute positioned top right */}
+      <div className="hidden md:block fixed top-6 right-8 z-20">
+          <div className="relative">
+              <button 
+                onClick={() => setShowNotificationPanel(!showNotificationPanel)} 
+                className={`p-2 rounded-full transition-colors ${showNotificationPanel ? 'bg-brand-50 text-brand-600' : 'bg-white text-slate-500 hover:text-slate-700 shadow-sm border border-gray-100'}`}
+              >
+                  <Bell size={20} />
+                  {notifications.length > 0 && (
+                      <span className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
+                  )}
+              </button>
+              
+              {/* Notification Dropdown */}
+              {showNotificationPanel && (
+                  <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-2xl border border-gray-100 overflow-hidden z-50">
+                      <div className="p-3 bg-gray-50 border-b border-gray-100 font-semibold text-sm text-slate-700">
+                          Notificações
+                      </div>
+                      <div className="max-h-64 overflow-y-auto">
+                          {notifications.length === 0 ? (
+                              <div className="p-4 text-center text-slate-400 text-sm">Nenhuma notificação nova.</div>
+                          ) : (
+                              notifications.map((note, idx) => (
+                                  <div key={idx} className="p-3 border-b border-gray-50 hover:bg-slate-50 text-sm text-slate-600 last:border-0">
+                                      {note}
+                                  </div>
+                              ))
+                          )}
+                      </div>
+                  </div>
+              )}
+          </div>
+      </div>
+
+      {/* Mobile Notification Panel (Overlay) */}
+      {showNotificationPanel && (
+          <div className="md:hidden fixed inset-0 z-40 bg-black/50" onClick={() => setShowNotificationPanel(false)}>
+               <div className="absolute top-16 right-4 left-4 bg-white rounded-xl shadow-xl overflow-hidden" onClick={e => e.stopPropagation()}>
+                    <div className="p-3 bg-gray-50 border-b border-gray-100 font-semibold text-sm">Notificações</div>
+                    <div className="max-h-60 overflow-y-auto">
+                        {notifications.length === 0 ? (
+                            <div className="p-4 text-center text-slate-400 text-sm">Nenhuma notificação nova.</div>
+                        ) : (
+                            notifications.map((note, idx) => (
+                                <div key={idx} className="p-3 border-b border-gray-50 text-sm text-slate-600">
+                                    {note}
+                                </div>
+                            ))
+                        )}
+                    </div>
+               </div>
+          </div>
+      )}
+
 
       {/* Main Content (Blurred if forced password change) */}
       <main className={`flex-1 md:ml-64 p-4 md:p-8 pt-20 md:pt-8 overflow-y-auto min-h-screen ${user.isDefaultPassword ? 'filter blur-sm pointer-events-none select-none overflow-hidden h-screen' : ''}`}>

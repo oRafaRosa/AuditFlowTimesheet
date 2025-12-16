@@ -1,5 +1,6 @@
+
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { User, Project, TimesheetEntry, Holiday, CalendarException, HOURS_PER_DAY } from '../types';
+import { User, Project, TimesheetEntry, Holiday, CalendarException, HOURS_PER_DAY, TimesheetPeriod, PeriodStatus } from '../types';
 
 // --- CONFIGURAÇÃO DO SUPABASE ---
 const SUPABASE_URL = 'https://odynsxzfuctvqurtrwhz.supabase.co';
@@ -282,6 +283,148 @@ class StoreService {
     await supabase.from('timesheets').delete().eq('id', id);
   }
 
+  // --- Approval Workflow (Periods) ---
+
+  async getPeriodStatus(userId: string, year: number, month: number): Promise<TimesheetPeriod> {
+      const { data } = await supabase
+        .from('timesheet_periods')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('year', year)
+        .eq('month', month)
+        .maybeSingle();
+      
+      if (data) {
+          return {
+              id: data.id,
+              userId: data.user_id,
+              year: data.year,
+              month: data.month,
+              status: data.status,
+              managerId: data.manager_id,
+              rejectionReason: data.rejection_reason,
+              updatedAt: data.updated_at
+          };
+      }
+
+      // Return default "Open" if not exists
+      return {
+          id: '',
+          userId,
+          year,
+          month,
+          status: 'OPEN',
+          updatedAt: new Date().toISOString()
+      };
+  }
+
+  // Returns status for the last 6 months (including current)
+  async getLastPeriods(userId: string): Promise<TimesheetPeriod[]> {
+      const today = new Date();
+      const periodsToCheck: {year: number, month: number}[] = [];
+
+      for(let i=0; i<6; i++) {
+          const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+          periodsToCheck.push({ year: d.getFullYear(), month: d.getMonth() });
+      }
+
+      const { data } = await supabase
+        .from('timesheet_periods')
+        .select('*')
+        .eq('user_id', userId)
+        .in('year', periodsToCheck.map(p => p.year)); 
+      
+      const results: TimesheetPeriod[] = periodsToCheck.map(p => {
+          const found = data?.find((d: any) => d.year === p.year && d.month === p.month);
+          if (found) {
+              return {
+                  id: found.id,
+                  userId: found.user_id,
+                  year: found.year,
+                  month: found.month,
+                  status: found.status,
+                  managerId: found.manager_id,
+                  rejectionReason: found.rejection_reason,
+                  updatedAt: found.updated_at
+              };
+          }
+          return {
+              id: '',
+              userId,
+              year: p.year,
+              month: p.month,
+              status: 'OPEN',
+              updatedAt: new Date().toISOString()
+          };
+      });
+
+      return results;
+  }
+
+  async submitPeriod(userId: string, year: number, month: number, managerId?: string) {
+      // Logic: If user has a manager, submit to them.
+      // If user DOES NOT have a manager (Top level admin/director), AUTO-APPROVE.
+      
+      const newStatus: PeriodStatus = managerId ? 'SUBMITTED' : 'APPROVED';
+
+      const { error } = await supabase
+        .from('timesheet_periods')
+        .upsert({
+            user_id: userId,
+            year: year,
+            month: month,
+            status: newStatus,
+            manager_id: managerId || null,
+            updated_at: new Date().toISOString(),
+            rejection_reason: null
+        }, { onConflict: 'user_id, year, month' });
+
+      if (error) console.error("Error submitting period", error);
+  }
+
+  async approvePeriod(periodId: string) {
+      const { error } = await supabase
+        .from('timesheet_periods')
+        .update({ status: 'APPROVED', updated_at: new Date().toISOString() })
+        .eq('id', periodId);
+      if (error) throw error;
+  }
+
+  async rejectPeriod(periodId: string, reason: string) {
+      const { error } = await supabase
+        .from('timesheet_periods')
+        .update({ 
+            status: 'REJECTED', 
+            rejection_reason: reason,
+            updated_at: new Date().toISOString() 
+        })
+        .eq('id', periodId);
+      if (error) throw error;
+  }
+
+  async getPendingApprovals(managerId: string): Promise<TimesheetPeriod[]> {
+      const { data, error } = await supabase
+        .from('timesheet_periods')
+        .select(`
+            *,
+            profiles:user_id (full_name, email, avatar_url)
+        `)
+        .eq('manager_id', managerId)
+        .eq('status', 'SUBMITTED');
+      
+      if (error) return [];
+
+      return data.map((d: any) => ({
+          id: d.id,
+          userId: d.user_id,
+          userName: d.profiles?.full_name,
+          year: d.year,
+          month: d.month,
+          status: d.status,
+          updatedAt: d.updated_at
+      }));
+  }
+
   // --- Calendar Management ---
   
   async getExceptions(): Promise<CalendarException[]> {
@@ -291,7 +434,6 @@ class StoreService {
   }
 
   async addException(exception: Omit<CalendarException, 'id'>) {
-    // Ideally check for existing date
     await supabase.from('calendar_exceptions').delete().eq('date', exception.date);
     await supabase.from('calendar_exceptions').insert(exception);
   }
@@ -413,7 +555,20 @@ create table if not exists holidays (
   name text
 );
 
--- 6. CRIAR USUÁRIO ADMIN (Senha padrão AuditFlow@2025 já no hash)
+-- 6. Tabela de Períodos e Aprovações (NOVO)
+create table if not exists timesheet_periods (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references profiles(id) not null,
+  manager_id uuid references profiles(id),
+  year integer not null,
+  month integer not null, -- 0 based for consistency with JS
+  status text check (status in ('OPEN', 'SUBMITTED', 'APPROVED', 'REJECTED')),
+  rejection_reason text,
+  updated_at timestamp with time zone default timezone('utc'::text, now()),
+  unique(user_id, year, month)
+);
+
+-- 7. CRIAR USUÁRIO ADMIN (Senha padrão AuditFlow@2025 já no hash)
 insert into profiles (full_name, email, role, password)
 values ('Administrador', 'admin@auditflow.com', 'ADMIN', '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918')
 on conflict (email) do nothing;

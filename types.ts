@@ -1,3 +1,4 @@
+
 export type Role = 'ADMIN' | 'MANAGER' | 'USER';
 
 export interface User {
@@ -28,6 +29,19 @@ export interface TimesheetEntry {
   hours: number;
   description: string;
   createdAt: string;
+}
+
+export type PeriodStatus = 'OPEN' | 'SUBMITTED' | 'APPROVED' | 'REJECTED';
+
+export interface TimesheetPeriod {
+  id: string;
+  userId: string;
+  year: number;
+  month: number; // 0-11 to match JS Date
+  status: PeriodStatus;
+  managerId?: string;
+  rejectionReason?: string;
+  updatedAt: string;
 }
 
 export interface Holiday {

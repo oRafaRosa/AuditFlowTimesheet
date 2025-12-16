@@ -1,10 +1,13 @@
+
 import React from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Login } from './pages/Login';
 import { Layout } from './components/Layout';
 import { UserDashboard } from './pages/UserDashboard';
 import { ManagerDashboard } from './pages/ManagerDashboard';
+import { ManagerReports } from './pages/ManagerReports';
 import { AdminDashboard } from './pages/AdminDashboard';
+import { HelpCenter } from './pages/HelpCenter'; // Import
 import { store } from './services/store';
 
 // Protected Route Wrapper
@@ -54,12 +57,30 @@ const App: React.FC = () => {
           } 
         />
 
+        {/* Common Help Route (All authenticated users) */}
+        <Route 
+          path="/help" 
+          element={
+            <ProtectedRoute>
+              <HelpCenter />
+            </ProtectedRoute>
+          } 
+        />
+
         {/* Manager Routes */}
         <Route 
           path="/manager" 
           element={
             <ProtectedRoute allowedRoles={['MANAGER', 'ADMIN']}>
               <ManagerDashboard />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/manager/reports" 
+          element={
+            <ProtectedRoute allowedRoles={['MANAGER', 'ADMIN']}>
+              <ManagerReports />
             </ProtectedRoute>
           } 
         />

@@ -1,12 +1,15 @@
+
 import React, { useEffect, useState } from 'react';
 import { store } from '../services/store';
-import { TimesheetEntry, Project, HOURS_PER_DAY } from '../types';
+import { TimesheetEntry, Project, HOURS_PER_DAY, TimesheetPeriod } from '../types';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { Clock, Calendar, CheckCircle, AlertTriangle, Plus, Trash2, Loader2 } from 'lucide-react';
+import { Clock, Calendar, CheckCircle, AlertTriangle, Plus, Trash2, Loader2, Lock, XCircle } from 'lucide-react';
+import { MyStatusWidget } from '../components/MyStatusWidget';
 
 export const UserDashboard: React.FC = () => {
   const user = store.getCurrentUser();
   const [entries, setEntries] = useState<TimesheetEntry[]>([]);
+  const [periodStatus, setPeriodStatus] = useState<TimesheetPeriod | null>(null);
   
   // State separation: 
   // selectableProjects = Active projects allowed for NEW entries
@@ -43,11 +46,17 @@ export const UserDashboard: React.FC = () => {
     if (!user) return;
     setLoading(true);
     
-    const [allEntries, allProjects] = await Promise.all([
+    const today = new Date();
+    const currentYear = today.getFullYear();
+    const currentMonth = today.getMonth();
+
+    const [allEntries, allProjects, status] = await Promise.all([
         store.getEntries(user.id),
-        store.getProjects()
+        store.getProjects(),
+        store.getPeriodStatus(user.id, currentYear, currentMonth)
     ]);
 
+    setPeriodStatus(status);
     setEntries(allEntries.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
     
     // 1. Store ALL projects for history lookup (so inactive projects still show names in the table)
@@ -67,14 +76,14 @@ export const UserDashboard: React.FC = () => {
     setSelectableProjects(availableProjects);
 
     // Calc KPIs
-    const today = new Date();
     const currentMonthEntries = allEntries.filter(e => {
         const d = new Date(e.date);
-        return d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear();
+        return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
     });
 
     const totalHours = currentMonthEntries.reduce((acc, curr) => acc + curr.hours, 0);
-    const expected = await store.getExpectedHoursToDate(today.getFullYear(), today.getMonth());
+    const expected = await store.getExpectedHoursToDate(currentYear, currentMonth);
+    const expectedFullMonth = await store.getExpectedHours(currentYear, currentMonth);
     
     setCurrentMonthHours(totalHours);
     setExpectedHours(expected);
@@ -83,7 +92,7 @@ export const UserDashboard: React.FC = () => {
     // Chart Data (Last 6 months)
     const chartData = [];
     for(let i=5; i>=0; i--) {
-        const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+        const d = new Date(currentYear, currentMonth - i, 1);
         const monthName = d.toLocaleDateString('pt-BR', { month: 'short' });
         const monthEntries = allEntries.filter(e => {
             const entD = new Date(e.date);
@@ -99,15 +108,23 @@ export const UserDashboard: React.FC = () => {
   };
 
   const handleDelete = async (id: string) => {
+    if (isPeriodLocked) return;
     if(window.confirm('Tem certeza que deseja excluir este lançamento?')) {
         await store.deleteEntry(id);
         loadData();
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmitEntry = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
+    
+    // Check Status Logic
+    if (isPeriodLocked) {
+        alert("O período atual já foi enviado ou aprovado. Não é possível adicionar lançamentos.");
+        return;
+    }
+
     setLoading(true);
 
     if (formMode === 'single') {
@@ -145,13 +162,13 @@ export const UserDashboard: React.FC = () => {
   };
 
   const getProjectName = (id: string) => {
-    // Search in the full history list, not the restricted selectable list
     const proj = allProjectsHistory.find(p => p.id === id);
     if (!proj) return 'Projeto ' + id.substring(0,4);
-    
-    // Optional: Add visual cue if inactive
     return proj.active ? proj.name : `${proj.name} (Inativo)`;
   }
+
+  // Helper to check if inputs should be disabled (Only affects CURRENT month input form)
+  const isPeriodLocked = periodStatus?.status === 'SUBMITTED' || periodStatus?.status === 'APPROVED';
 
   if (loading && entries.length === 0) {
       return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin text-brand-600" size={48} /></div>;
@@ -159,14 +176,23 @@ export const UserDashboard: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center flex-wrap gap-4">
         <h1 className="text-2xl font-bold text-slate-800">Meu Dashboard</h1>
-        <button 
-            onClick={() => setIsFormOpen(true)}
-            className="bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shadow-lg shadow-brand-500/20">
-            <Plus size={20} />
-            Novo Lançamento
-        </button>
+        <div className="flex gap-3">
+             {periodStatus?.status === 'OPEN' || periodStatus?.status === 'REJECTED' ? (
+                 <button 
+                    onClick={() => setIsFormOpen(true)}
+                    className="bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shadow-lg shadow-brand-500/20">
+                    <Plus size={20} />
+                    Novo Lançamento
+                </button>
+             ) : (
+                <div className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-slate-500 rounded-lg font-medium border border-gray-200">
+                    <Lock size={18} />
+                    {periodStatus?.status === 'SUBMITTED' ? 'Aguardando Aprovação' : 'Mês Fechado'}
+                </div>
+             )}
+        </div>
       </div>
 
       {/* KPI Cards */}
@@ -255,9 +281,11 @@ export const UserDashboard: React.FC = () => {
                                     <td className="px-6 py-3 truncate max-w-xs">{entry.description}</td>
                                     <td className="px-6 py-3 font-bold">{entry.hours}h</td>
                                     <td className="px-6 py-3">
-                                        <button onClick={() => handleDelete(entry.id)} className="text-red-400 hover:text-red-600">
-                                            <Trash2 size={16} />
-                                        </button>
+                                        {!isPeriodLocked && (
+                                            <button onClick={() => handleDelete(entry.id)} className="text-red-400 hover:text-red-600">
+                                                <Trash2 size={16} />
+                                            </button>
+                                        )}
                                     </td>
                                 </tr>
                             ))}
@@ -272,18 +300,9 @@ export const UserDashboard: React.FC = () => {
             </div>
         </div>
 
-        {/* Right Col: Quick Summary or Notifications */}
+        {/* Right Col: Status and History Widget */}
         <div className="space-y-6">
-            <div className="bg-gradient-to-br from-brand-600 to-brand-800 p-6 rounded-xl text-white shadow-lg">
-                <h3 className="text-lg font-bold mb-2">Atenção!</h3>
-                <p className="text-brand-50 text-sm mb-4">Lembre-se de lançar suas horas diariamente para evitar bloqueios no fim do mês.</p>
-                <div className="bg-white/10 p-4 rounded-lg">
-                    <div className="flex justify-between text-sm mb-1">
-                        <span>Hoje</span>
-                        <span className="font-bold">8.8h</span>
-                    </div>
-                </div>
-            </div>
+            {user && <MyStatusWidget userId={user.id} onUpdate={loadData} />}
         </div>
       </div>
 
@@ -295,7 +314,7 @@ export const UserDashboard: React.FC = () => {
                     <h2 className="text-xl font-bold text-slate-800">Novo Lançamento</h2>
                     <button onClick={() => setIsFormOpen(false)} className="text-slate-400 hover:text-slate-600">✕</button>
                 </div>
-                <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                <form onSubmit={handleSubmitEntry} className="p-6 space-y-4">
                     
                     {/* Mode Switcher */}
                     <div className="flex bg-gray-100 p-1 rounded-lg">
