@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { store } from '../services/store';
-import { Loader2, Eye, EyeOff, ShieldCheck } from 'lucide-react';
+import { Loader2, Eye, EyeOff } from 'lucide-react';
 
 export const Login: React.FC = () => {
   const navigate = useNavigate();
@@ -11,7 +11,6 @@ export const Login: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [logoError, setLogoError] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,24 +40,11 @@ export const Login: React.FC = () => {
         
         {/* Logo Section */}
         <div className="text-center mb-8 flex flex-col items-center justify-center min-h-[160px]">
-          {!logoError ? (
             <img 
                 src="/logo.png" 
                 alt="AuditFlow" 
                 className="h-40 mb-4 object-contain"
-                onError={() => setLogoError(true)}
             />
-          ) : (
-            <div className="flex flex-col items-center justify-center animate-in fade-in duration-300">
-                <div className="bg-brand-600 p-4 rounded-2xl mb-3 shadow-lg shadow-brand-200">
-                    <ShieldCheck size={64} className="text-white" strokeWidth={1.5} />
-                </div>
-                <h1 className="text-4xl font-extrabold text-slate-800 tracking-tight">
-                    AUDIT<span className="text-brand-600">FLOW</span>
-                </h1>
-            </div>
-          )}
-          
           <p className="text-slate-500 font-medium mt-2">Gestão de Timesheet e Projetos</p>
         </div>
 
