@@ -181,19 +181,30 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   );
 
   const BrandLogo = ({ size = 'normal' }: { size?: 'normal' | 'small' }) => {
+     const [error, setError] = useState(false);
      const heightClass = size === 'small' ? 'h-10' : 'h-14';
+
+     if (error) {
+         return (
+             <div className="flex items-center gap-2 select-none px-2">
+                <div className="bg-brand-600 p-1.5 rounded-lg">
+                    <ShieldCheck className={`text-white ${size === 'small' ? 'w-5 h-5' : 'w-7 h-7'}`} />
+                </div>
+                <span className={`${size === 'small' ? 'text-lg' : 'text-xl'} font-extrabold text-slate-800 tracking-tight`}>
+                    AUDIT<span className="text-brand-600">FLOW</span>
+                </span>
+             </div>
+         );
+     }
+
      return (
-       <div className="flex items-center select-none">
+       <div className="flex items-center select-none justify-center">
           <img 
-            src="./logo.png" 
+            src="/logo.png" 
             alt="AuditFlow" 
             className={`${heightClass} w-auto object-contain`}
-            onError={(e) => {
-              e.currentTarget.style.display = 'none';
-              e.currentTarget.nextElementSibling?.classList.remove('hidden');
-            }}
+            onError={() => setError(true)}
           />
-          <span className="hidden text-xl font-extrabold text-brand-600 tracking-tight ml-2">AUDITFLOW</span>
        </div>
      );
   };
@@ -202,11 +213,11 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     <div className="min-h-screen bg-gray-50 flex">
       {/* Sidebar Desktop */}
       <aside className="hidden md:flex flex-col w-64 bg-white border-r border-gray-200 fixed h-full z-10">
-        <div className="p-6 border-b border-gray-100 flex justify-center">
+        <div className="h-24 border-b border-gray-100 flex items-center justify-center">
             <BrandLogo />
         </div>
 
-        <nav className="flex-1 p-4 space-y-1">
+        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
           {user.role === 'ADMIN' && (
             <>
               <div className="px-4 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">Administração</div>
@@ -257,7 +268,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       </aside>
 
       {/* Mobile Header (Updated with Bell) */}
-      <div className="md:hidden fixed top-0 w-full bg-white border-b border-gray-200 z-20 px-4 py-3 flex items-center justify-between">
+      <div className="md:hidden fixed top-0 w-full bg-white border-b border-gray-200 z-20 px-4 py-3 flex items-center justify-between shadow-sm">
          <div className="flex items-center gap-2">
              <BrandLogo size="small" />
          </div>
