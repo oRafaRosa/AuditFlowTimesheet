@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useLocation, Link, useNavigate } from 'react-router-dom'; 
 import { store } from '../services/store';
@@ -17,7 +16,8 @@ import {
   Loader2,
   FileBarChart,
   Bell,
-  BookOpen
+  BookOpen,
+  ExternalLink
 } from 'lucide-react';
 
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -118,7 +118,8 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       const interval = setInterval(checkNotifications, 1000 * 60 * 5); 
 
       return () => clearInterval(interval);
-  }, [user]);
+      // FIX: Use user.id instead of user object to prevent infinite loop
+  }, [user?.id]);
 
   if (!user) return <>{children}</>;
 
@@ -183,23 +184,31 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const BrandLogo = ({ size = 'normal' }: { size?: 'normal' | 'small' }) => {
      if (size === 'small') {
          return (
-             <div className="flex items-center select-none justify-center">
+             <div className="flex items-center select-none justify-center overflow-hidden h-10">
+                {/* Mobile: Crop também aplicado para melhor visualização */}
                 <img 
                     src="https://i.postimg.cc/bv4S9DFS/logo.png" 
                     alt="AuditFlow" 
-                    className="h-10 w-auto object-contain"
+                    className="h-[200%] w-auto max-w-none object-cover object-center"
                 />
              </div>
          );
      }
 
-     // Versão Desktop: Aumentada e baseada na largura para preencher a sidebar
+     // Versão Desktop: Recortando visualmente (Crop)
      return (
-       <div className="flex items-center select-none justify-center w-full px-4">
+       <div className="flex items-center select-none justify-center w-full">
+          {/* 
+            Estratégia de Corte CSS:
+            1. Forçamos a altura para 100px (removendo 100px da altura original de 200px).
+            2. Forçamos a largura para 200px.
+            3. object-cover: preenche a caixa dando zoom, o que corta o topo e o fundo.
+            4. object-center: garante que o corte seja simétrico (tira 50px de cima e 50px de baixo).
+          */}
           <img 
             src="https://i.postimg.cc/bv4S9DFS/logo.png" 
             alt="AuditFlow" 
-            className="w-48 h-auto object-contain"
+            className="w-[200px] h-[100px] object-cover object-center"
           />
        </div>
      );
@@ -209,8 +218,8 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     <div className="min-h-screen bg-gray-50 flex">
       {/* Sidebar Desktop */}
       <aside className="hidden md:flex flex-col w-64 bg-white border-r border-gray-200 fixed h-full z-10">
-        {/* Header da Sidebar - Zero padding vertical conforme solicitado */}
-        <div className="py-0 flex items-center justify-center">
+        {/* Header da Sidebar - Padding ajustado */}
+        <div className="py-4 flex items-center justify-center">
             <BrandLogo />
         </div>
 
@@ -235,6 +244,18 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           <div className="px-4 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider mt-4">Meu Espaço</div>
           <NavItem to="/dashboard" icon={LayoutDashboard} label="Meu Dashboard" />
           <NavItem to="/timesheet" icon={Clock} label="Meus Lançamentos" />
+
+          {/* External Apps Section */}
+          <div className="px-4 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider mt-4">Nossos Apps</div>
+          <a
+            href="https://orafarosa.github.io/AuditFlowSampling/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+          >
+            <ExternalLink size={20} />
+            AuditFlow Sampling
+          </a>
           
           <div className="mt-4 border-t border-gray-100 pt-4">
               <NavItem to="/help" icon={BookOpen} label="Ajuda & Sobre" />
