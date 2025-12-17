@@ -41,7 +41,7 @@ export const Login: React.FC = () => {
         {/* Logo Section */}
         <div className="text-center mb-8 flex flex-col items-center justify-center min-h-[160px]">
             <img 
-                src="/logo.png" 
+                src="https://i.postimg.cc/bv4S9DFS/logo.png" 
                 alt="AuditFlow" 
                 className="h-40 mb-4 object-contain"
             />

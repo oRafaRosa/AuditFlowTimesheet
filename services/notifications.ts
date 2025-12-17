@@ -22,7 +22,7 @@ export const NotificationService = {
       // ex: não mandar aviso de "Lance suas horas" 10x seguidas
       new Notification(title, {
         body,
-        icon: '/logo.png', // Tenta usar o logo se existir
+        icon: 'https://i.postimg.cc/bv4S9DFS/logo.png', // Tenta usar o logo se existir
         tag, // Tag única para substituir notificações antigas do mesmo tipo
         requireInteraction: false, // Fecha sozinha após alguns segundos
         silent: false

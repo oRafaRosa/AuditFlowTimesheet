@@ -181,14 +181,25 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   );
 
   const BrandLogo = ({ size = 'normal' }: { size?: 'normal' | 'small' }) => {
-     const heightClass = size === 'small' ? 'h-10' : 'h-14';
+     if (size === 'small') {
+         return (
+             <div className="flex items-center select-none justify-center">
+                <img 
+                    src="https://i.postimg.cc/bv4S9DFS/logo.png" 
+                    alt="AuditFlow" 
+                    className="h-10 w-auto object-contain"
+                />
+             </div>
+         );
+     }
 
+     // Versão Desktop: Aumentada e baseada na largura para preencher a sidebar
      return (
-       <div className="flex items-center select-none justify-center">
+       <div className="flex items-center select-none justify-center w-full px-4">
           <img 
-            src="/logo.png" 
+            src="https://i.postimg.cc/bv4S9DFS/logo.png" 
             alt="AuditFlow" 
-            className={`${heightClass} w-auto object-contain`}
+            className="w-48 h-auto object-contain"
           />
        </div>
      );
@@ -198,7 +209,8 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     <div className="min-h-screen bg-gray-50 flex">
       {/* Sidebar Desktop */}
       <aside className="hidden md:flex flex-col w-64 bg-white border-r border-gray-200 fixed h-full z-10">
-        <div className="h-24 border-b border-gray-100 flex items-center justify-center">
+        {/* Header da Sidebar - Zero padding vertical conforme solicitado */}
+        <div className="py-0 flex items-center justify-center">
             <BrandLogo />
         </div>
 
