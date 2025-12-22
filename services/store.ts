@@ -67,8 +67,6 @@ class StoreService {
             const dbPassword = data.password ? data.password.trim() : null;
             
             // 1. Bypass Check for Default Password
-            // If the user enters the exact default password, and the DB has the exact default hash,
-            // we approve it immediately. This circumvents issues with crypto.subtle on non-secure origins.
             const isDefaultInput = password === 'AuditFlow@2025';
             const isDefaultDB = dbPassword === DEFAULT_PASSWORD_HASH;
 
@@ -86,7 +84,6 @@ class StoreService {
                      return null;
                  }
             }
-            // If dbPassword is null/empty, we allow login (legacy behavior)
         }
 
         // Check if current password (hash or plain) matches the Default
@@ -102,7 +99,6 @@ class StoreService {
             isDefaultPassword: isDefault
         };
 
-        console.log("Login: Sucesso.", user.role);
         localStorage.setItem(KEYS.CURRENT_USER, JSON.stringify(user));
         return user;
     } catch (e) {
@@ -114,10 +110,7 @@ class StoreService {
   async changePassword(userId: string, newPassword: string): Promise<boolean> {
       try {
           const newHash = await this.hashPassword(newPassword);
-          if (!newHash) {
-              console.error("Não foi possível gerar o hash da nova senha (ambiente inseguro?)");
-              return false;
-          }
+          if (!newHash) return false;
 
           const { error } = await supabase
             .from('profiles')
@@ -126,7 +119,6 @@ class StoreService {
           
           if (error) throw error;
           
-          // Update local session to remove flag
           const currentUser = this.getCurrentUser();
           if (currentUser && currentUser.id === userId) {
               currentUser.isDefaultPassword = false;
@@ -307,7 +299,6 @@ class StoreService {
           };
       }
 
-      // Return default "Open" if not exists
       return {
           id: '',
           userId,
@@ -326,9 +317,7 @@ class StoreService {
         .select('*')
         .eq('user_id', userId);
       
-      // 2. Get distinct months from entries (Timesheets)
-      // Note: Supabase JS doesn't support SELECT DISTINCT easy on simple query without rpc
-      // So we fetch dates and process in JS (assuming reasonable volume per user)
+      // 2. Get distinct months from entries
       const { data: entriesData } = await supabase
         .from('timesheets')
         .select('date')
@@ -337,25 +326,18 @@ class StoreService {
       // 3. Merge unique YYYY-MM
       const uniquePeriods = new Set<string>();
 
-      // From Status
       statusData?.forEach((s: any) => {
           uniquePeriods.add(`${s.year}-${s.month}`);
       });
 
-      // From Entries
       entriesData?.forEach((e: any) => {
-          const d = new Date(e.date);
-          // Adjust for timezone issues if necessary, but ISO string usually works for date part
-          // e.date is YYYY-MM-DD
           const parts = e.date.split('-');
           const year = parseInt(parts[0]);
           const month = parseInt(parts[1]) - 1; // 0-based
           uniquePeriods.add(`${year}-${month}`);
       });
-
-      // Always add Current Month
-      const today = new Date();
-      uniquePeriods.add(`${today.getFullYear()}-${today.getMonth()}`);
+      
+      // Note: Removed the forced addition of current month here to fix empty months showing up
 
       // Convert back to objects
       const results: TimesheetPeriod[] = [];
@@ -363,7 +345,6 @@ class StoreService {
       for (const periodStr of uniquePeriods) {
           const [year, month] = periodStr.split('-').map(Number);
           
-          // Find existing status or create default
           const found = statusData?.find((d: any) => d.year === year && d.month === month);
           
           if (found) {
@@ -389,7 +370,6 @@ class StoreService {
           }
       }
 
-      // Sort descending (newest first)
       return results.sort((a, b) => {
           if (a.year !== b.year) return b.year - a.year;
           return b.month - a.month;
@@ -402,7 +382,7 @@ class StoreService {
       
       const newStatus: PeriodStatus = managerId ? 'SUBMITTED' : 'APPROVED';
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('timesheet_periods')
         .upsert({
             user_id: userId,
@@ -412,9 +392,14 @@ class StoreService {
             manager_id: managerId || null,
             updated_at: new Date().toISOString(),
             rejection_reason: null
-        }, { onConflict: 'user_id, year, month' });
+        }, { onConflict: 'user_id,year,month' }) // Fixed spaces for Supabase compatibility
+        .select();
 
-      if (error) console.error("Error submitting period", error);
+      if (error) {
+          console.error("Error submitting period", error);
+          throw error; // Throw to allow UI to catch it
+      }
+      return data;
   }
 
   async approvePeriod(periodId: string) {

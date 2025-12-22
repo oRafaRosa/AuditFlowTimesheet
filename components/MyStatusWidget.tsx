@@ -36,54 +36,75 @@ export const MyStatusWidget: React.FC<MyStatusWidgetProps> = ({ userId, onUpdate
       setProcessing(true);
       const dateName = new Date(year, month, 1).toLocaleDateString('pt-BR', {month: 'long', year: 'numeric'});
 
-      // 1. Get stats for validation
-      const [allEntries, expectedHours] = await Promise.all([
-          store.getEntries(userId),
-          store.getExpectedHours(year, month)
-      ]);
-
-      const periodEntries = allEntries.filter(e => {
-          const d = new Date(e.date);
-          return d.getFullYear() === year && d.getMonth() === month;
-      });
-
-      const totalLogged = periodEntries.reduce((acc, curr) => acc + curr.hours, 0);
-      
-      // 2. Rules Logic
-      const today = new Date();
-      const lastDayOfMonth = new Date(year, month + 1, 0); // Last day of target month
-      
-      const isPastMonth = today > lastDayOfMonth;
-      
-      // Check if we are in the last 7 days of the month
-      const sevenDaysBeforeEnd = new Date(lastDayOfMonth);
-      sevenDaysBeforeEnd.setDate(lastDayOfMonth.getDate() - 7);
-      
-      // Only check "last 7 days" if we are IN the target month
-      const isLastDays = (today >= sevenDaysBeforeEnd) && (today.getMonth() === month) && (today.getFullYear() === year);
-
-      // Check if hours are complete (approx)
-      const isComplete = totalLogged >= (expectedHours - 0.5); // 0.5h tolerance
-
-      // 3. Validation Check
-      if (!isPastMonth && !isLastDays && !isComplete) {
-          alert(`Você não pode enviar este mês ainda.\n\nRegras para envio:\n1. O mês já deve ter fechado; OU\n2. Estar nos últimos 7 dias do mês; OU\n3. Ter lançado o total de horas esperadas (${expectedHours}h).\n\nTotal atual: ${totalLogged.toFixed(1)}h`);
-          setProcessing(false);
-          return;
-      }
-
-      // 4. Confirmation and Submit
-      if (!window.confirm(`Confirma o fechamento de ${dateName} com ${totalLogged.toFixed(1)} horas lançadas?\n\nApós o envio, você não poderá mais editar os lançamentos deste mês.`)) {
-          setProcessing(false);
-          return;
-      }
-      
       try {
-          await store.submitPeriod(userId, year, month, user?.managerId);
-          await loadStatus();
-          if(onUpdate) onUpdate();
+        // 1. Get stats for validation
+        const [allEntries, expectedHours] = await Promise.all([
+            store.getEntries(userId),
+            store.getExpectedHours(year, month)
+        ]);
+
+        const periodEntries = allEntries.filter(e => {
+            const d = new Date(e.date);
+            return d.getFullYear() === year && d.getMonth() === month;
+        });
+
+        const totalLogged = periodEntries.reduce((acc, curr) => acc + curr.hours, 0);
+        const diff = expectedHours - totalLogged;
+        const TOLERANCE = 40; // 40 hours tolerance
+
+        // 2. Rules Logic
+        const today = new Date();
+        const lastDayOfMonth = new Date(year, month + 1, 0); // Last day of target month
+        
+        const isPastMonth = today > lastDayOfMonth;
+        
+        // Check if we are in the last 7 days of the month
+        const sevenDaysBeforeEnd = new Date(lastDayOfMonth);
+        sevenDaysBeforeEnd.setDate(lastDayOfMonth.getDate() - 7);
+        
+        // Only check "last 7 days" if we are IN the target month
+        const isLastDays = (today >= sevenDaysBeforeEnd) && (today.getMonth() === month) && (today.getFullYear() === year);
+
+        // Check if hours are complete (approx)
+        const isComplete = totalLogged >= (expectedHours - TOLERANCE);
+
+        // 3. Validation Check
+        if (!isPastMonth && !isLastDays && !isComplete) {
+            alert(`Você não pode enviar este mês ainda.\n\nRegras para envio:\n1. O mês já deve ter fechado; OU\n2. Estar nos últimos 7 dias do mês; OU\n3. Ter lançado o total próximo do esperado (Tolerância de 40h).\n\nEsperado: ${expectedHours}h\nLançado: ${totalLogged.toFixed(1)}h\nFaltam: ${diff.toFixed(1)}h`);
+            setProcessing(false);
+            return;
+        }
+
+        // 4. Confirmation Message Construction
+        let confirmMsg = `Confirma o fechamento de ${dateName}?\n\n`;
+        confirmMsg += `Horas Esperadas: ${expectedHours}h\n`;
+        confirmMsg += `Horas Lançadas: ${totalLogged.toFixed(1)}h\n`;
+        
+        if (diff > 0) {
+            confirmMsg += `\nDiferença: -${diff.toFixed(1)}h (Abaixo do esperado)\n`;
+        } else if (diff < 0) {
+            confirmMsg += `\nDiferença: +${Math.abs(diff).toFixed(1)}h (Acima do esperado)\n`;
+        } else {
+            confirmMsg += `\nStatus: Completo\n`;
+        }
+
+        confirmMsg += `\nApós o envio, o status mudará para "Aguardando Aprovação" e você não poderá mais editar lançamentos.`;
+
+        if (!window.confirm(confirmMsg)) {
+            setProcessing(false);
+            return;
+        }
+        
+        // Submit
+        await store.submitPeriod(userId, year, month, user?.managerId);
+        
+        // Refresh
+        await loadStatus(); 
+        if(onUpdate) onUpdate(); 
+        
+        alert("Mês enviado com sucesso!");
       } catch (error) {
-          alert("Ocorreu um erro ao enviar. Tente novamente.");
+          alert("Ocorreu um erro ao enviar o timesheet. Tente novamente.");
           console.error(error);
       } finally {
           setProcessing(false);
