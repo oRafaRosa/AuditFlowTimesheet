@@ -601,4 +601,8 @@ create table if not exists timesheet_periods (
 insert into profiles (full_name, email, role, password)
 values ('Administrador', 'admin@auditflow.com', 'ADMIN', '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918')
 on conflict (email) do nothing;
+
+-- 8. GARANTIR PERMISSÕES E RECARREGAR CACHE (Fix para erros de 'table not found')
+grant all on all tables in schema public to postgres, anon, authenticated, service_role;
+NOTIFY pgrst, 'reload schema';
 `;

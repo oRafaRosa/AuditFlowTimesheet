@@ -106,9 +106,13 @@ export const MyStatusWidget: React.FC<MyStatusWidgetProps> = ({ userId, onUpdate
         alert("Mês enviado com sucesso!");
       } catch (error: any) {
           console.error(error);
-          // Show the actual database error message
           const msg = error?.message || JSON.stringify(error) || "Erro desconhecido";
-          alert(`Ocorreu um erro ao enviar o timesheet: ${msg}`);
+          
+          if (msg.includes('Could not find the table') || msg.includes('schema cache')) {
+               alert("ERRO DE CONFIGURAÇÃO DO BANCO:\n\nA tabela 'timesheet_periods' não foi encontrada.\n\nSOLUÇÃO:\n1. Vá ao Painel Admin.\n2. Clique em 'Configurações'.\n3. Copie o SQL em 'Ver Schema SQL'.\n4. Execute no Editor SQL do Supabase.");
+          } else {
+               alert(`Ocorreu um erro ao enviar o timesheet: ${msg}`);
+          }
       } finally {
           setProcessing(false);
       }
