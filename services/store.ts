@@ -1,4 +1,5 @@
 
+
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { User, Project, TimesheetEntry, Holiday, CalendarException, HOURS_PER_DAY, TimesheetPeriod, PeriodStatus } from '../types';
 
@@ -337,8 +338,6 @@ class StoreService {
           uniquePeriods.add(`${year}-${month}`);
       });
       
-      // Note: Removed the forced addition of current month here to fix empty months showing up
-
       // Convert back to objects
       const results: TimesheetPeriod[] = [];
       
@@ -382,52 +381,53 @@ class StoreService {
       
       const newStatus: PeriodStatus = managerId ? 'SUBMITTED' : 'APPROVED';
 
-      // 1. Check if a record already exists for this period
-      const { data: existing } = await supabase
-        .from('timesheet_periods')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('year', year)
-        .eq('month', month)
-        .maybeSingle();
-
-      if (existing) {
-          // Update existing record
-          const { data, error } = await supabase
+      try {
+          // 1. Check if a record already exists for this period
+          const { data: existing, error: fetchError } = await supabase
             .from('timesheet_periods')
-            .update({
-                status: newStatus,
-                manager_id: managerId || null,
-                updated_at: new Date().toISOString(),
-                rejection_reason: null // Clear reason on re-submit
-            })
-            .eq('id', existing.id)
-            .select();
-          
-          if (error) {
-              console.error("Error updating period", error);
-              throw error;
-          }
-          return data;
-      } else {
-          // Insert new record
-          const { data, error } = await supabase
-            .from('timesheet_periods')
-            .insert({
-                user_id: userId,
-                year: year,
-                month: month,
-                status: newStatus,
-                manager_id: managerId || null,
-                updated_at: new Date().toISOString()
-            })
-            .select();
+            .select('id')
+            .eq('user_id', userId)
+            .eq('year', year)
+            .eq('month', month)
+            .maybeSingle();
 
-          if (error) {
-              console.error("Error inserting period", error);
-              throw error;
+          if (fetchError) throw fetchError;
+
+          if (existing) {
+              // Update existing record
+              const { data, error } = await supabase
+                .from('timesheet_periods')
+                .update({
+                    status: newStatus,
+                    manager_id: managerId || null,
+                    updated_at: new Date().toISOString(),
+                    rejection_reason: null // Clear reason on re-submit
+                })
+                .eq('id', existing.id)
+                .select();
+              
+              if (error) throw error;
+              return data;
+          } else {
+              // Insert new record
+              const { data, error } = await supabase
+                .from('timesheet_periods')
+                .insert({
+                    user_id: userId,
+                    year: year,
+                    month: month,
+                    status: newStatus,
+                    manager_id: managerId || null,
+                    updated_at: new Date().toISOString()
+                })
+                .select();
+
+              if (error) throw error;
+              return data;
           }
-          return data;
+      } catch (e) {
+          console.error("Critical Error in submitPeriod:", e);
+          throw e; // Rethrow to let UI handle it
       }
   }
 
