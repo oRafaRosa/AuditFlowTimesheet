@@ -61,10 +61,12 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               if (pending.length > 0) {
                   const msg = `Você tem ${pending.length} timesheets aguardando aprovação.`;
                   alerts.push(msg);
-                  // Envia Push apenas se não tiver enviado recentemente (controle simples via session storage ou apenas disparar)
-                  if (!sessionStorage.getItem('notified_approvals')) {
+                  // Envia Push apenas se não tiver enviado recentemente
+                  const lastNotify = sessionStorage.getItem('notified_approvals_ts');
+                  const now = Date.now();
+                  if (!lastNotify || (now - Number(lastNotify) > 4 * 60 * 60 * 1000)) {
                       NotificationService.send('Aprovação Pendente', msg, 'approval_tag');
-                      sessionStorage.setItem('notified_approvals', 'true');
+                      sessionStorage.setItem('notified_approvals_ts', String(now));
                   }
               }
           }
@@ -75,37 +77,42 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           const status = await store.getPeriodStatus(user.id, currentYear, currentMonth);
           
           if (status.status === 'REJECTED') {
-              const msg = `Atenção: Seu timesheet deste mês foi devolvido pelo gestor.`;
+              const msg = `Atenção: Seu timesheet de ${currentMonth + 1}/${currentYear} foi devolvido. Verifique o motivo.`;
               alerts.push(msg);
-              if (!sessionStorage.getItem('notified_rejected')) {
+              
+              const lastNotify = sessionStorage.getItem('notified_rejected_ts');
+              const now = Date.now();
+              if (!lastNotify || (now - Number(lastNotify) > 4 * 60 * 60 * 1000)) {
                   NotificationService.send('Timesheet Devolvido', msg, 'rejected_tag');
-                  sessionStorage.setItem('notified_rejected', 'true');
+                  sessionStorage.setItem('notified_rejected_ts', String(now));
               }
           }
 
           // C. Usuário: Lembrete Diário (após as 16h)
-          // Verifica se é dia de semana
           const dayOfWeek = today.getDay();
           const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
           
           if (!isWeekend && today.getHours() >= 16) {
               const entries = await store.getEntries(user.id);
+              // Usa UTC date string para coincidir com a forma como são salvos no banco
               const todayStr = today.toISOString().split('T')[0];
+              
               const todayHours = entries
                 .filter(e => e.date === todayStr)
                 .reduce((acc, curr) => acc + curr.hours, 0);
 
               if (todayHours < 8.8) {
-                  const msg = `Você lançou apenas ${todayHours}h hoje. Não esqueça de completar seu timesheet.`;
+                  const msg = `Você lançou apenas ${todayHours.toFixed(1)}h hoje. A meta diária é 8.8h.`;
                   alerts.push(msg);
-                   // Check para não floodar o usuário a cada refresh, usar timestamp no localStorage
-                   const lastReminded = localStorage.getItem('last_daily_reminder');
-                   const now = Date.now();
-                   // Notifica uma vez a cada 4 horas
-                   if (!lastReminded || (now - Number(lastReminded) > 4 * 60 * 60 * 1000)) {
-                       NotificationService.send('Lembrete Diário', msg, 'daily_tag');
+                  
+                  // Controle de frequência de notificação (a cada 4h)
+                  const lastReminded = localStorage.getItem('last_daily_reminder');
+                  const now = Date.now();
+                  
+                  if (!lastReminded || (now - Number(lastReminded) > 4 * 60 * 60 * 1000)) {
+                       NotificationService.send('Lembrete de Timesheet', msg, 'daily_tag');
                        localStorage.setItem('last_daily_reminder', String(now));
-                   }
+                  }
               }
           }
 
@@ -118,8 +125,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       const interval = setInterval(checkNotifications, 1000 * 60 * 5); 
 
       return () => clearInterval(interval);
-      // FIX: Use user.id instead of user object to prevent infinite loop
-  }, [user?.id]);
+  }, [user?.id, user?.role]); // Dependência ajustada para evitar loops desnecessários
 
   if (!user) return <>{children}</>;
 
@@ -185,7 +191,6 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
      if (size === 'small') {
          return (
              <div className="flex items-center select-none justify-center overflow-hidden h-10">
-                {/* Mobile: Crop também aplicado para melhor visualização */}
                 <img 
                     src="https://i.postimg.cc/bv4S9DFS/logo.png" 
                     alt="AuditFlow" 
@@ -195,16 +200,8 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
          );
      }
 
-     // Versão Desktop: Recortando visualmente (Crop)
      return (
        <div className="flex items-center select-none justify-center w-full">
-          {/* 
-            Estratégia de Corte CSS:
-            1. Forçamos a altura para 100px (removendo 100px da altura original de 200px).
-            2. Forçamos a largura para 200px.
-            3. object-cover: preenche a caixa dando zoom, o que corta o topo e o fundo.
-            4. object-center: garante que o corte seja simétrico (tira 50px de cima e 50px de baixo).
-          */}
           <img 
             src="https://i.postimg.cc/bv4S9DFS/logo.png" 
             alt="AuditFlow" 
@@ -218,7 +215,6 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     <div className="min-h-screen bg-gray-50 flex">
       {/* Sidebar Desktop */}
       <aside className="hidden md:flex flex-col w-64 bg-white border-r border-gray-200 fixed h-full z-10">
-        {/* Header da Sidebar - Padding ajustado */}
         <div className="py-4 flex items-center justify-center">
             <BrandLogo />
         </div>
@@ -245,7 +241,6 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           <NavItem to="/dashboard" icon={LayoutDashboard} label="Meu Dashboard" />
           <NavItem to="/timesheet" icon={Clock} label="Meus Lançamentos" />
 
-          {/* External Apps Section */}
           <div className="px-4 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider mt-4">Nossos Apps</div>
           <a
             href="https://orafarosa.github.io/AuditFlowSampling/"
@@ -285,13 +280,12 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         </div>
       </aside>
 
-      {/* Mobile Header (Updated with Bell) */}
+      {/* Mobile Header */}
       <div className="md:hidden fixed top-0 w-full bg-white border-b border-gray-200 z-20 px-4 py-3 flex items-center justify-between shadow-sm">
          <div className="flex items-center gap-2">
              <BrandLogo size="small" />
          </div>
          <div className="flex items-center gap-4">
-             {/* Mobile Bell */}
              <div className="relative">
                  <button onClick={() => setShowNotificationPanel(!showNotificationPanel)} className="p-2 text-slate-600 relative">
                      <Bell size={20} />
@@ -306,7 +300,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
          </div>
       </div>
 
-      {/* Desktop Top Bar (For Notifications) - Absolute positioned top right */}
+      {/* Desktop Top Bar */}
       <div className="hidden md:block fixed top-6 right-8 z-20">
           <div className="relative">
               <button 
@@ -319,7 +313,6 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                   )}
               </button>
               
-              {/* Notification Dropdown */}
               {showNotificationPanel && (
                   <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-2xl border border-gray-100 overflow-hidden z-50">
                       <div className="p-3 bg-gray-50 border-b border-gray-100 font-semibold text-sm text-slate-700">
@@ -341,7 +334,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           </div>
       </div>
 
-      {/* Mobile Notification Panel (Overlay) */}
+      {/* Mobile Notification Panel */}
       {showNotificationPanel && (
           <div className="md:hidden fixed inset-0 z-40 bg-black/50" onClick={() => setShowNotificationPanel(false)}>
                <div className="absolute top-16 right-4 left-4 bg-white rounded-xl shadow-xl overflow-hidden" onClick={e => e.stopPropagation()}>
@@ -361,8 +354,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           </div>
       )}
 
-
-      {/* Main Content (Blurred if forced password change) */}
+      {/* Main Content */}
       <main className={`flex-1 md:ml-64 p-4 md:p-8 pt-20 md:pt-8 overflow-y-auto min-h-screen ${user.isDefaultPassword ? 'filter blur-sm pointer-events-none select-none overflow-hidden h-screen' : ''}`}>
         {children}
       </main>
