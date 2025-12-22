@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { store } from '../services/store';
 import { TimesheetPeriod } from '../types';
-import { History, CheckCircle, Clock, Send, Loader2 } from 'lucide-react';
+import { History, CheckCircle, Clock, Send, Loader2, AlertCircle } from 'lucide-react';
 
 interface MyStatusWidgetProps {
   userId: string;
@@ -11,6 +11,7 @@ interface MyStatusWidgetProps {
 
 export const MyStatusWidget: React.FC<MyStatusWidgetProps> = ({ userId, onUpdate }) => {
   const [loading, setLoading] = useState(true);
+  const [processing, setProcessing] = useState(false);
   const [periodStatus, setPeriodStatus] = useState<TimesheetPeriod | null>(null);
   const [periodHistory, setPeriodHistory] = useState<TimesheetPeriod[]>([]);
   const user = store.getCurrentUser();
@@ -31,13 +32,62 @@ export const MyStatusWidget: React.FC<MyStatusWidgetProps> = ({ userId, onUpdate
     if (userId) loadStatus();
   }, [userId]);
 
-  const handleSubmitPeriod = async (year: number, month: number) => {
+  const validateAndSubmit = async (year: number, month: number) => {
+      setProcessing(true);
       const dateName = new Date(year, month, 1).toLocaleDateString('pt-BR', {month: 'long', year: 'numeric'});
-      if (!window.confirm(`Deseja fechar o mês de ${dateName} e enviar para aprovação?`)) return;
+
+      // 1. Get stats for validation
+      const [allEntries, expectedHours] = await Promise.all([
+          store.getEntries(userId),
+          store.getExpectedHours(year, month)
+      ]);
+
+      const periodEntries = allEntries.filter(e => {
+          const d = new Date(e.date);
+          return d.getFullYear() === year && d.getMonth() === month;
+      });
+
+      const totalLogged = periodEntries.reduce((acc, curr) => acc + curr.hours, 0);
       
-      await store.submitPeriod(userId, year, month, user?.managerId);
-      await loadStatus();
-      if(onUpdate) onUpdate();
+      // 2. Rules Logic
+      const today = new Date();
+      const lastDayOfMonth = new Date(year, month + 1, 0); // Last day of target month
+      
+      const isPastMonth = today > lastDayOfMonth;
+      
+      // Check if we are in the last 7 days of the month
+      const sevenDaysBeforeEnd = new Date(lastDayOfMonth);
+      sevenDaysBeforeEnd.setDate(lastDayOfMonth.getDate() - 7);
+      
+      // Only check "last 7 days" if we are IN the target month
+      const isLastDays = (today >= sevenDaysBeforeEnd) && (today.getMonth() === month) && (today.getFullYear() === year);
+
+      // Check if hours are complete (approx)
+      const isComplete = totalLogged >= (expectedHours - 0.5); // 0.5h tolerance
+
+      // 3. Validation Check
+      if (!isPastMonth && !isLastDays && !isComplete) {
+          alert(`Você não pode enviar este mês ainda.\n\nRegras para envio:\n1. O mês já deve ter fechado; OU\n2. Estar nos últimos 7 dias do mês; OU\n3. Ter lançado o total de horas esperadas (${expectedHours}h).\n\nTotal atual: ${totalLogged.toFixed(1)}h`);
+          setProcessing(false);
+          return;
+      }
+
+      // 4. Confirmation and Submit
+      if (!window.confirm(`Confirma o fechamento de ${dateName} com ${totalLogged.toFixed(1)} horas lançadas?\n\nApós o envio, você não poderá mais editar os lançamentos deste mês.`)) {
+          setProcessing(false);
+          return;
+      }
+      
+      try {
+          await store.submitPeriod(userId, year, month, user?.managerId);
+          await loadStatus();
+          if(onUpdate) onUpdate();
+      } catch (error) {
+          alert("Ocorreu um erro ao enviar. Tente novamente.");
+          console.error(error);
+      } finally {
+          setProcessing(false);
+      }
   };
 
   if (loading) return <div className="p-8 flex justify-center"><Loader2 className="animate-spin text-slate-300" /></div>;
@@ -55,18 +105,20 @@ export const MyStatusWidget: React.FC<MyStatusWidgetProps> = ({ userId, onUpdate
                     'bg-white/20 text-white'
                 }`}>
                     {periodStatus?.status === 'OPEN' ? 'Em Aberto' : 
-                     periodStatus?.status === 'SUBMITTED' ? 'Em Análise' :
+                     periodStatus?.status === 'SUBMITTED' ? 'Aguardando Aprovação' :
                      periodStatus?.status === 'REJECTED' ? 'Rejeitado' : 'Aprovado'}
                 </span>
                 
                 {/* Submit button for Current Month directly in the card */}
                 {(periodStatus?.status === 'OPEN' || periodStatus?.status === 'REJECTED') && (
                     <button 
-                        onClick={() => handleSubmitPeriod(periodStatus.year, periodStatus.month)}
-                        className="bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors"
+                        onClick={() => periodStatus && validateAndSubmit(periodStatus.year, periodStatus.month)}
+                        disabled={processing}
+                        className="bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors disabled:opacity-50"
                         title="Enviar Mês Atual"
                     >
-                        <Send size={12} /> Enviar
+                        {processing ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />} 
+                        Enviar
                     </button>
                 )}
             </div>
@@ -90,52 +142,57 @@ export const MyStatusWidget: React.FC<MyStatusWidgetProps> = ({ userId, onUpdate
                 <h3 className="font-semibold text-slate-700">Histórico de Fechamentos</h3>
             </div>
             <div className="divide-y divide-gray-100">
-                {periodHistory.map((ph, idx) => {
-                    const d = new Date(ph.year, ph.month, 1);
-                    const label = d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-                    
-                    return (
-                        <div key={`${ph.year}-${ph.month}`} className="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors">
-                            <div>
-                                <p className="text-sm font-bold text-slate-800 capitalize">{label}</p>
-                                <div className="flex items-center gap-2 mt-1">
-                                    <div className={`w-2 h-2 rounded-full ${
-                                        ph.status === 'APPROVED' ? 'bg-green-500' :
-                                        ph.status === 'SUBMITTED' ? 'bg-amber-500' :
-                                        ph.status === 'REJECTED' ? 'bg-red-500' : 'bg-slate-300'
-                                    }`} />
-                                    <span className="text-xs text-slate-500">
-                                        {ph.status === 'OPEN' ? 'Aberto' : 
-                                         ph.status === 'SUBMITTED' ? 'Enviado' :
-                                         ph.status === 'REJECTED' ? 'Devolvido' : 'Aprovado'}
-                                    </span>
+                {periodHistory.length === 0 ? (
+                    <div className="p-4 text-center text-xs text-slate-400">Nenhum histórico disponível.</div>
+                ) : (
+                    periodHistory.map((ph) => {
+                        const d = new Date(ph.year, ph.month, 1);
+                        const label = d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+                        
+                        return (
+                            <div key={`${ph.year}-${ph.month}`} className="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                                <div>
+                                    <p className="text-sm font-bold text-slate-800 capitalize">{label}</p>
+                                    <div className="flex items-center gap-2 mt-1">
+                                        <div className={`w-2 h-2 rounded-full ${
+                                            ph.status === 'APPROVED' ? 'bg-green-500' :
+                                            ph.status === 'SUBMITTED' ? 'bg-amber-500' :
+                                            ph.status === 'REJECTED' ? 'bg-red-500' : 'bg-slate-300'
+                                        }`} />
+                                        <span className="text-xs text-slate-500">
+                                            {ph.status === 'OPEN' ? 'Aberto' : 
+                                            ph.status === 'SUBMITTED' ? 'Enviado' :
+                                            ph.status === 'REJECTED' ? 'Devolvido' : 'Aprovado'}
+                                        </span>
+                                    </div>
+                                    {ph.status === 'REJECTED' && (
+                                        <p className="text-[10px] text-red-500 mt-1 max-w-[150px] truncate" title={ph.rejectionReason}>
+                                            {ph.rejectionReason}
+                                        </p>
+                                    )}
                                 </div>
-                                {ph.status === 'REJECTED' && (
-                                    <p className="text-[10px] text-red-500 mt-1 max-w-[150px] truncate" title={ph.rejectionReason}>
-                                        {ph.rejectionReason}
-                                    </p>
+
+                                {/* Action Button: If Open/Rejected, allow submit */}
+                                {(ph.status === 'OPEN' || ph.status === 'REJECTED') && (
+                                    <button 
+                                        onClick={() => validateAndSubmit(ph.year, ph.month)}
+                                        disabled={processing}
+                                        className="text-xs bg-white border border-slate-200 hover:border-brand-500 hover:text-brand-600 text-slate-500 px-3 py-1.5 rounded transition-colors disabled:opacity-50"
+                                        title="Encerrar Mês"
+                                    >
+                                        Enviar
+                                    </button>
+                                )}
+                                {ph.status === 'SUBMITTED' && (
+                                    <span className="text-amber-400" title="Aguardando Aprovação"><Clock size={16} /></span>
+                                )}
+                                {ph.status === 'APPROVED' && (
+                                    <span className="text-green-500" title="Aprovado"><CheckCircle size={16} /></span>
                                 )}
                             </div>
-
-                            {/* Action Button: If Open/Rejected, allow submit */}
-                            {(ph.status === 'OPEN' || ph.status === 'REJECTED') && (
-                                <button 
-                                    onClick={() => handleSubmitPeriod(ph.year, ph.month)}
-                                    className="text-xs bg-white border border-slate-200 hover:border-brand-500 hover:text-brand-600 text-slate-500 px-3 py-1.5 rounded transition-colors"
-                                    title="Encerrar Mês"
-                                >
-                                    Enviar
-                                </button>
-                            )}
-                            {ph.status === 'SUBMITTED' && (
-                                 <span className="text-slate-300"><Clock size={16} /></span>
-                            )}
-                            {ph.status === 'APPROVED' && (
-                                 <span className="text-green-500"><CheckCircle size={16} /></span>
-                            )}
-                        </div>
-                    );
-                })}
+                        );
+                    })
+                )}
             </div>
         </div>
     </div>

@@ -318,26 +318,56 @@ class StoreService {
       };
   }
 
-  // Returns status for the last 6 months (including current)
+  // Returns ONLY periods where user has entries or a status record
   async getLastPeriods(userId: string): Promise<TimesheetPeriod[]> {
-      const today = new Date();
-      const periodsToCheck: {year: number, month: number}[] = [];
-
-      for(let i=0; i<6; i++) {
-          const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
-          periodsToCheck.push({ year: d.getFullYear(), month: d.getMonth() });
-      }
-
-      const { data } = await supabase
+      // 1. Get all period statuses recorded
+      const { data: statusData } = await supabase
         .from('timesheet_periods')
         .select('*')
-        .eq('user_id', userId)
-        .in('year', periodsToCheck.map(p => p.year)); 
+        .eq('user_id', userId);
       
-      const results: TimesheetPeriod[] = periodsToCheck.map(p => {
-          const found = data?.find((d: any) => d.year === p.year && d.month === p.month);
+      // 2. Get distinct months from entries (Timesheets)
+      // Note: Supabase JS doesn't support SELECT DISTINCT easy on simple query without rpc
+      // So we fetch dates and process in JS (assuming reasonable volume per user)
+      const { data: entriesData } = await supabase
+        .from('timesheets')
+        .select('date')
+        .eq('user_id', userId);
+
+      // 3. Merge unique YYYY-MM
+      const uniquePeriods = new Set<string>();
+
+      // From Status
+      statusData?.forEach((s: any) => {
+          uniquePeriods.add(`${s.year}-${s.month}`);
+      });
+
+      // From Entries
+      entriesData?.forEach((e: any) => {
+          const d = new Date(e.date);
+          // Adjust for timezone issues if necessary, but ISO string usually works for date part
+          // e.date is YYYY-MM-DD
+          const parts = e.date.split('-');
+          const year = parseInt(parts[0]);
+          const month = parseInt(parts[1]) - 1; // 0-based
+          uniquePeriods.add(`${year}-${month}`);
+      });
+
+      // Always add Current Month
+      const today = new Date();
+      uniquePeriods.add(`${today.getFullYear()}-${today.getMonth()}`);
+
+      // Convert back to objects
+      const results: TimesheetPeriod[] = [];
+      
+      for (const periodStr of uniquePeriods) {
+          const [year, month] = periodStr.split('-').map(Number);
+          
+          // Find existing status or create default
+          const found = statusData?.find((d: any) => d.year === year && d.month === month);
+          
           if (found) {
-              return {
+              results.push({
                   id: found.id,
                   userId: found.user_id,
                   year: found.year,
@@ -346,19 +376,24 @@ class StoreService {
                   managerId: found.manager_id,
                   rejectionReason: found.rejection_reason,
                   updatedAt: found.updated_at
-              };
+              });
+          } else {
+              results.push({
+                  id: '',
+                  userId,
+                  year: year,
+                  month: month,
+                  status: 'OPEN',
+                  updatedAt: new Date().toISOString()
+              });
           }
-          return {
-              id: '',
-              userId,
-              year: p.year,
-              month: p.month,
-              status: 'OPEN',
-              updatedAt: new Date().toISOString()
-          };
-      });
+      }
 
-      return results;
+      // Sort descending (newest first)
+      return results.sort((a, b) => {
+          if (a.year !== b.year) return b.year - a.year;
+          return b.month - a.month;
+      });
   }
 
   async submitPeriod(userId: string, year: number, month: number, managerId?: string) {
