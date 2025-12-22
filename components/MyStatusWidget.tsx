@@ -96,8 +96,8 @@ export const MyStatusWidget: React.FC<MyStatusWidgetProps> = ({ userId, onUpdate
             return;
         }
         
-        // Submit
-        await store.submitPeriod(userId, year, month, user?.managerId);
+        // Submit (No longer passing user.managerId manually, let store fetch fresh data)
+        await store.submitPeriod(userId, year, month);
         
         // Refresh
         await loadStatus(); 

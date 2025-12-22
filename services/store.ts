@@ -375,17 +375,28 @@ class StoreService {
       });
   }
 
-  async submitPeriod(userId: string, year: number, month: number, managerId?: string) {
-      // Logic: If user has a manager, submit to them.
-      // If user DOES NOT have a manager (Top level admin/director), AUTO-APPROVE.
+  async submitPeriod(userId: string, year: number, month: number) {
+      // UPDATED: Fetch fresh user data to get the current manager_id directly from DB.
+      // This prevents "Auto-Approval" issues if the browser session (localStorage) has old data.
       
-      const newStatus: PeriodStatus = managerId ? 'SUBMITTED' : 'APPROVED';
+      const { data: userProfile, error: profileError } = await supabase
+          .from('profiles')
+          .select('manager_id')
+          .eq('id', userId)
+          .single();
 
-      // Ensure managerId is null if empty string to avoid UUID errors
-      const safeManagerId = (managerId && managerId.trim().length > 0) ? managerId : null;
+      if (profileError) {
+          console.error("Erro ao buscar gestor para submissão:", profileError);
+          throw new Error("Falha ao identificar seu gestor. Tente novamente.");
+      }
+
+      const currentManagerId = userProfile?.manager_id;
+      
+      // If user has a manager, Submit. If not, Auto-Approve.
+      const newStatus: PeriodStatus = currentManagerId ? 'SUBMITTED' : 'APPROVED';
 
       try {
-          // Usamos upsert para criar ou atualizar, dependendo da constraint unique(user_id, year, month)
+          // Upsert logic
           const { data, error } = await supabase
             .from('timesheet_periods')
             .upsert({
@@ -393,9 +404,9 @@ class StoreService {
                 year: year,
                 month: month,
                 status: newStatus,
-                manager_id: safeManagerId,
+                manager_id: currentManagerId, // Save the manager ID at the time of submission
                 updated_at: new Date().toISOString(),
-                rejection_reason: null // Clear reason on re-submit
+                rejection_reason: null
             }, {
                 onConflict: 'user_id, year, month'
             })
@@ -407,7 +418,7 @@ class StoreService {
 
       } catch (e) {
           console.error("Critical Error in submitPeriod:", e);
-          throw e; // Rethrow to let UI handle it with proper message
+          throw e;
       }
   }
 
@@ -432,26 +443,45 @@ class StoreService {
   }
 
   async getPendingApprovals(managerId: string): Promise<TimesheetPeriod[]> {
-      const { data, error } = await supabase
+      // UPDATED: Split Query Approach to avoid "Relationship not found" errors
+      // caused by multiple FKs to the 'profiles' table.
+      
+      // 1. Get the periods that need approval
+      const { data: periods, error } = await supabase
         .from('timesheet_periods')
-        .select(`
-            *,
-            profiles:user_id (full_name, email, avatar_url)
-        `)
+        .select('*')
         .eq('manager_id', managerId)
         .eq('status', 'SUBMITTED');
       
-      if (error) return [];
+      if (error) {
+          console.error("Erro ao buscar pendências:", error);
+          return [];
+      }
 
-      return data.map((d: any) => ({
-          id: d.id,
-          userId: d.user_id,
-          userName: d.profiles?.full_name,
-          year: d.year,
-          month: d.month,
-          status: d.status,
-          updatedAt: d.updated_at
-      }));
+      if (!periods || periods.length === 0) return [];
+
+      // 2. Extract unique user IDs involved
+      const userIds = [...new Set(periods.map((p: any) => p.user_id))];
+
+      // 3. Fetch user details manually
+      const { data: users } = await supabase
+          .from('profiles')
+          .select('id, full_name, email, avatar_url')
+          .in('id', userIds);
+
+      // 4. Map the results
+      return periods.map((d: any) => {
+          const user = users?.find((u: any) => u.id === d.user_id);
+          return {
+            id: d.id,
+            userId: d.user_id,
+            userName: user?.full_name || 'Usuário Desconhecido',
+            year: d.year,
+            month: d.month,
+            status: d.status,
+            updatedAt: d.updated_at
+          };
+      });
   }
 
   // --- Calendar Management ---
