@@ -382,24 +382,53 @@ class StoreService {
       
       const newStatus: PeriodStatus = managerId ? 'SUBMITTED' : 'APPROVED';
 
-      const { data, error } = await supabase
+      // 1. Check if a record already exists for this period
+      const { data: existing } = await supabase
         .from('timesheet_periods')
-        .upsert({
-            user_id: userId,
-            year: year,
-            month: month,
-            status: newStatus,
-            manager_id: managerId || null,
-            updated_at: new Date().toISOString(),
-            rejection_reason: null
-        }, { onConflict: 'user_id,year,month' }) // Fixed spaces for Supabase compatibility
-        .select();
+        .select('id')
+        .eq('user_id', userId)
+        .eq('year', year)
+        .eq('month', month)
+        .maybeSingle();
 
-      if (error) {
-          console.error("Error submitting period", error);
-          throw error; // Throw to allow UI to catch it
+      if (existing) {
+          // Update existing record
+          const { data, error } = await supabase
+            .from('timesheet_periods')
+            .update({
+                status: newStatus,
+                manager_id: managerId || null,
+                updated_at: new Date().toISOString(),
+                rejection_reason: null // Clear reason on re-submit
+            })
+            .eq('id', existing.id)
+            .select();
+          
+          if (error) {
+              console.error("Error updating period", error);
+              throw error;
+          }
+          return data;
+      } else {
+          // Insert new record
+          const { data, error } = await supabase
+            .from('timesheet_periods')
+            .insert({
+                user_id: userId,
+                year: year,
+                month: month,
+                status: newStatus,
+                manager_id: managerId || null,
+                updated_at: new Date().toISOString()
+            })
+            .select();
+
+          if (error) {
+              console.error("Error inserting period", error);
+              throw error;
+          }
+          return data;
       }
-      return data;
   }
 
   async approvePeriod(periodId: string) {
