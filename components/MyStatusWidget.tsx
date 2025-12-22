@@ -1,4 +1,5 @@
 
+
 import React, { useEffect, useState } from 'react';
 import { store } from '../services/store';
 import { TimesheetPeriod } from '../types';
@@ -103,9 +104,11 @@ export const MyStatusWidget: React.FC<MyStatusWidgetProps> = ({ userId, onUpdate
         if(onUpdate) onUpdate(); 
         
         alert("Mês enviado com sucesso!");
-      } catch (error) {
-          alert("Ocorreu um erro ao enviar o timesheet. Tente novamente.");
+      } catch (error: any) {
           console.error(error);
+          // Show the actual database error message
+          const msg = error?.message || JSON.stringify(error) || "Erro desconhecido";
+          alert(`Ocorreu um erro ao enviar o timesheet: ${msg}`);
       } finally {
           setProcessing(false);
       }

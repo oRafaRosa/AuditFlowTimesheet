@@ -381,53 +381,33 @@ class StoreService {
       
       const newStatus: PeriodStatus = managerId ? 'SUBMITTED' : 'APPROVED';
 
+      // Ensure managerId is null if empty string to avoid UUID errors
+      const safeManagerId = (managerId && managerId.trim().length > 0) ? managerId : null;
+
       try {
-          // 1. Check if a record already exists for this period
-          const { data: existing, error: fetchError } = await supabase
+          // Usamos upsert para criar ou atualizar, dependendo da constraint unique(user_id, year, month)
+          const { data, error } = await supabase
             .from('timesheet_periods')
-            .select('id')
-            .eq('user_id', userId)
-            .eq('year', year)
-            .eq('month', month)
-            .maybeSingle();
+            .upsert({
+                user_id: userId,
+                year: year,
+                month: month,
+                status: newStatus,
+                manager_id: safeManagerId,
+                updated_at: new Date().toISOString(),
+                rejection_reason: null // Clear reason on re-submit
+            }, {
+                onConflict: 'user_id, year, month'
+            })
+            .select()
+            .single();
 
-          if (fetchError) throw fetchError;
+          if (error) throw error;
+          return data;
 
-          if (existing) {
-              // Update existing record
-              const { data, error } = await supabase
-                .from('timesheet_periods')
-                .update({
-                    status: newStatus,
-                    manager_id: managerId || null,
-                    updated_at: new Date().toISOString(),
-                    rejection_reason: null // Clear reason on re-submit
-                })
-                .eq('id', existing.id)
-                .select();
-              
-              if (error) throw error;
-              return data;
-          } else {
-              // Insert new record
-              const { data, error } = await supabase
-                .from('timesheet_periods')
-                .insert({
-                    user_id: userId,
-                    year: year,
-                    month: month,
-                    status: newStatus,
-                    manager_id: managerId || null,
-                    updated_at: new Date().toISOString()
-                })
-                .select();
-
-              if (error) throw error;
-              return data;
-          }
       } catch (e) {
           console.error("Critical Error in submitPeriod:", e);
-          throw e; // Rethrow to let UI handle it
+          throw e; // Rethrow to let UI handle it with proper message
       }
   }
 
