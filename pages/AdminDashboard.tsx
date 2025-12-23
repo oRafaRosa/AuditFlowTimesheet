@@ -373,9 +373,9 @@ export const AdminDashboard: React.FC = () => {
                               <label className="block text-xs font-bold text-slate-500 mb-1">Classificação</label>
                               <select className="w-full border border-gray-300 p-2 rounded-lg text-sm" value={projectData.classification} onChange={e => setProjectData({...projectData, classification: e.target.value as any})}>
                                   <option value="Audit">Auditoria</option>
-                                  <option value="Consulting">Consultoria</option>
+                                  <option value="Controles">Controles Internos</option>
                                   <option value="Backoffice">Backoffice</option>
-                                  <option value="Training">Treinamento</option>
+                                  <option value="Compliance">Compliance</option>
                                   <option value="Vacation">Férias/Ausência</option>
                               </select>
                           </div>
