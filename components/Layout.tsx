@@ -252,13 +252,13 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             AuditFlow Sampling
           </a>
           <a
-            href="https://orafarosa.github.io/AuditFlowSampling/"
+            href="https://orafarosa.github.io/AuditFlow-RiskMap/"
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors text-slate-600 hover:bg-slate-50 hover:text-slate-900"
           >
             <ExternalLink size={20} />
-            AuditFlow Sampling
+            AuditFlow RiskMap
           </a>
           
           <div className="mt-4 border-t border-gray-100 pt-4">
