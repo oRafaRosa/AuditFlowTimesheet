@@ -1,9 +1,10 @@
 
+
 import React, { useEffect, useState } from 'react';
 import { store } from '../services/store';
 import { TimesheetEntry, Project, HOURS_PER_DAY, TimesheetPeriod } from '../types';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { Clock, Calendar, CheckCircle, AlertTriangle, Plus, Trash2, Loader2, Lock, XCircle } from 'lucide-react';
+import { Clock, Calendar, CheckCircle, AlertTriangle, Plus, Trash2, Loader2, Lock, XCircle, Search, Filter } from 'lucide-react';
 import { MyStatusWidget } from '../components/MyStatusWidget';
 
 export const UserDashboard: React.FC = () => {
@@ -19,6 +20,9 @@ export const UserDashboard: React.FC = () => {
   
   const [loading, setLoading] = useState(true);
   
+  // Filters
+  const [entryFilterDate, setEntryFilterDate] = useState('');
+
   // KPI States
   const [currentMonthHours, setCurrentMonthHours] = useState(0);
   const [expectedHours, setExpectedHours] = useState(0);
@@ -107,8 +111,20 @@ export const UserDashboard: React.FC = () => {
     setLoading(false);
   };
 
-  const handleDelete = async (id: string) => {
-    if (isPeriodLocked) return;
+  const handleDelete = async (id: string, entryDate: string) => {
+    // Basic check: if current period is locked, block.
+    // Ideally we should check the status of the specific month of the entry, but for now we warn the user.
+    const entryD = new Date(entryDate);
+    const today = new Date();
+    
+    // If deleting from current month and it is locked
+    if (entryD.getMonth() === today.getMonth() && entryD.getFullYear() === today.getFullYear()) {
+        if (isPeriodLocked) {
+             alert("O período atual já foi enviado ou aprovado. Não é possível excluir.");
+             return;
+        }
+    }
+    
     if(window.confirm('Tem certeza que deseja excluir este lançamento?')) {
         await store.deleteEntry(id);
         loadData();
@@ -169,6 +185,11 @@ export const UserDashboard: React.FC = () => {
 
   // Helper to check if inputs should be disabled (Only affects CURRENT month input form)
   const isPeriodLocked = periodStatus?.status === 'SUBMITTED' || periodStatus?.status === 'APPROVED';
+
+  // Filtered Entries Logic
+  const displayEntries = entryFilterDate 
+      ? entries.filter(e => e.date === entryFilterDate)
+      : entries.slice(0, 10);
 
   if (loading && entries.length === 0) {
       return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin text-brand-600" size={48} /></div>;
@@ -257,10 +278,29 @@ export const UserDashboard: React.FC = () => {
                 </ResponsiveContainer>
             </div>
 
-            {/* Recent Entries */}
+            {/* Recent Entries & Filter */}
             <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
-                <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-                    <h3 className="text-lg font-semibold text-slate-800">Últimos Lançamentos</h3>
+                <div className="p-6 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-center gap-4">
+                    <h3 className="text-lg font-semibold text-slate-800">
+                        {entryFilterDate ? 'Registros do Dia' : 'Últimos Lançamentos'}
+                    </h3>
+                    
+                    {/* Filter */}
+                    <div className="flex items-center gap-2 bg-gray-50 p-1.5 rounded-lg border border-gray-200">
+                        <Filter size={16} className="text-slate-400 ml-2" />
+                        <input 
+                            type="date"
+                            value={entryFilterDate}
+                            onChange={(e) => setEntryFilterDate(e.target.value)}
+                            className="bg-transparent border-none text-sm text-slate-600 focus:ring-0 outline-none"
+                            placeholder="Filtrar por data"
+                        />
+                        {entryFilterDate && (
+                            <button onClick={() => setEntryFilterDate('')} className="text-slate-400 hover:text-red-500 px-2">
+                                <XCircle size={16} />
+                            </button>
+                        )}
+                    </div>
                 </div>
                 <div className="overflow-x-auto">
                     <table className="w-full text-left text-sm text-slate-600">
@@ -274,24 +314,24 @@ export const UserDashboard: React.FC = () => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
-                            {entries.slice(0, 10).map(entry => (
+                            {displayEntries.map(entry => (
                                 <tr key={entry.id} className="hover:bg-gray-50 transition-colors">
                                     <td className="px-6 py-3 whitespace-nowrap">{new Date(entry.date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</td>
                                     <td className="px-6 py-3 font-medium text-slate-800">{getProjectName(entry.projectId)}</td>
-                                    <td className="px-6 py-3 truncate max-w-xs">{entry.description}</td>
+                                    <td className="px-6 py-3 truncate max-w-xs" title={entry.description}>{entry.description}</td>
                                     <td className="px-6 py-3 font-bold">{entry.hours}h</td>
                                     <td className="px-6 py-3">
-                                        {!isPeriodLocked && (
-                                            <button onClick={() => handleDelete(entry.id)} className="text-red-400 hover:text-red-600">
-                                                <Trash2 size={16} />
-                                            </button>
-                                        )}
+                                        <button onClick={() => handleDelete(entry.id, entry.date)} className="text-red-400 hover:text-red-600 transition-colors p-1 rounded hover:bg-red-50">
+                                            <Trash2 size={16} />
+                                        </button>
                                     </td>
                                 </tr>
                             ))}
-                            {entries.length === 0 && (
+                            {displayEntries.length === 0 && (
                                 <tr>
-                                    <td colSpan={5} className="px-6 py-8 text-center text-slate-400">Nenhum lançamento encontrado.</td>
+                                    <td colSpan={5} className="px-6 py-8 text-center text-slate-400">
+                                        {entryFilterDate ? 'Nenhum lançamento nesta data.' : 'Nenhum lançamento recente.'}
+                                    </td>
                                 </tr>
                             )}
                         </tbody>

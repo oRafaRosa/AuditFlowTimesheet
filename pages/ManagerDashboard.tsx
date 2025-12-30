@@ -1,4 +1,5 @@
 
+
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { store } from '../services/store';
@@ -68,9 +69,15 @@ export const ManagerDashboard: React.FC = () => {
     const myTeamIds = myTeam.map(m => m.id);
     const filteredEntries = allEntries.filter(e => myTeamIds.includes(e.userId));
     setTeamEntries(filteredEntries);
-    setProjects(allProjects);
+    
+    // Filter projects relevant to this manager to avoid clutter
+    const relevantProjects = user.role === 'ADMIN' 
+        ? allProjects 
+        : allProjects.filter(p => !p.allowedManagerIds?.length || p.allowedManagerIds.includes(user.id));
+        
+    setProjects(relevantProjects);
 
-    await calculateStats(myTeam, filteredEntries, allProjects);
+    await calculateStats(myTeam, filteredEntries, relevantProjects);
     setLoading(false);
   };
 
@@ -95,7 +102,7 @@ export const ManagerDashboard: React.FC = () => {
     });
     setTeamStats(stats);
 
-    // Project Budget Stats
+    // Project Budget Stats (Only for filtered projects)
     const projStats = projs.filter(p => p.budgetedHours > 0).map(p => {
         const projEntries = entries.filter(e => e.projectId === p.id);
         const consumed = projEntries.reduce((acc, curr) => acc + curr.hours, 0);
@@ -135,9 +142,12 @@ export const ManagerDashboard: React.FC = () => {
       });
 
       const projSummary = Array.from(projMap.entries()).map(([pid, hours]) => {
-          const proj = projects.find(p => p.id === pid);
+          // Projects might contain filtered list, we need to find from full list if possible or ensure projects contains everything
+          // But since we filtered projects in loadData, we might miss some if the user worked on a project that is no longer relevant?
+          // To be safe, we try to find it in the current filtered list.
+          const proj = projects.find(p => p.id === pid) || { code: 'N/A', name: 'Projeto Desconhecido' } as Project;
           return {
-              project: proj!,
+              project: proj,
               hours: hours,
               percentage: total > 0 ? (hours / total) * 100 : 0
           };
@@ -326,7 +336,7 @@ export const ManagerDashboard: React.FC = () => {
 
             {/* Project Budget Chart */}
             <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 h-96">
-                <h3 className="text-lg font-semibold text-slate-800 mb-6">Orçado vs Realizado (Por Projeto)</h3>
+                <h3 className="text-lg font-semibold text-slate-800 mb-6">Orçado vs Realizado (Projetos da Equipe)</h3>
                 <ResponsiveContainer width="100%" height="90%">
                     <BarChart data={projectBudgets}>
                         <XAxis 

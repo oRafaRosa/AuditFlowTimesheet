@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { store } from '../services/store';
@@ -59,7 +60,13 @@ export const ManagerReports: React.FC = () => {
     const teamEntries = allEntries.filter(e => myTeamIds.includes(e.userId));
     
     setEntries(teamEntries);
-    setProjects(allProjects);
+    
+    // Filter projects for the dropdown (Avoid clutter)
+    const visibleProjects = currentUser.role === 'ADMIN' 
+        ? allProjects 
+        : allProjects.filter(p => !p.allowedManagerIds?.length || p.allowedManagerIds.includes(currentUser.id));
+    
+    setProjects(visibleProjects);
     setLoading(false);
   };
 
@@ -133,7 +140,7 @@ export const ManagerReports: React.FC = () => {
                 <div>
                     <label className="block text-xs font-bold text-slate-500 mb-1">Projeto</label>
                     <select className="w-full border border-gray-300 p-2 rounded-lg text-sm" value={filterData.projectId} onChange={e => setFilterData({...filterData, projectId: e.target.value})}>
-                        <option value="">Todos</option>
+                        <option value="">Todos da Equipe</option>
                         {projects.map(p => <option key={p.id} value={p.id}>{p.code} - {p.name}</option>)}
                     </select>
                 </div>
