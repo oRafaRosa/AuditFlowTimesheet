@@ -1,4 +1,5 @@
 
+
 import React, { useState } from 'react';
 import { BookOpen, HelpCircle, ShieldCheck, Lock, FileText, CheckCircle, UserCheck, Server } from 'lucide-react';
 
@@ -98,12 +99,63 @@ export const HelpCenter: React.FC = () => {
 
         {/* --- FAQ TAB --- */}
         {activeTab === 'faq' && (
-            <div className="space-y-6 max-w-3xl animate-in fade-in duration-300">
+            <div className="space-y-6 max-w-4xl animate-in fade-in duration-300">
                 <h2 className="text-xl font-bold text-brand-800 mb-6 flex items-center gap-2">
                     <HelpCircle /> Perguntas Frequentes
                 </h2>
 
                 <div className="space-y-4">
+                    <details className="group bg-gray-50 p-4 rounded-lg cursor-pointer">
+                        <summary className="font-semibold text-slate-800 flex justify-between items-center list-none">
+                            Diretrizes de Lançamento: Administrativo e Backoffice
+                            <span className="transition group-open:rotate-180">▼</span>
+                        </summary>
+                        <div className="mt-4 overflow-x-auto">
+                            <table className="w-full text-sm text-left border-collapse border border-gray-200">
+                                <thead>
+                                    <tr className="bg-gray-200 text-slate-700">
+                                        <th className="p-3 border border-gray-300 w-1/3">Nome</th>
+                                        <th className="p-3 border border-gray-300">O que deve/não deve ser lançado?</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-200 bg-white text-slate-600">
+                                    <tr>
+                                        <td className="p-3 border border-gray-200 font-bold">Capacitação e Desenvolvimento</td>
+                                        <td className="p-3 border border-gray-200">Treinamentos, onboarding, autodesenvolvimento, facilitação de treinamentos etc.</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="p-3 border border-gray-200 font-bold italic">Follow-up</td>
+                                        <td className="p-3 border border-gray-200">
+                                            Follow-up de trabalhos de anos anteriores. <br/>
+                                            <span className="text-red-600 font-semibold">Importante:</span> A dedicação em follow-up <span className="underline">não deve</span> ser lançada na linha do trabalho após encerrado.
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td className="p-3 border border-gray-200 font-bold">Férias</td>
+                                        <td className="p-3 border border-gray-200">Lançamento de férias.</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="p-3 border border-gray-200 font-bold">Outros afastamentos</td>
+                                        <td className="p-3 border border-gray-200">Licenças, folgas e ausências em geral.</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="p-3 border border-gray-200 font-bold">Reunião de Gestão</td>
+                                        <td className="p-3 border border-gray-200">
+                                            Reuniões diretoria. As horas de <em>dailys</em> ou reuniões de equipe e checkpoints devem ser lançadas nas linhas das atividades que se encontra no momento.
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td className="p-3 border border-gray-200 font-bold">Performance, pessoas e feedback</td>
+                                        <td className="p-3 border border-gray-200">Ciclo de Performance e feedbacks.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <div className="mt-4 bg-brand-50 p-3 rounded-lg border border-brand-100 text-slate-700 text-sm font-medium text-center">
+                                As demais horas devem ser lançadas nas linhas de cada projeto (horas técnicas).
+                            </div>
+                        </div>
+                    </details>
+
                     <details className="group bg-gray-50 p-4 rounded-lg cursor-pointer">
                         <summary className="font-semibold text-slate-800 flex justify-between items-center list-none">
                             Esqueci minha senha, como recupero?
@@ -126,22 +178,11 @@ export const HelpCenter: React.FC = () => {
 
                     <details className="group bg-gray-50 p-4 rounded-lg cursor-pointer">
                         <summary className="font-semibold text-slate-800 flex justify-between items-center list-none">
-                            Como lanço feriados ou férias?
+                            Como lanço feriados?
                             <span className="transition group-open:rotate-180">▼</span>
                         </summary>
                         <p className="text-sm text-slate-600 mt-3 leading-relaxed">
-                            <strong>Feriados Nacionais:</strong> O sistema já desconta feriados do cálculo de "Horas Esperadas". Você não precisa lançar nada nesses dias.<br/><br/>
-                            <strong>Férias:</strong> Utilize o projeto de classificação "Férias/Ausência". Você pode usar a função de "Lançamento em Lote" para lançar o período todo de uma vez.
-                        </p>
-                    </details>
-
-                    <details className="group bg-gray-50 p-4 rounded-lg cursor-pointer">
-                        <summary className="font-semibold text-slate-800 flex justify-between items-center list-none">
-                            O que é o projeto "Backoffice"?
-                            <span className="transition group-open:rotate-180">▼</span>
-                        </summary>
-                        <p className="text-sm text-slate-600 mt-3 leading-relaxed">
-                            Use esta classificação para atividades administrativas internas que não estão atreladas a um Trabalho de Auditoria específico (ex: treinamentos obrigatórios de RH, reuniões gerais de departamento, configuração de máquina).
+                            <strong>Feriados Nacionais:</strong> O sistema já desconta feriados do cálculo de "Horas Esperadas". Você não precisa lançar nada nesses dias.
                         </p>
                     </details>
                 </div>
