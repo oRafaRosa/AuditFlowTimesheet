@@ -111,48 +111,84 @@ export const HelpCenter: React.FC = () => {
                             <span className="transition group-open:rotate-180">▼</span>
                         </summary>
                         <div className="mt-4 overflow-x-auto">
-                            <table className="w-full text-sm text-left border-collapse border border-gray-200">
-                                <thead>
-                                    <tr className="bg-gray-200 text-slate-700">
-                                        <th className="p-3 border border-gray-300 w-1/3">Nome</th>
-                                        <th className="p-3 border border-gray-300">O que deve/não deve ser lançado?</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-200 bg-white text-slate-600">
-                                    <tr>
-                                        <td className="p-3 border border-gray-200 font-bold">Capacitação e Desenvolvimento</td>
-                                        <td className="p-3 border border-gray-200">Treinamentos, onboarding, autodesenvolvimento, facilitação de treinamentos etc.</td>
-                                    </tr>
-                                    <tr>
-                                        <td className="p-3 border border-gray-200 font-bold italic">Follow-up</td>
-                                        <td className="p-3 border border-gray-200">
-                                            Follow-up de trabalhos de anos anteriores. <br/>
-                                            <span className="text-red-600 font-semibold">Importante:</span> A dedicação em follow-up <span className="underline">não deve</span> ser lançada na linha do trabalho após encerrado.
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td className="p-3 border border-gray-200 font-bold">Férias</td>
-                                        <td className="p-3 border border-gray-200">Lançamento de férias.</td>
-                                    </tr>
-                                    <tr>
-                                        <td className="p-3 border border-gray-200 font-bold">Outros afastamentos</td>
-                                        <td className="p-3 border border-gray-200">Licenças, folgas e ausências em geral.</td>
-                                    </tr>
-                                    <tr>
-                                        <td className="p-3 border border-gray-200 font-bold">Reunião de Gestão</td>
-                                        <td className="p-3 border border-gray-200">
-                                            Reuniões diretoria. As horas de <em>dailys</em> ou reuniões de equipe e checkpoints devem ser lançadas nas linhas das atividades que se encontra no momento.
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td className="p-3 border border-gray-200 font-bold">Performance, pessoas e feedback</td>
-                                        <td className="p-3 border border-gray-200">Ciclo de Performance e feedbacks.</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                            <div className="mt-4 bg-brand-50 p-3 rounded-lg border border-brand-100 text-slate-700 text-sm font-medium text-center">
-                                As demais horas devem ser lançadas nas linhas de cada projeto (horas técnicas).
-                            </div>
+            <table className="w-full text-sm text-left border-collapse border border-gray-200">
+                <thead>
+                    <tr className="bg-gray-200 text-slate-700">
+                        <th className="p-3 border border-gray-300 w-1/3">Nome</th>
+                        <th className="p-3 border border-gray-300">O que deve / não deve ser lançado?</th>
+                    </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 bg-white text-slate-600">
+                    <tr>
+                        <td className="p-3 border border-gray-200 font-bold">
+                            Capacitação e Desenvolvimento
+                        </td>
+                        <td className="p-3 border border-gray-200">
+                            Treinamentos, onboarding, atividades de autodesenvolvimento e participação ou facilitação de treinamentos.
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td className="p-3 border border-gray-200 font-bold italic">
+                            Follow-up
+                        </td>
+                        <td className="p-3 border border-gray-200">
+                            Follow-up de trabalhos de anos anteriores.
+                            <br />
+                            <span className="text-red-600 font-semibold">Importante:</span>{' '}
+                            após o encerramento do trabalho, o tempo de follow-up{' '}
+                            <span className="underline font-semibold">não deve</span>{' '}
+                            ser lançado na linha do projeto.
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td className="p-3 border border-gray-200 font-bold">
+                            Férias
+                        </td>
+                        <td className="p-3 border border-gray-200">
+                            Lançamento do período de férias.
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td className="p-3 border border-gray-200 font-bold">
+                            Outros afastamentos
+                        </td>
+                        <td className="p-3 border border-gray-200">
+                            Licenças, folgas e ausências em geral.
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td className="p-3 border border-gray-200 font-bold">
+                            Reunião de Gestão
+                        </td>
+                        <td className="p-3 border border-gray-200">
+                            Reuniões com a diretoria.
+                            <br />
+                            Reuniões recorrentes (<em>dailys</em>), reuniões de equipe e checkpoints
+                            devem ser lançadas na linha da atividade ou projeto em andamento.
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td className="p-3 border border-gray-200 font-bold">
+                            Performance, Pessoas e Feedback
+                        </td>
+                        <td className="p-3 border border-gray-200">
+                            Atividades relacionadas ao ciclo de performance, gestão de pessoas e feedbacks.
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div className="mt-4 bg-brand-50 p-3 rounded-lg border border-brand-100 text-slate-700 text-sm font-medium text-center">
+                Regra geral: todas as demais horas devem ser lançadas diretamente nas linhas de cada projeto
+                (horas técnicas).
+            </div>
+
+
                         </div>
                     </details>
 
