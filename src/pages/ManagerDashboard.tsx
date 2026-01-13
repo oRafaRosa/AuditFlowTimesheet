@@ -502,7 +502,7 @@ export const ManagerDashboard: React.FC = () => {
                                                       <div className="font-medium text-slate-800">{projects.find(p=>p.id===e.projectId)?.code}</div>
                                                       <div className="text-xs text-slate-400 truncate max-w-[150px]" title={e.description}>{e.description}</div>
                                                   </td>
-                                                  <td className="px-4 py-2 font-bold text-slate-700">{e.hours}</td>
+                                                  <td className="px-4 py-2 font-bold text-slate-700">{formatHours(e.hours)}</td>
                                               </tr>
                                           ))}
                                       </tbody>

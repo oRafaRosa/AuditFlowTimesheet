@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { store } from '../services/store';
-import { Project, TimesheetEntry, HOURS_PER_DAY } from '../types';
+import { Project, TimesheetEntry, HOURS_PER_DAY, formatHours } from '../types';
 import { Filter, Loader2, Download, Edit, Trash2 } from 'lucide-react';
 
 // Helper to fix timezone issue (UTC vs Local)
@@ -207,7 +207,7 @@ export const UserReports: React.FC = () => {
                 <h3 className="font-semibold text-slate-700 flex items-center gap-2"><Filter size={18} /> Histórico de Lançamentos</h3>
                 <div className="flex items-center gap-4">
                     <span className="text-sm font-bold text-brand-600 bg-brand-50 px-3 py-1 rounded-full">
-                        Total: {filteredEntries.reduce((acc, curr) => acc + curr.hours, 0).toFixed(1)}h
+                        Total: {formatHours(filteredEntries.reduce((acc, curr) => acc + curr.hours, 0))}h
                     </span>
                     <button onClick={handleExport} className="text-slate-500 hover:text-brand-600">
                         <Download size={20} />
@@ -233,7 +233,7 @@ export const UserReports: React.FC = () => {
                                     <td className="px-6 py-3 whitespace-nowrap">{new Date(e.date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</td>
                                     <td className="px-6 py-3 font-medium text-slate-700">{getProjectName(e.projectId)}</td>
                                     <td className="px-6 py-3 text-slate-500 truncate max-w-lg" title={e.description}>{e.description}</td>
-                                    <td className="px-6 py-3 text-right font-bold text-slate-600">{e.hours}</td>
+                                    <td className="px-6 py-3 text-right font-bold text-slate-600">{formatHours(e.hours)}</td>
                                     <td className="px-6 py-3 text-right">
                                         <div className="flex items-center justify-end gap-2">
                                             <button 

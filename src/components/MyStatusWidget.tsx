@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { store } from '../services/store';
-import { TimesheetPeriod } from '../types';
+import { TimesheetPeriod, formatHours } from '../types';
 import { History, CheckCircle, Clock, Send, Loader2, AlertCircle } from 'lucide-react';
 
 interface MyStatusWidgetProps {
@@ -71,7 +71,7 @@ export const MyStatusWidget: React.FC<MyStatusWidgetProps> = ({ userId, onUpdate
 
         // 3. Validation Check
         if (!isPastMonth && !isLastDays && !isComplete) {
-            alert(`Você não pode enviar este mês ainda.\n\nRegras para envio:\n1. O mês já deve ter fechado; OU\n2. Estar nos últimos 7 dias do mês; OU\n3. Ter lançado o total próximo do esperado (Tolerância de 40h).\n\nEsperado: ${expectedHours}h\nLançado: ${totalLogged.toFixed(1)}h\nFaltam: ${diff.toFixed(1)}h`);
+            alert(`Você não pode enviar este mês ainda.\n\nRegras para envio:\n1. O mês já deve ter fechado; OU\n2. Estar nos últimos 7 dias do mês; OU\n3. Ter lançado o total próximo do esperado (Tolerância de 40h).\n\nEsperado: ${expectedHours}h\nLançado: ${formatHours(totalLogged)}h\nFaltam: ${formatHours(diff)}h`);
             setProcessing(false);
             return;
         }
@@ -79,12 +79,12 @@ export const MyStatusWidget: React.FC<MyStatusWidgetProps> = ({ userId, onUpdate
         // 4. Confirmation Message Construction
         let confirmMsg = `Confirma o fechamento de ${dateName}?\n\n`;
         confirmMsg += `Horas Esperadas: ${expectedHours}h\n`;
-        confirmMsg += `Horas Lançadas: ${totalLogged.toFixed(1)}h\n`;
+        confirmMsg += `Horas Lançadas: ${formatHours(totalLogged)}h\n`;
         
         if (diff > 0) {
-            confirmMsg += `\nDiferença: -${diff.toFixed(1)}h (Abaixo do esperado)\n`;
+            confirmMsg += `\nDiferença: -${formatHours(diff)}h (Abaixo do esperado)\n`;
         } else if (diff < 0) {
-            confirmMsg += `\nDiferença: +${Math.abs(diff).toFixed(1)}h (Acima do esperado)\n`;
+            confirmMsg += `\nDiferença: +${formatHours(Math.abs(diff))}h (Acima do esperado)\n`;
         } else {
             confirmMsg += `\nStatus: Completo\n`;
         }

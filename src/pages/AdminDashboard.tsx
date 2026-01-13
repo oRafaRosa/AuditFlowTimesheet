@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { store, SUPABASE_SCHEMA_SQL } from '../services/store';
-import { User, Project, TimesheetEntry, CalendarException } from '../types';
+import { User, Project, TimesheetEntry, CalendarException, formatHours } from '../types';
 import { Plus, Database, Edit, Search, Filter, Calendar, Trash2, Loader2 } from 'lucide-react';
 import { MyStatusWidget } from '../components/MyStatusWidget';
 
@@ -469,7 +469,7 @@ export const AdminDashboard: React.FC = () => {
                   <div className="p-4 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
                       <h3 className="font-semibold text-slate-700 flex items-center gap-2"><Filter size={18} /> Resultados Filtrados</h3>
                       <div className="text-sm font-bold text-brand-600 bg-brand-50 px-3 py-1 rounded-full">
-                          Total: {filteredEntries.reduce((acc, curr) => acc + curr.hours, 0).toFixed(1)} Horas
+                          Total: {formatHours(filteredEntries.reduce((acc, curr) => acc + curr.hours, 0))} Horas
                       </div>
                   </div>
                   <div className="max-h-[500px] overflow-y-auto">

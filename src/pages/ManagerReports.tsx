@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { store } from '../services/store';
-import { User, Project, TimesheetEntry } from '../types';
+import { User, Project, TimesheetEntry, formatHours } from '../types';
 import { Filter, Loader2, Download } from 'lucide-react';
 
 export const ManagerReports: React.FC = () => {
@@ -152,7 +152,7 @@ export const ManagerReports: React.FC = () => {
                 <h3 className="font-semibold text-slate-700 flex items-center gap-2"><Filter size={18} /> Resultados</h3>
                 <div className="flex items-center gap-4">
                     <span className="text-sm font-bold text-brand-600 bg-brand-50 px-3 py-1 rounded-full">
-                        Total: {filteredEntries.reduce((acc, curr) => acc + curr.hours, 0).toFixed(1)}h
+                        Total: {formatHours(filteredEntries.reduce((acc, curr) => acc + curr.hours, 0))}h
                     </span>
                     <button onClick={handleExport} className="text-slate-500 hover:text-brand-600">
                         <Download size={20} />
@@ -177,7 +177,7 @@ export const ManagerReports: React.FC = () => {
                                 <td className="px-6 py-3">{getUserName(e.userId)}</td>
                                 <td className="px-6 py-3">{getProjectName(e.projectId)}</td>
                                 <td className="px-6 py-3 text-slate-500 truncate max-w-xs">{e.description}</td>
-                                <td className="px-6 py-3 text-right font-medium">{e.hours}</td>
+                                <td className="px-6 py-3 text-right font-medium">{formatHours(e.hours)}</td>
                             </tr>
                         ))}
                         {filteredEntries.length === 0 && (
