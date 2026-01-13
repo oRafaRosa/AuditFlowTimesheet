@@ -34,7 +34,9 @@ jobs:
           npm install --include=optional
 
       - name: Build
-        run: npm run build
+        run: |
+          npm run build
+          ls -la dist/
 
       - name: Copy index.html to 404.html
         run: cp dist/index.html dist/404.html
