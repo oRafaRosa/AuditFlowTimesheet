@@ -434,7 +434,7 @@ export const UserDashboard: React.FC = () => {
                                                 <div className="group relative">
                                                     <AlertOctagon size={16} className="text-amber-500 cursor-help" />
                                                     <span className="hidden group-hover:block absolute left-6 top-0 bg-slate-800 text-white text-xs p-1 rounded z-50 w-32">
-                                                        Total do dia: {dailyTotal.toFixed(1)}h (>8.8)
+                                                        Total do dia: {dailyTotal.toFixed(1)}h (&gt;8.8)
                                                     </span>
                                                 </div>
                                             )}
