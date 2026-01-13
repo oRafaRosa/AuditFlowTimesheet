@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { store } from '../services/store';
-import { TimesheetEntry, Project, HOURS_PER_DAY, TimesheetPeriod } from '../types';
+import { TimesheetEntry, Project, HOURS_PER_DAY, TimesheetPeriod, formatHours } from '../types';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { Clock, Calendar, CheckCircle, AlertTriangle, Plus, Trash2, Loader2, Lock, XCircle, Search, Filter, AlertOctagon, Copy, Edit } from 'lucide-react';
 import { MyStatusWidget } from '../components/MyStatusWidget';
@@ -326,7 +326,7 @@ export const UserDashboard: React.FC = () => {
                 <div className="p-3 bg-brand-100 text-brand-600 rounded-lg"><Clock size={24} /></div>
                 <div>
                     <p className="text-sm text-slate-500 font-medium">Horas Realizadas (Mês)</p>
-                    <p className="text-2xl font-bold text-slate-900">{currentMonthHours.toFixed(1)}h</p>
+                    <p className="text-2xl font-bold text-slate-900">{formatHours(currentMonthHours)}h</p>
                 </div>
             </div>
             <div className="mt-4 w-full bg-gray-100 rounded-full h-2">
@@ -339,7 +339,7 @@ export const UserDashboard: React.FC = () => {
                 <div className="p-3 bg-emerald-100 text-emerald-600 rounded-lg"><Calendar size={24} /></div>
                 <div>
                     <p className="text-sm text-slate-500 font-medium">Horas Esperadas (Hoje)</p>
-                    <p className="text-2xl font-bold text-slate-900">{expectedHours.toFixed(1)}h</p>
+                    <p className="text-2xl font-bold text-slate-900">{formatHours(expectedHours)}h</p>
                 </div>
             </div>
             <p className="text-xs text-slate-400 mt-2">Baseado em 8.8h/dia útil</p>
@@ -353,7 +353,7 @@ export const UserDashboard: React.FC = () => {
                 <div>
                     <p className="text-sm text-slate-500 font-medium">Pendência</p>
                     <p className={`text-2xl font-bold ${pendingHours > 0 ? 'text-amber-600' : 'text-green-600'}`}>
-                        {pendingHours > 0 ? `${pendingHours.toFixed(1)}h Faltantes` : 'Em dia'}
+                        {pendingHours > 0 ? `${formatHours(pendingHours)}h Faltantes` : 'Em dia'}
                     </p>
                 </div>
             </div>
@@ -434,7 +434,7 @@ export const UserDashboard: React.FC = () => {
                                                 <div className="group relative">
                                                     <AlertOctagon size={16} className="text-amber-500 cursor-help" />
                                                     <span className="hidden group-hover:block absolute left-6 top-0 bg-slate-800 text-white text-xs p-1 rounded z-50 w-32">
-                                                        Total do dia: {dailyTotal.toFixed(1)}h (&gt;8.8)
+                                                        Total do dia: {formatHours(dailyTotal)}h (&gt;8.8)
                                                     </span>
                                                 </div>
                                             )}

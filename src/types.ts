@@ -1,5 +1,13 @@
 
-export type Role = 'ADMIN' | 'MANAGER' | 'USER';
+// Utility function to format hours with proper rounding
+export const formatHours = (hours: number, decimals: number = 1): string => {
+  return hours.toFixed(decimals);
+};
+
+// Utility function to format percentage
+export const formatPercentage = (value: number): string => {
+  return Math.round(value).toString();
+};
 
 export interface User {
   id: string;

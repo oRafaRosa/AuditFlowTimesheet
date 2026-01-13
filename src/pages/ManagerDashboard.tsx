@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { store } from '../services/store';
-import { User, Project, TimesheetEntry, TimesheetPeriod } from '../types';
+import { User, Project, TimesheetEntry, TimesheetPeriod, formatHours, formatPercentage } from '../types';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, Cell } from 'recharts';
 import { Download, AlertCircle, Loader2, CheckCircle, XCircle, ArrowRight, Search, Clock, Calendar, Briefcase, FileText } from 'lucide-react';
 import { MyStatusWidget } from '../components/MyStatusWidget';
@@ -295,7 +295,7 @@ export const ManagerDashboard: React.FC = () => {
                         <AlertCircle className="text-red-500 shrink-0" size={20} />
                         <div onClick={() => navigate(`/manager/reports?userId=${s.id}`)} className="cursor-pointer group">
                             <p className="font-bold text-red-900 text-sm group-hover:underline">{s.name}</p>
-                            <p className="text-xs text-red-700">Pendente: {Math.abs(s.divergence).toFixed(1)}h</p>
+                            <p className="text-xs text-red-700">Pendente: {formatHours(Math.abs(s.divergence))}h</p>
                         </div>
                     </div>
                 ))}
@@ -304,7 +304,7 @@ export const ManagerDashboard: React.FC = () => {
                         <AlertCircle className="text-yellow-600 shrink-0" size={20} />
                         <div onClick={() => navigate(`/manager/reports?userId=${s.id}`)} className="cursor-pointer group">
                             <p className="font-bold text-yellow-900 text-sm group-hover:underline">{s.name}</p>
-                            <p className="text-xs text-yellow-700">Excesso: {s.divergence.toFixed(1)}h</p>
+                            <p className="text-xs text-yellow-700">Excesso: {formatHours(s.divergence)}h</p>
                         </div>
                     </div>
                 ))}
@@ -357,8 +357,8 @@ export const ManagerDashboard: React.FC = () => {
                                     <div className="bg-white p-2 border border-slate-100 shadow-lg rounded text-xs">
                                         <p className="font-bold">{data.full_name}</p>
                                         <p>Orçado: {data.budget}h</p>
-                                        <p>Realizado: {data.consumed.toFixed(1)}h</p>
-                                        <p>Percentual: {((data.consumed/data.budget)*100).toFixed(0)}%</p>
+                                        <p>Realizado: {formatHours(data.consumed)}h</p>
+                                        <p>Percentual: {formatPercentage((data.consumed/data.budget)*100)}%</p>
                                     </div>
                                 );
                             }
@@ -428,8 +428,8 @@ export const ManagerDashboard: React.FC = () => {
                           <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
                               <p className="text-xs text-slate-500 font-bold uppercase mb-1">Total Lançado</p>
                               <div className="flex items-baseline gap-2">
-                                  <span className="text-2xl font-bold text-slate-800">{reviewDetails.totalHours.toFixed(1)}h</span>
-                                  <span className="text-xs text-slate-400">/ {reviewDetails.expectedHours.toFixed(1)}h</span>
+                                  <span className="text-2xl font-bold text-slate-800">{formatHours(reviewDetails.totalHours)}h</span>
+                                  <span className="text-xs text-slate-400">/ {formatHours(reviewDetails.expectedHours)}h</span>
                               </div>
                               <div className="w-full bg-gray-100 h-1.5 rounded-full mt-3">
                                   <div 
@@ -441,7 +441,7 @@ export const ManagerDashboard: React.FC = () => {
                           <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
                               <p className="text-xs text-slate-500 font-bold uppercase mb-1">Divergência</p>
                               <div className={`text-2xl font-bold ${Math.abs(reviewDetails.totalHours - reviewDetails.expectedHours) < 1 ? 'text-green-600' : 'text-amber-600'}`}>
-                                  {(reviewDetails.totalHours - reviewDetails.expectedHours).toFixed(1)}h
+                                  {formatHours(reviewDetails.totalHours - reviewDetails.expectedHours)}h
                               </div>
                               <p className="text-xs text-slate-400 mt-1">Saldo do período</p>
                           </div>
@@ -466,7 +466,7 @@ export const ManagerDashboard: React.FC = () => {
                                       <div key={idx}>
                                           <div className="flex justify-between text-sm mb-1">
                                               <span className="font-medium text-slate-700">{item.project?.code || 'N/A'} - {item.project?.name || 'N/A'}</span>
-                                              <span className="font-bold text-slate-900">{item.hours.toFixed(1)}h</span>
+                                              <span className="font-bold text-slate-900">{formatHours(item.hours)}h</span>
                                           </div>
                                           <div className="w-full bg-gray-100 h-2 rounded-full">
                                               <div className="bg-brand-500 h-2 rounded-full" style={{width: `${item.percentage}%`}}></div>

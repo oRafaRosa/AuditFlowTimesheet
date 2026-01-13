@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, Link, useNavigate } from 'react-router-dom'; 
 import { store } from '../services/store';
 import { NotificationService } from '../services/notifications';
+import { formatHours } from '../types';
 import { 
   LayoutDashboard, 
   Users, 
@@ -103,7 +104,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                 .reduce((acc, curr) => acc + curr.hours, 0);
 
               if (todayHours < 8.8) {
-                  const msg = `Você lançou apenas ${todayHours.toFixed(1)}h hoje. A meta diária é 8.8h.`;
+                  const msg = `Você lançou apenas ${formatHours(todayHours)}h hoje. A meta diária é 8.8h.`;
                   alerts.push(msg);
                   
                   // Controle de frequência de notificação (a cada 4h)
