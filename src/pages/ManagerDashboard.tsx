@@ -311,15 +311,15 @@ export const ManagerDashboard: React.FC = () => {
             </div>
 
             {/* Team Hours Chart */}
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 h-96">
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 h-96 overflow-y-auto">
                 <h3 className="text-lg font-semibold text-slate-800 mb-6">Desempenho da Equipe (Mês Atual)</h3>
-                <ResponsiveContainer width="100%" height="90%">
-                    <BarChart data={teamStats} layout="vertical" margin={{ left: 40 }}>
+                <ResponsiveContainer width="100%" height={Math.max(300, teamStats.length * 40)}>
+                    <BarChart data={teamStats} layout="vertical" margin={{ left: 40, right: 20 }}>
                         <XAxis type="number" hide />
                         <YAxis 
                             dataKey="name" 
                             type="category" 
-                            width={100} 
+                            width={120} 
                             tick={{fontSize: 12, cursor: 'pointer'}} 
                             onClick={(data) => {
                                 const user = teamStats.find(t => t.name === data.value);
@@ -328,20 +328,23 @@ export const ManagerDashboard: React.FC = () => {
                         />
                         <Tooltip cursor={{fill: '#F0EFEA'}} />
                         <Legend />
-                        <Bar dataKey="expected" name="Esperado" fill="#D1D0CB" barSize={20} radius={[0, 4, 4, 0]} />
-                        <Bar dataKey="actual" name="Realizado" fill="#0033C6" barSize={20} radius={[0, 4, 4, 0]} />
+                        <Bar dataKey="expected" name="Esperado" fill="#D1D0CB" barSize={24} radius={[0, 4, 4, 0]} />
+                        <Bar dataKey="actual" name="Realizado" fill="#0033C6" barSize={24} radius={[0, 4, 4, 0]} />
                     </BarChart>
                 </ResponsiveContainer>
             </div>
 
             {/* Project Budget Chart */}
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 h-96">
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 h-96 overflow-x-auto">
                 <h3 className="text-lg font-semibold text-slate-800 mb-6">Orçado vs Realizado (Projetos da Equipe)</h3>
-                <ResponsiveContainer width="100%" height="90%">
-                    <BarChart data={projectBudgets}>
+                <ResponsiveContainer width={Math.max(600, projectBudgets.length * 120)} height="85%">
+                    <BarChart data={projectBudgets} margin={{ bottom: 20, left: 20, right: 20 }}>
                         <XAxis 
                             dataKey="name" 
                             tick={{fontSize: 12, cursor: 'pointer'}} 
+                            angle={-45}
+                            textAnchor="end"
+                            height={80}
                             onClick={(data) => {
                                 const proj = projectBudgets.find(p => p.name === data.value); 
                             }}
@@ -367,6 +370,7 @@ export const ManagerDashboard: React.FC = () => {
                             fill="#D1D0CB" 
                             onClick={(data) => navigate(`/manager/reports?projectId=${data.id}`)}
                             cursor="pointer"
+                            barSize={40}
                         />
                         <Bar 
                             dataKey="consumed" 
@@ -374,6 +378,7 @@ export const ManagerDashboard: React.FC = () => {
                             fill="#0033C6"
                             onClick={(data) => navigate(`/manager/reports?projectId=${data.id}`)}
                             cursor="pointer"
+                            barSize={40}
                         >
                             {projectBudgets.map((entry, index) => (
                                 <Cell key={`cell-${index}`} fill={entry.consumed > entry.budget ? '#E71A3B' : '#0033C6'} />
