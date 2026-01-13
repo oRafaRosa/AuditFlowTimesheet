@@ -17,7 +17,8 @@ import {
   FileBarChart,
   Bell,
   BookOpen,
-  ExternalLink
+  ExternalLink,
+  TableProperties
 } from 'lucide-react';
 
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -240,6 +241,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           <div className="px-4 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider mt-4">Meu Espaço</div>
           <NavItem to="/dashboard" icon={LayoutDashboard} label="Meu Dashboard" />
           <NavItem to="/timesheet" icon={Clock} label="Meus Lançamentos" />
+          <NavItem to="/reports" icon={TableProperties} label="Relatórios Detalhados" />
 
           <div className="px-4 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider mt-4">Nossos Apps</div>
           <a

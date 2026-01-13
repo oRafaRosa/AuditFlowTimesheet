@@ -1,13 +1,13 @@
-
 import React from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Login } from './pages/Login';
 import { Layout } from './components/Layout';
 import { UserDashboard } from './pages/UserDashboard';
+import { UserReports } from './pages/UserReports'; // Import
 import { ManagerDashboard } from './pages/ManagerDashboard';
 import { ManagerReports } from './pages/ManagerReports';
 import { AdminDashboard } from './pages/AdminDashboard';
-import { HelpCenter } from './pages/HelpCenter'; // Import
+import { HelpCenter } from './pages/HelpCenter'; 
 import { store } from './services/store';
 
 // Protected Route Wrapper
@@ -52,7 +52,15 @@ const App: React.FC = () => {
           path="/timesheet" 
           element={
             <ProtectedRoute>
-              <UserDashboard /> {/* Reuse for now as dashboard has the functionality */}
+              <UserDashboard /> 
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/reports" 
+          element={
+            <ProtectedRoute>
+              <UserReports /> 
             </ProtectedRoute>
           } 
         />

@@ -1,5 +1,3 @@
-
-
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { User, Project, TimesheetEntry, Holiday, CalendarException, HOURS_PER_DAY, TimesheetPeriod, PeriodStatus } from '../types';
 
@@ -270,6 +268,16 @@ class StoreService {
         description: entry.description
     };
     await supabase.from('timesheets').insert(dbEntry);
+  }
+
+  async updateEntry(id: string, entry: Partial<TimesheetEntry>) {
+    const dbEntry: any = {};
+    if (entry.projectId) dbEntry.project_id = entry.projectId;
+    if (entry.date) dbEntry.date = entry.date;
+    if (entry.hours) dbEntry.hours = entry.hours;
+    if (entry.description) dbEntry.description = entry.description;
+
+    await supabase.from('timesheets').update(dbEntry).eq('id', id);
   }
 
   async deleteEntry(id: string) {

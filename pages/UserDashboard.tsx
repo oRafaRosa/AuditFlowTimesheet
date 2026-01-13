@@ -1,14 +1,22 @@
-
-
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { store } from '../services/store';
 import { TimesheetEntry, Project, HOURS_PER_DAY, TimesheetPeriod } from '../types';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { Clock, Calendar, CheckCircle, AlertTriangle, Plus, Trash2, Loader2, Lock, XCircle, Search, Filter } from 'lucide-react';
+import { Clock, Calendar, CheckCircle, AlertTriangle, Plus, Trash2, Loader2, Lock, XCircle, Search, Filter, AlertOctagon, Copy, Edit } from 'lucide-react';
 import { MyStatusWidget } from '../components/MyStatusWidget';
+
+// Helper to fix timezone issue (UTC vs Local)
+// Returns YYYY-MM-DD based on Browser's local time, not UTC.
+const getLocalDateString = (date = new Date()) => {
+  const offset = date.getTimezoneOffset() * 60000;
+  const localTime = new Date(date.getTime() - offset);
+  return localTime.toISOString().split('T')[0];
+};
 
 export const UserDashboard: React.FC = () => {
   const user = store.getCurrentUser();
+  const navigate = useNavigate();
   const [entries, setEntries] = useState<TimesheetEntry[]>([]);
   const [periodStatus, setPeriodStatus] = useState<TimesheetPeriod | null>(null);
   
@@ -28,14 +36,18 @@ export const UserDashboard: React.FC = () => {
   const [expectedHours, setExpectedHours] = useState(0);
   const [pendingHours, setPendingHours] = useState(0);
   const [monthlyData, setMonthlyData] = useState<any[]>([]);
+  
+  // Alerts Data (Calculated locally)
+  const [dailyTotals, setDailyTotals] = useState<Record<string, number>>({});
 
   // Form State
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [formMode, setFormMode] = useState<'single' | 'bulk'>('single');
+  const [editingId, setEditingId] = useState<string | null>(null); // To track which entry is being edited
   const [formData, setFormData] = useState({
     projectId: '',
-    date: new Date().toISOString().split('T')[0],
-    endDate: new Date().toISOString().split('T')[0], // for bulk
+    date: getLocalDateString(), // Initialized with correct Local Date
+    endDate: getLocalDateString(), 
     hours: HOURS_PER_DAY,
     description: ''
   });
@@ -63,6 +75,13 @@ export const UserDashboard: React.FC = () => {
     setPeriodStatus(status);
     setEntries(allEntries.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
     
+    // Calculate Daily Totals for Alert Logic
+    const totals: Record<string, number> = {};
+    allEntries.forEach(e => {
+        totals[e.date] = (totals[e.date] || 0) + e.hours;
+    });
+    setDailyTotals(totals);
+
     // 1. Store ALL projects for history lookup (so inactive projects still show names in the table)
     setAllProjectsHistory(allProjects);
 
@@ -104,25 +123,52 @@ export const UserDashboard: React.FC = () => {
         });
         const mTotal = monthEntries.reduce((acc, curr) => acc + curr.hours, 0);
         const mExpected = await store.getExpectedHours(d.getFullYear(), d.getMonth());
-        chartData.push({ name: monthName, hours: mTotal, expected: mExpected });
+        
+        // IMPORTANT: Add year/month to data so we can navigate on click
+        chartData.push({ 
+            name: monthName, 
+            hours: mTotal, 
+            expected: mExpected,
+            year: d.getFullYear(),
+            month: d.getMonth()
+        });
     }
     setMonthlyData(chartData);
 
     setLoading(false);
   };
 
+  const checkPeriodLocked = async (dateStr: string) => {
+    if (!user) return true;
+    const date = new Date(dateStr);
+    const status = await store.getPeriodStatus(user.id, date.getFullYear(), date.getMonth());
+    return status.status === 'SUBMITTED' || status.status === 'APPROVED';
+  };
+
+  const handleEditClick = async (entry: TimesheetEntry) => {
+      const isLocked = await checkPeriodLocked(entry.date);
+      if (isLocked) {
+          alert("Este lançamento pertence a um mês já enviado para aprovação ou aprovado. Não é possível editar.");
+          return;
+      }
+
+      setEditingId(entry.id);
+      setFormData({
+          projectId: entry.projectId,
+          date: entry.date,
+          endDate: entry.date,
+          hours: entry.hours,
+          description: entry.description
+      });
+      setFormMode('single'); // Edits are always single
+      setIsFormOpen(true);
+  };
+
   const handleDelete = async (id: string, entryDate: string) => {
-    // Basic check: if current period is locked, block.
-    // Ideally we should check the status of the specific month of the entry, but for now we warn the user.
-    const entryD = new Date(entryDate);
-    const today = new Date();
-    
-    // If deleting from current month and it is locked
-    if (entryD.getMonth() === today.getMonth() && entryD.getFullYear() === today.getFullYear()) {
-        if (isPeriodLocked) {
-             alert("O período atual já foi enviado ou aprovado. Não é possível excluir.");
-             return;
-        }
+    const isLocked = await checkPeriodLocked(entryDate);
+    if (isLocked) {
+        alert("Este lançamento pertence a um mês já enviado para aprovação ou aprovado. Não é possível excluir.");
+        return;
     }
     
     if(window.confirm('Tem certeza que deseja excluir este lançamento?')) {
@@ -135,46 +181,67 @@ export const UserDashboard: React.FC = () => {
     e.preventDefault();
     if (!user) return;
     
-    // Check Status Logic
-    if (isPeriodLocked) {
-        alert("O período atual já foi enviado ou aprovado. Não é possível adicionar lançamentos.");
-        return;
-    }
-
     setLoading(true);
 
-    if (formMode === 'single') {
-        await store.addEntry({
-            userId: user.id,
+    if (editingId) {
+        // UPDATE MODE
+        await store.updateEntry(editingId, {
             projectId: formData.projectId,
             date: formData.date,
             hours: Number(formData.hours),
             description: formData.description
         });
     } else {
-        const start = new Date(formData.date);
-        const end = new Date(formData.endDate);
-        
-        // Naive bulk implementation
-        for(let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-            const dayOfWeek = d.getDay();
-            if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-                const dateStr = d.toISOString().split('T')[0];
-                await store.addEntry({
-                    userId: user.id,
-                    projectId: formData.projectId,
-                    date: dateStr,
-                    hours: Number(formData.hours),
-                    description: formData.description
-                });
+        // CREATE MODE
+        // Check current month status (approx, naive check for "Create")
+        // Ideally we should check status for formData.date, but for now we rely on UI blocking
+        const d = new Date(formData.date);
+        const status = await store.getPeriodStatus(user.id, d.getFullYear(), d.getMonth());
+        if (status.status === 'SUBMITTED' || status.status === 'APPROVED') {
+             alert(`O mês de ${d.getMonth()+1}/${d.getFullYear()} já foi fechado. Não é possível adicionar lançamentos.`);
+             setLoading(false);
+             return;
+        }
+
+        if (formMode === 'single') {
+            await store.addEntry({
+                userId: user.id,
+                projectId: formData.projectId,
+                date: formData.date,
+                hours: Number(formData.hours),
+                description: formData.description
+            });
+        } else {
+            const start = new Date(formData.date);
+            const end = new Date(formData.endDate);
+            
+            for(let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+                const dayOfWeek = d.getUTCDay();
+                if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+                    const dateStr = d.toISOString().split('T')[0];
+                    await store.addEntry({
+                        userId: user.id,
+                        projectId: formData.projectId,
+                        date: dateStr,
+                        hours: Number(formData.hours),
+                        description: formData.description
+                    });
+                }
             }
         }
     }
     
     setIsFormOpen(false);
+    setEditingId(null);
     setFormData({ ...formData, description: '' });
     await loadData();
     setLoading(false);
+  };
+
+  const handleCloseForm = () => {
+      setIsFormOpen(false);
+      setEditingId(null);
+      setFormData({ ...formData, description: '' });
   };
 
   const getProjectName = (id: string) => {
@@ -183,13 +250,38 @@ export const UserDashboard: React.FC = () => {
     return proj.active ? proj.name : `${proj.name} (Inativo)`;
   }
 
-  // Helper to check if inputs should be disabled (Only affects CURRENT month input form)
-  const isPeriodLocked = periodStatus?.status === 'SUBMITTED' || periodStatus?.status === 'APPROVED';
+  // Handle Chart Click
+  const handleChartClick = (data: any) => {
+      if (data && data.activePayload && data.activePayload.length > 0) {
+          const payload = data.activePayload[0].payload;
+          const { year, month } = payload;
+          const startDate = new Date(year, month, 1);
+          const endDate = new Date(year, month + 1, 0);
+          
+          const sStr = getLocalDateString(startDate);
+          const eStr = getLocalDateString(endDate);
+
+          navigate(`/reports?startDate=${sStr}&endDate=${eStr}`);
+      }
+  };
+
+  const isDuplicate = (entry: TimesheetEntry) => {
+      return entries.filter(e => 
+          e.id !== entry.id && 
+          e.date === entry.date && 
+          e.projectId === entry.projectId && 
+          e.hours === entry.hours &&
+          e.description === entry.description
+      ).length > 0;
+  };
+
+  // Status visual check for "New Entry" button (Current Month)
+  const isCurrentPeriodLocked = periodStatus?.status === 'SUBMITTED' || periodStatus?.status === 'APPROVED';
 
   // Filtered Entries Logic
   const displayEntries = entryFilterDate 
       ? entries.filter(e => e.date === entryFilterDate)
-      : entries.slice(0, 10);
+      : entries.slice(0, 20); // Show more recent entries
 
   if (loading && entries.length === 0) {
       return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin text-brand-600" size={48} /></div>;
@@ -202,7 +294,18 @@ export const UserDashboard: React.FC = () => {
         <div className="flex gap-3">
              {periodStatus?.status === 'OPEN' || periodStatus?.status === 'REJECTED' ? (
                  <button 
-                    onClick={() => setIsFormOpen(true)}
+                    onClick={() => {
+                        setEditingId(null);
+                        setFormMode('single');
+                        setFormData({
+                            projectId: '',
+                            date: getLocalDateString(),
+                            endDate: getLocalDateString(),
+                            hours: HOURS_PER_DAY,
+                            description: ''
+                        });
+                        setIsFormOpen(true);
+                    }}
                     className="bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shadow-lg shadow-brand-500/20">
                     <Plus size={20} />
                     Novo Lançamento
@@ -265,10 +368,10 @@ export const UserDashboard: React.FC = () => {
         <div className="lg:col-span-2 space-y-6">
             
             {/* Chart */}
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 h-80">
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 h-80 relative">
                 <h3 className="text-lg font-semibold text-slate-800 mb-4">Histórico Semestral</h3>
                 <ResponsiveContainer width="100%" height="90%">
-                    <BarChart data={monthlyData}>
+                    <BarChart data={monthlyData} onClick={handleChartClick} style={{cursor: 'pointer'}}>
                         <XAxis dataKey="name" axisLine={false} tickLine={false} />
                         <YAxis axisLine={false} tickLine={false} />
                         <Tooltip cursor={{fill: '#F0EFEA'}} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
@@ -276,6 +379,9 @@ export const UserDashboard: React.FC = () => {
                         <Bar dataKey="hours" name="Realizado" fill="#0033C6" radius={[4, 4, 0, 0]} />
                     </BarChart>
                 </ResponsiveContainer>
+                <div className="absolute top-6 right-6 text-xs text-slate-400">
+                    Clique nas barras para ver detalhes
+                </div>
             </div>
 
             {/* Recent Entries & Filter */}
@@ -310,23 +416,57 @@ export const UserDashboard: React.FC = () => {
                                 <th className="px-6 py-3">Projeto</th>
                                 <th className="px-6 py-3">Descrição</th>
                                 <th className="px-6 py-3">Horas</th>
-                                <th className="px-6 py-3">Ações</th>
+                                <th className="px-6 py-3 text-right">Ações</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
-                            {displayEntries.map(entry => (
-                                <tr key={entry.id} className="hover:bg-gray-50 transition-colors">
-                                    <td className="px-6 py-3 whitespace-nowrap">{new Date(entry.date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</td>
-                                    <td className="px-6 py-3 font-medium text-slate-800">{getProjectName(entry.projectId)}</td>
-                                    <td className="px-6 py-3 truncate max-w-xs" title={entry.description}>{entry.description}</td>
-                                    <td className="px-6 py-3 font-bold">{entry.hours}h</td>
-                                    <td className="px-6 py-3">
-                                        <button onClick={() => handleDelete(entry.id, entry.date)} className="text-red-400 hover:text-red-600 transition-colors p-1 rounded hover:bg-red-50">
-                                            <Trash2 size={16} />
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))}
+                            {displayEntries.map(entry => {
+                                const dailyTotal = dailyTotals[entry.date] || 0;
+                                const isOverLimit = dailyTotal > 8.8;
+                                const isDup = isDuplicate(entry);
+                                const hasAlert = isOverLimit || isDup;
+
+                                return (
+                                    <tr key={entry.id} className={`transition-colors ${hasAlert ? 'bg-yellow-50 hover:bg-yellow-100' : 'hover:bg-gray-50'}`}>
+                                        <td className="px-6 py-3 whitespace-nowrap flex items-center gap-2">
+                                            {new Date(entry.date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
+                                            {isOverLimit && (
+                                                <div className="group relative">
+                                                    <AlertOctagon size={16} className="text-amber-500 cursor-help" />
+                                                    <span className="hidden group-hover:block absolute left-6 top-0 bg-slate-800 text-white text-xs p-1 rounded z-50 w-32">
+                                                        Total do dia: {dailyTotal.toFixed(1)}h (>8.8)
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </td>
+                                        <td className="px-6 py-3 font-medium text-slate-800">
+                                            <div className="flex items-center gap-2">
+                                                {getProjectName(entry.projectId)}
+                                                {isDup && (
+                                                    <div className="group relative">
+                                                        <Copy size={14} className="text-red-400 cursor-help" />
+                                                        <span className="hidden group-hover:block absolute left-4 top-0 bg-slate-800 text-white text-xs p-1 rounded z-50 w-32">
+                                                            Possível duplicidade detectada
+                                                        </span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-3 truncate max-w-xs" title={entry.description}>{entry.description}</td>
+                                        <td className={`px-6 py-3 font-bold ${isOverLimit ? 'text-amber-600' : ''}`}>{entry.hours}h</td>
+                                        <td className="px-6 py-3 text-right">
+                                            <div className="flex items-center justify-end gap-2">
+                                                <button onClick={() => handleEditClick(entry)} className="text-brand-600 hover:text-brand-800 transition-colors p-1 rounded hover:bg-brand-50" title="Editar">
+                                                    <Edit size={16} />
+                                                </button>
+                                                <button onClick={() => handleDelete(entry.id, entry.date)} className="text-red-400 hover:text-red-600 transition-colors p-1 rounded hover:bg-red-50" title="Excluir">
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
                             {displayEntries.length === 0 && (
                                 <tr>
                                     <td colSpan={5} className="px-6 py-8 text-center text-slate-400">
@@ -346,33 +486,35 @@ export const UserDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Modal Form */}
+      {/* Modal Form (Create / Edit) */}
       {isFormOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden">
                 <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-                    <h2 className="text-xl font-bold text-slate-800">Novo Lançamento</h2>
-                    <button onClick={() => setIsFormOpen(false)} className="text-slate-400 hover:text-slate-600">✕</button>
+                    <h2 className="text-xl font-bold text-slate-800">{editingId ? 'Editar Lançamento' : 'Novo Lançamento'}</h2>
+                    <button onClick={handleCloseForm} className="text-slate-400 hover:text-slate-600">✕</button>
                 </div>
                 <form onSubmit={handleSubmitEntry} className="p-6 space-y-4">
                     
-                    {/* Mode Switcher */}
-                    <div className="flex bg-gray-100 p-1 rounded-lg">
-                        <button 
-                            type="button" 
-                            className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${formMode === 'single' ? 'bg-white shadow text-slate-800' : 'text-slate-500'}`}
-                            onClick={() => setFormMode('single')}
-                        >
-                            Diário
-                        </button>
-                        <button 
-                            type="button" 
-                            className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${formMode === 'bulk' ? 'bg-white shadow text-slate-800' : 'text-slate-500'}`}
-                            onClick={() => setFormMode('bulk')}
-                        >
-                            Lote (Férias/Período)
-                        </button>
-                    </div>
+                    {/* Mode Switcher (Only for Create) */}
+                    {!editingId && (
+                        <div className="flex bg-gray-100 p-1 rounded-lg">
+                            <button 
+                                type="button" 
+                                className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${formMode === 'single' ? 'bg-white shadow text-slate-800' : 'text-slate-500'}`}
+                                onClick={() => setFormMode('single')}
+                            >
+                                Diário
+                            </button>
+                            <button 
+                                type="button" 
+                                className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${formMode === 'bulk' ? 'bg-white shadow text-slate-800' : 'text-slate-500'}`}
+                                onClick={() => setFormMode('bulk')}
+                            >
+                                Lote (Férias/Período)
+                            </button>
+                        </div>
+                    )}
 
                     <div>
                         <label className="block text-sm font-medium text-slate-700 mb-1">Trabalho / Projeto</label>
@@ -443,7 +585,7 @@ export const UserDashboard: React.FC = () => {
                     <div className="pt-4 flex justify-end gap-3">
                         <button 
                             type="button" 
-                            onClick={() => setIsFormOpen(false)}
+                            onClick={handleCloseForm}
                             className="px-4 py-2 text-slate-600 font-medium hover:bg-slate-50 rounded-lg transition-colors"
                         >
                             Cancelar
@@ -453,7 +595,7 @@ export const UserDashboard: React.FC = () => {
                             disabled={loading}
                             className="px-4 py-2 bg-brand-600 text-white font-bold rounded-lg hover:bg-brand-700 transition-colors shadow-lg shadow-brand-500/20"
                         >
-                            {loading ? 'Salvando...' : 'Salvar Lançamento'}
+                            {loading ? 'Salvando...' : (editingId ? 'Atualizar' : 'Salvar Lançamento')}
                         </button>
                     </div>
                 </form>
