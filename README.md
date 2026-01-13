@@ -62,18 +62,29 @@ AuditFlow Timesheet é uma aplicação web moderna para gerenciamento de tempo e
 
 ## 🚀 Deploy
 
-O aplicativo está configurado para deploy automático no GitHub Pages através de GitHub Actions.
+O deploy está configurado para **GitHub Pages via branch** (main / root).
 
-### Para Deploy Manual
+### Para publicar via branch
 
-1. **Build do projeto**:
+1. **Build do projeto** (gera `index.html` e `assets/` na raiz):
    ```bash
    npm run build
    ```
 
-2. **Deploy no GitHub Pages**:
-   - Push para a branch `main`
-   - O workflow do GitHub Actions fará o deploy automaticamente
+2. **Commit dos artefatos de build**:
+   ```bash
+   git add index.html assets/
+   git commit -m "build: update static bundle"
+   ```
+
+3. **Push para a branch `main`**:
+   ```bash
+   git push
+   ```
+
+4. **Configure no GitHub**:
+   - Settings → Pages → Deploy from a branch
+   - Branch: `main` / Folder: `/ (root)`
 
 ## 📁 Estrutura do Projeto
 
