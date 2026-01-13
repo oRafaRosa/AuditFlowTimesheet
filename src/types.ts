@@ -9,6 +9,8 @@ export const formatPercentage = (value: number): string => {
   return Math.round(value).toString();
 };
 
+export type Role = 'ADMIN' | 'MANAGER' | 'USER';
+
 export interface User {
   id: string;
   name: string;
