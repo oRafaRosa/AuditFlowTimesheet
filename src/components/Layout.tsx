@@ -117,6 +117,45 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               }
           }
 
+          // D. Usuário: Pendências de Lançamentos (dias úteis da semana sem horas)
+          if (user.role === 'USER') {
+              const entries = await store.getEntries(user.id);
+              const currentWeekStart = new Date(today);
+              currentWeekStart.setDate(today.getDate() - today.getDay() + 1); // Monday of current week
+              
+              const weekDates: string[] = [];
+              for (let i = 0; i < 5; i++) { // Monday to Friday
+                  const date = new Date(currentWeekStart);
+                  date.setDate(currentWeekStart.getDate() + i);
+                  weekDates.push(date.toISOString().split('T')[0]);
+              }
+              
+              const missingDays: string[] = [];
+              weekDates.forEach(dateStr => {
+                  const dayEntries = entries.filter(e => e.date === dateStr);
+                  const totalHours = dayEntries.reduce((acc, curr) => acc + curr.hours, 0);
+                  if (totalHours === 0) {
+                      const date = new Date(dateStr + 'T00:00:00');
+                      const dayName = date.toLocaleDateString('pt-BR', { weekday: 'long' });
+                      missingDays.push(dayName);
+                  }
+              });
+              
+              if (missingDays.length > 0) {
+                  const msg = `Você ainda não lançou horas para: ${missingDays.join(', ')}. Lembre-se de registrar seu trabalho!`;
+                  alerts.push(msg);
+                  
+                  // Notificação push a cada 6 horas para não ser muito frequente
+                  const lastPendingNotify = localStorage.getItem('last_pending_reminder');
+                  const now = Date.now();
+                  
+                  if (!lastPendingNotify || (now - Number(lastPendingNotify) > 6 * 60 * 60 * 1000)) {
+                      NotificationService.send('Pendências de Lançamento', msg, 'pending_tag');
+                      localStorage.setItem('last_pending_reminder', String(now));
+                  }
+              }
+          }
+
           setNotifications(alerts);
       };
 
