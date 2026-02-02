@@ -257,7 +257,7 @@ class StoreService {
       };
 
       // Use work_date if available, otherwise fall back to date
-      const displayDate = normalizeDate(e.work_date) || normalizeDate(e.date);
+      const displayDate = normalizeDate(e.work_date) || normalizeDate(e.date) || '';
 
       return {
         id: e.id,
