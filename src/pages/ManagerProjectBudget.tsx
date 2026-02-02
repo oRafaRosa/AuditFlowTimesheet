@@ -112,7 +112,7 @@ export const ManagerProjectBudget: React.FC = () => {
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold text-slate-800">Orçado vs Realizado - Todos os Projetos</h1>
-        <p className="text-slate-500">Visão consolidada de horas por projeto em toda a organização</p>
+        <p className="text-slate-500">Visão consolidada de horas por projeto em toda a diretoria</p>
       </div>
 
       {/* KPI Cards */}
@@ -130,7 +130,7 @@ export const ManagerProjectBudget: React.FC = () => {
         </div>
 
         <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
-          <p className="text-xs font-bold text-slate-500 uppercase mb-2">Projetos em Risco</p>
+          <p className="text-xs font-bold text-slate-500 uppercase mb-2">Próximos ao Limite</p>
           <div className="text-3xl font-bold text-amber-600">{atRisk}</div>
           <p className="text-xs text-slate-400 mt-2">85-100% do orçado</p>
         </div>
@@ -146,49 +146,51 @@ export const ManagerProjectBudget: React.FC = () => {
         {/* Gráfico de Barras - Orçado vs Realizado */}
         <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-100 p-6">
           <h2 className="text-lg font-bold text-slate-800 mb-6">Orçamento vs Realizado por Projeto</h2>
-          <ResponsiveContainer width="100%" height={400}>
-            <BarChart
-              data={filteredData}
-              layout="vertical"
-              margin={{ left: 120, right: 20, top: 10, bottom: 10 }}
-            >
-              <XAxis type="number" />
-              <YAxis
-                dataKey="code"
-                type="category"
-                width={110}
-                tick={{ fontSize: 12 }}
-              />
-              <Tooltip
-                content={({ active, payload }) => {
-                  if (active && payload && payload.length) {
-                    const data = payload[0].payload as ProjectBudgetData;
-                    const label = payload[0].name;
-                    const value = payload[0].value;
-                    return (
-                      <div className="bg-white p-3 border border-slate-200 rounded-lg shadow-lg text-xs">
-                        <p className="font-bold text-slate-800">{data.name}</p>
-                        <p className="text-slate-600">
-                          {label}: {formatHours(value as number)}h
-                        </p>
-                      </div>
-                    );
-                  }
-                  return null;
-                }}
-              />
-              <Legend />
-              <Bar dataKey="budgeted" name="Orçado" fill="#D1D0CB" onClick={(data) => handleProjectClick(data.id)} cursor="pointer" />
-              <Bar dataKey="consumed" name="Realizado" fill="#0033C6" onClick={(data) => handleProjectClick(data.id)} cursor="pointer">
-                {filteredData.map((entry, index) => (
-                  <Cell
-                    key={`cell-${index}`}
-                    fill={entry.status === 'danger' ? '#ef4444' : entry.status === 'warning' ? '#f59e0b' : '#0033C6'}
-                  />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+          <div className="overflow-y-auto" style={{ maxHeight: '500px' }}>
+            <ResponsiveContainer width="100%" height={Math.max(400, filteredData.length * 45)}>
+              <BarChart
+                data={filteredData}
+                layout="vertical"
+                margin={{ left: 120, right: 20, top: 10, bottom: 10 }}
+              >
+                <XAxis type="number" />
+                <YAxis
+                  dataKey="code"
+                  type="category"
+                  width={110}
+                  tick={{ fontSize: 12 }}
+                />
+                <Tooltip
+                  content={({ active, payload }) => {
+                    if (active && payload && payload.length) {
+                      const data = payload[0].payload as ProjectBudgetData;
+                      const label = payload[0].name;
+                      const value = payload[0].value;
+                      return (
+                        <div className="bg-white p-3 border border-slate-200 rounded-lg shadow-lg text-xs">
+                          <p className="font-bold text-slate-800">{data.name}</p>
+                          <p className="text-slate-600">
+                            {label}: {formatHours(value as number)}h
+                          </p>
+                        </div>
+                      );
+                    }
+                    return null;
+                  }}
+                />
+                <Legend />
+                <Bar dataKey="budgeted" name="Orçado" fill="#D1D0CB" onClick={(data) => handleProjectClick(data.id)} cursor="pointer" />
+                <Bar dataKey="consumed" name="Realizado" fill="#0033C6" onClick={(data) => handleProjectClick(data.id)} cursor="pointer">
+                  {filteredData.map((entry, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={entry.status === 'danger' ? '#ef4444' : entry.status === 'warning' ? '#f59e0b' : '#0033C6'}
+                    />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
 
         {/* Status Distribution Pie Chart */}
