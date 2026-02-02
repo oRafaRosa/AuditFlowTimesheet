@@ -249,8 +249,8 @@ class StoreService {
     if (error) return [];
 
     return data.map((e: any) => {
-      // Use work_date if exists, otherwise extract date from date column (removing time)
-      let displayDate = e.work_date;
+      // Use work_date if exists and not null/empty, otherwise extract date from date column
+      let displayDate = (e.work_date && e.work_date.trim() !== '') ? e.work_date : null;
       if (!displayDate && e.date) {
         // Extract YYYY-MM-DD from timestamptz
         displayDate = e.date.split('T')[0];
