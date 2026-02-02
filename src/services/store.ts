@@ -249,13 +249,16 @@ class StoreService {
     if (error) return [];
 
     return data.map((e: any) => {
-      // Use work_date if exists and not null/empty, otherwise extract date from date column
-      let displayDate = (e.work_date && e.work_date.trim() !== '') ? e.work_date : null;
-      if (!displayDate && e.date) {
-        // Extract YYYY-MM-DD from timestamptz
-        displayDate = e.date.split('T')[0];
-      }
-      
+      const normalizeDate = (value: any) => {
+        if (!value) return null;
+        if (value instanceof Date) return value.toISOString().split('T')[0];
+        if (typeof value === 'string') return value.split('T')[0];
+        return null;
+      };
+
+      // Use work_date if available, otherwise fall back to date
+      const displayDate = normalizeDate(e.work_date) || normalizeDate(e.date);
+
       return {
         id: e.id,
         userId: e.user_id,
