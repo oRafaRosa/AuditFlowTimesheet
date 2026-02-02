@@ -249,23 +249,24 @@ class StoreService {
     if (error) return [];
 
     return data.map((e: any) => ({
-        id: e.id,
-        userId: e.user_id,
-        projectId: e.project_id,
-        date: e.date,
-        hours: e.hours,
-        description: e.description,
-        createdAt: e.created_at
+      id: e.id,
+      userId: e.user_id,
+      projectId: e.project_id,
+      date: e.work_date || e.date,
+      hours: e.hours,
+      description: e.description,
+      createdAt: e.created_at
     }));
   }
 
   async addEntry(entry: Omit<TimesheetEntry, 'id' | 'createdAt'>) {
     const dbEntry = {
-        user_id: entry.userId,
-        project_id: entry.projectId,
-        date: entry.date,
-        hours: entry.hours,
-        description: entry.description
+      user_id: entry.userId,
+      project_id: entry.projectId,
+      date: entry.date,
+      work_date: entry.date,
+      hours: entry.hours,
+      description: entry.description
     };
     await supabase.from('timesheets').insert(dbEntry);
   }
@@ -273,7 +274,10 @@ class StoreService {
   async updateEntry(id: string, entry: Partial<TimesheetEntry>) {
     const dbEntry: any = {};
     if (entry.projectId) dbEntry.project_id = entry.projectId;
-    if (entry.date) dbEntry.date = entry.date;
+    if (entry.date) {
+      dbEntry.date = entry.date;
+      dbEntry.work_date = entry.date;
+    }
     if (entry.hours) dbEntry.hours = entry.hours;
     if (entry.description) dbEntry.description = entry.description;
 
@@ -329,7 +333,7 @@ class StoreService {
       // 2. Get distinct months from entries
       const { data: entriesData } = await supabase
         .from('timesheets')
-        .select('date')
+        .select('date, work_date')
         .eq('user_id', userId);
 
       // 3. Merge unique YYYY-MM
@@ -339,8 +343,10 @@ class StoreService {
           uniquePeriods.add(`${s.year}-${s.month}`);
       });
 
-      entriesData?.forEach((e: any) => {
-          const parts = e.date.split('-');
+        entriesData?.forEach((e: any) => {
+          const entryDate = e.work_date || e.date;
+          if (!entryDate) return;
+          const parts = entryDate.split('-');
           const year = parseInt(parts[0]);
           const month = parseInt(parts[1]) - 1; // 0-based
           uniquePeriods.add(`${year}-${month}`);

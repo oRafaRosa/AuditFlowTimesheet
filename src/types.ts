@@ -35,7 +35,7 @@ export interface TimesheetEntry {
   id: string;
   userId: string;
   projectId: string;
-  date: string; // ISO Date YYYY-MM-DD
+  date: string; // work_date (YYYY-MM-DD)
   hours: number;
   description: string;
   createdAt: string;
