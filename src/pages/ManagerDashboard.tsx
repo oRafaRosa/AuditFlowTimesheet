@@ -5,13 +5,15 @@ import { useNavigate } from 'react-router-dom';
 import { store } from '../services/store';
 import { User, Project, TimesheetEntry, TimesheetPeriod, formatHours, formatPercentage } from '../types';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, Cell } from 'recharts';
-import { Download, AlertCircle, Loader2, CheckCircle, XCircle, ArrowRight, Search, Clock, Calendar, Briefcase, FileText } from 'lucide-react';
+import { Download, AlertCircle, Loader2, CheckCircle, XCircle, ArrowRight, Search, Clock, Calendar, Briefcase, FileText, TrendingUp } from 'lucide-react';
 import { MyStatusWidget } from '../components/MyStatusWidget';
+import { ManagerProjectBudget } from './ManagerProjectBudget';
 
 const parseLocalDate = (dateStr: string) => new Date(`${dateStr}T00:00:00`);
 
 export const ManagerDashboard: React.FC = () => {
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<'overview' | 'budget' | 'reports'>('overview');
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [teamMembers, setTeamMembers] = useState<User[]>([]);
   const [teamEntries, setTeamEntries] = useState<TimesheetEntry[]>([]);
@@ -212,6 +214,15 @@ export const ManagerDashboard: React.FC = () => {
       return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin text-brand-600" size={48} /></div>;
   }
 
+  // Render selected tab
+  if (activeTab === 'budget') {
+      return <ManagerProjectBudget />;
+  }
+
+  if (activeTab === 'reports') {
+      return <div className="text-center py-16"><p className="text-slate-500">Acesse a página de Relatórios Gerenciais através do menu principal.</p></div>;
+  }
+
   return (
     <div className="space-y-8">
       <div className="flex justify-between items-end">
@@ -224,6 +235,30 @@ export const ManagerDashboard: React.FC = () => {
             className="flex items-center gap-2 px-4 py-2 border border-slate-300 rounded-lg text-slate-600 hover:bg-white hover:border-slate-400 transition-colors bg-white">
             <Download size={18} />
             Exportar CSV
+        </button>
+      </div>
+
+      {/* Tab Navigation */}
+      <div className="flex border-b border-slate-200 gap-1">
+        <button
+          onClick={() => setActiveTab('overview')}
+          className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
+            activeTab === 'overview'
+              ? 'border-brand-600 text-brand-600'
+              : 'border-transparent text-slate-600 hover:text-slate-800'
+          }`}
+        >
+          Visão Geral
+        </button>
+        <button
+          onClick={() => setActiveTab('budget')}
+          className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors flex items-center gap-2 ${
+            activeTab === 'budget'
+              ? 'border-brand-600 text-brand-600'
+              : 'border-transparent text-slate-600 hover:text-slate-800'
+          }`}
+        >
+          <TrendingUp size={16} /> Orçado vs Realizado
         </button>
       </div>
       
