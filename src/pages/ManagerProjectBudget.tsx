@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { store } from '../services/store';
-import { Project, TimesheetEntry, formatHours, formatPercentage } from '../types';
+import { Project, TimesheetEntry, User, formatHours, formatPercentage } from '../types';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, Legend, PieChart, Pie } from 'recharts';
 import { Search, TrendingUp, AlertTriangle, CheckCircle, Loader2 } from 'lucide-react';
 
@@ -19,35 +19,28 @@ export const ManagerProjectBudget: React.FC = () => {
   const navigate = useNavigate();
   const [projects, setProjects] = useState<Project[]>([]);
   const [entries, setEntries] = useState<TimesheetEntry[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [projectData, setProjectData] = useState<ProjectBudgetData[]>([]);
   const [filteredData, setFilteredData] = useState<ProjectBudgetData[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'safe' | 'warning' | 'danger'>('all');
-  const [showInactive, setShowInactive] = useState(false);
+  const [selectedProjectIds, setSelectedProjectIds] = useState<Set<string>>(new Set());
+  const [teamFilter, setTeamFilter] = useState('');
+  const [codePrefixFilter, setCodePrefixFilter] = useState('');
 
   useEffect(() => {
     loadData();
   }, []);
 
-  const loadData = async () => {
-    setLoading(true);
-    const [allProjects, allEntries] = await Promise.all([
-      store.getProjects(),
-      store.getEntries()
-    ]);
-
-    setProjects(allProjects);
-    setEntries(allEntries);
-
-    // Calculate budget data for ALL projects
-    const budgetData = allProjects.map(p => {
-      const consumed = allEntries
+  const buildProjectData = (projectsList: Project[], entriesList: TimesheetEntry[]) => {
+    return projectsList.map(p => {
+      const consumed = entriesList
         .filter(e => e.projectId === p.id)
         .reduce((acc, curr) => acc + curr.hours, 0);
 
       const percentage = p.budgetedHours > 0 ? (consumed / p.budgetedHours) * 100 : 0;
-      
+
       let status: 'safe' | 'warning' | 'danger' = 'safe';
       if (percentage > 100) status = 'danger';
       else if (percentage >= 85) status = 'warning';
@@ -61,7 +54,23 @@ export const ManagerProjectBudget: React.FC = () => {
         percentage: percentage,
         status: status
       };
-    }).filter(p => p.budgeted > 0); // Only show projects with budget
+    }).filter(p => p.budgeted > 0);
+  };
+
+  const loadData = async () => {
+    setLoading(true);
+    const [allProjects, allEntries, allUsers] = await Promise.all([
+      store.getProjects(),
+      store.getEntries(),
+      store.getUsers()
+    ]);
+
+    setProjects(allProjects);
+    setEntries(allEntries);
+    setUsers(allUsers);
+
+    // Calculate budget data for ALL projects
+    const budgetData = buildProjectData(allProjects, allEntries);
 
     setProjectData(budgetData);
     setFilteredData(budgetData);
@@ -79,13 +88,42 @@ export const ManagerProjectBudget: React.FC = () => {
       );
     }
 
+    // Project checkbox filter
+    if (selectedProjectIds.size > 0) {
+      result = result.filter(p => selectedProjectIds.has(p.id));
+    }
+
+    // Code prefix filter (HT, BO, AD)
+    if (codePrefixFilter) {
+      result = result.filter(p => p.code.startsWith(codePrefixFilter));
+    }
+
     // Status filter
     if (statusFilter !== 'all') {
       result = result.filter(p => p.status === statusFilter);
     }
 
+    // Sort by consumption (desc)
+    result = [...result].sort((a, b) => b.consumed - a.consumed);
+
     setFilteredData(result);
-  }, [searchTerm, statusFilter, projectData]);
+  }, [searchTerm, statusFilter, projectData, selectedProjectIds, codePrefixFilter]);
+
+  useEffect(() => {
+    if (!projects.length) return;
+
+    let scopedEntries = entries;
+
+    if (teamFilter) {
+      const teamUserIds = users
+        .filter(u => u.managerId === teamFilter || u.id === teamFilter)
+        .map(u => u.id);
+      scopedEntries = entries.filter(e => teamUserIds.includes(e.userId));
+    }
+
+    const updatedData = buildProjectData(projects, scopedEntries);
+    setProjectData(updatedData);
+  }, [teamFilter, projects, entries, users]);
 
   const handleProjectClick = (projectId: string) => {
     navigate(`/manager/reports?projectId=${projectId}`);
@@ -204,7 +242,7 @@ export const ManagerProjectBudget: React.FC = () => {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ name, value }) => `${name}: ${value}`}
+                  label={false}
                   outerRadius={80}
                   fill="#8884d8"
                   dataKey="value"
@@ -219,15 +257,26 @@ export const ManagerProjectBudget: React.FC = () => {
           ) : (
             <div className="h-[300px] flex items-center justify-center text-slate-400">Sem dados</div>
           )}
+          {statusDistribution.length > 0 && (
+            <div className="mt-4 space-y-2 text-sm">
+              {statusDistribution.map(item => (
+                <div key={item.name} className="flex items-center gap-2">
+                  <span className="inline-block w-3 h-3 rounded-full" style={{ backgroundColor: item.fill }}></span>
+                  <span className="text-slate-700">{item.name}</span>
+                  <span className="text-slate-400">({item.value})</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
       {/* Filters and Table */}
       <div className="space-y-4">
         <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-4">
-          <div className="flex flex-col md:flex-row gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             {/* Search */}
-            <div className="flex-1">
+            <div>
               <label className="block text-xs font-bold text-slate-500 mb-2">Buscar Projeto</label>
               <div className="relative">
                 <Search className="absolute left-3 top-2.5 text-slate-400" size={16} />
@@ -239,6 +288,23 @@ export const ManagerProjectBudget: React.FC = () => {
                   className="w-full pl-10 pr-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none"
                 />
               </div>
+            </div>
+
+            {/* Team Filter */}
+            <div>
+              <label className="block text-xs font-bold text-slate-500 mb-2">Equipe</label>
+              <select
+                value={teamFilter}
+                onChange={(e) => setTeamFilter(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none"
+              >
+                <option value="">Todas as Equipes</option>
+                {users
+                  .filter(u => u.role === 'MANAGER' || u.role === 'ADMIN')
+                  .map(u => (
+                    <option key={u.id} value={u.id}>{u.name}</option>
+                  ))}
+              </select>
             </div>
 
             {/* Status Filter */}
@@ -254,6 +320,51 @@ export const ManagerProjectBudget: React.FC = () => {
                 <option value="warning">Próximo do Limite</option>
                 <option value="danger">Acima do Orçado</option>
               </select>
+            </div>
+
+            {/* Code Prefix Filter */}
+            <div>
+              <label className="block text-xs font-bold text-slate-500 mb-2">Tipo (Código)</label>
+              <select
+                value={codePrefixFilter}
+                onChange={(e) => setCodePrefixFilter(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none"
+              >
+                <option value="">Todos</option>
+                <option value="HT">HT - Horas Técnicas</option>
+                <option value="BO">BO - Backoffice</option>
+                <option value="AD">AD - Administrativas</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Project Checkbox Filter */}
+          <div className="mt-4">
+            <label className="block text-xs font-bold text-slate-500 mb-2">Selecionar Projetos</label>
+            <div className="max-h-40 overflow-y-auto border border-slate-200 rounded-lg p-3 bg-slate-50">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                {projects.map(p => (
+                  <label key={p.id} className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={selectedProjectIds.has(p.id)}
+                      onChange={(e) => {
+                        const next = new Set(selectedProjectIds);
+                        if (e.target.checked) next.add(p.id);
+                        else next.delete(p.id);
+                        setSelectedProjectIds(next);
+                      }}
+                    />
+                    <span className="text-slate-700">
+                      <span className="font-semibold">{p.name}</span>
+                      <span className="text-xs text-slate-500"> ({p.code})</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div className="mt-2 text-xs text-slate-500">
+              {selectedProjectIds.size === 0 ? 'Nenhum selecionado (mostrando todos)' : `${selectedProjectIds.size} selecionados`}
             </div>
           </div>
         </div>
@@ -287,8 +398,8 @@ export const ManagerProjectBudget: React.FC = () => {
                       className="hover:bg-blue-50 transition-colors cursor-pointer"
                     >
                       <td className="px-6 py-4">
-                        <div className="font-medium text-slate-800">{project.code}</div>
-                        <div className="text-xs text-slate-500">{project.name}</div>
+                        <div className="font-semibold text-slate-800">{project.name}</div>
+                        <div className="text-xs text-slate-500">{project.code}</div>
                       </td>
                       <td className="px-6 py-4 font-medium text-slate-700">{formatHours(project.budgeted)}h</td>
                       <td className="px-6 py-4 font-medium text-slate-700">{formatHours(project.consumed)}h</td>
