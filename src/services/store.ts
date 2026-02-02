@@ -248,15 +248,24 @@ class StoreService {
     const { data, error } = await query;
     if (error) return [];
 
-    return data.map((e: any) => ({
-      id: e.id,
-      userId: e.user_id,
-      projectId: e.project_id,
-      date: e.work_date || e.date,
-      hours: e.hours,
-      description: e.description,
-      createdAt: e.created_at
-    }));
+    return data.map((e: any) => {
+      // Use work_date if exists, otherwise extract date from date column (removing time)
+      let displayDate = e.work_date;
+      if (!displayDate && e.date) {
+        // Extract YYYY-MM-DD from timestamptz
+        displayDate = e.date.split('T')[0];
+      }
+      
+      return {
+        id: e.id,
+        userId: e.user_id,
+        projectId: e.project_id,
+        date: displayDate,
+        hours: e.hours,
+        description: e.description,
+        createdAt: e.created_at
+      };
+    });
   }
 
   async addEntry(entry: Omit<TimesheetEntry, 'id' | 'createdAt'>) {

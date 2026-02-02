@@ -11,9 +11,11 @@ import { ManagerProjectBudget } from './ManagerProjectBudget';
 
 const parseLocalDate = (dateStr: string) => new Date(`${dateStr}T00:00:00`);
 
+type TabType = 'overview' | 'budget' | 'reports';
+
 export const ManagerDashboard: React.FC = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'overview' | 'budget' | 'reports'>('overview');
+  const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [teamMembers, setTeamMembers] = useState<User[]>([]);
   const [teamEntries, setTeamEntries] = useState<TimesheetEntry[]>([]);
@@ -214,54 +216,14 @@ export const ManagerDashboard: React.FC = () => {
       return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin text-brand-600" size={48} /></div>;
   }
 
-  // Render selected tab
-  if (activeTab === 'budget') {
+  // Render selected tab content
+  const renderContent = () => {
+    if (activeTab === 'budget') {
       return <ManagerProjectBudget />;
-  }
+    }
 
-  if (activeTab === 'reports') {
-      return <div className="text-center py-16"><p className="text-slate-500">Acesse a página de Relatórios Gerenciais através do menu principal.</p></div>;
-  }
-
-  return (
-    <div className="space-y-8">
-      <div className="flex justify-between items-end">
-        <div>
-            <h1 className="text-2xl font-bold text-slate-800">Visão da Equipe</h1>
-            <p className="text-slate-500">Acompanhamento de GRC e Auditoria</p>
-        </div>
-        <button 
-            onClick={handleExport}
-            className="flex items-center gap-2 px-4 py-2 border border-slate-300 rounded-lg text-slate-600 hover:bg-white hover:border-slate-400 transition-colors bg-white">
-            <Download size={18} />
-            Exportar CSV
-        </button>
-      </div>
-
-      {/* Tab Navigation */}
-      <div className="flex border-b border-slate-200 gap-1">
-        <button
-          onClick={() => setActiveTab('overview')}
-          className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
-            activeTab === 'overview'
-              ? 'border-brand-600 text-brand-600'
-              : 'border-transparent text-slate-600 hover:text-slate-800'
-          }`}
-        >
-          Visão Geral
-        </button>
-        <button
-          onClick={() => setActiveTab('budget')}
-          className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors flex items-center gap-2 ${
-            activeTab === 'budget'
-              ? 'border-brand-600 text-brand-600'
-              : 'border-transparent text-slate-600 hover:text-slate-800'
-          }`}
-        >
-          <TrendingUp size={16} /> Orçado vs Realizado
-        </button>
-      </div>
-      
+    // Default overview tab
+    return (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-8">
             
@@ -432,6 +394,49 @@ export const ManagerDashboard: React.FC = () => {
             {currentUser && <MyStatusWidget userId={currentUser.id} />}
         </div>
       </div>
+    );
+  };
+
+  return (
+    <div className="space-y-8">
+      <div className="flex justify-between items-end">
+        <div>
+            <h1 className="text-2xl font-bold text-slate-800">Visão da Equipe</h1>
+            <p className="text-slate-500">Acompanhamento de GRC e Auditoria</p>
+        </div>
+        <button 
+            onClick={handleExport}
+            className="flex items-center gap-2 px-4 py-2 border border-slate-300 rounded-lg text-slate-600 hover:bg-white hover:border-slate-400 transition-colors bg-white">
+            <Download size={18} />
+            Exportar CSV
+        </button>
+      </div>
+
+      {/* Tab Navigation */}
+      <div className="flex border-b border-slate-200 gap-1">
+        <button
+          onClick={() => setActiveTab('overview')}
+          className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
+            activeTab === 'overview'
+              ? 'border-brand-600 text-brand-600'
+              : 'border-transparent text-slate-600 hover:text-slate-800'
+          }`}
+        >
+          Visão Geral
+        </button>
+        <button
+          onClick={() => setActiveTab('budget')}
+          className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors flex items-center gap-2 ${
+            activeTab === 'budget'
+              ? 'border-brand-600 text-brand-600'
+              : 'border-transparent text-slate-600 hover:text-slate-800'
+          }`}
+        >
+          <TrendingUp size={16} /> Orçado vs Realizado
+        </button>
+      </div>
+
+      {renderContent()}
 
       {/* --- Detailed Review Modal --- */}
       {reviewPeriod && reviewDetails && (
