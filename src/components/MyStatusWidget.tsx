@@ -5,6 +5,8 @@ import { store } from '../services/store';
 import { TimesheetPeriod, formatHours } from '../types';
 import { History, CheckCircle, Clock, Send, Loader2, AlertCircle } from 'lucide-react';
 
+const parseLocalDate = (dateStr: string) => new Date(`${dateStr}T00:00:00`);
+
 interface MyStatusWidgetProps {
   userId: string;
   onUpdate?: () => void; // Trigger to refresh parent data if needed
@@ -45,7 +47,7 @@ export const MyStatusWidget: React.FC<MyStatusWidgetProps> = ({ userId, onUpdate
         ]);
 
         const periodEntries = allEntries.filter(e => {
-            const d = new Date(e.date);
+            const d = parseLocalDate(e.date);
             return d.getFullYear() === year && d.getMonth() === month;
         });
 

@@ -6,6 +6,8 @@ import { store } from '../services/store';
 import { User, Project, TimesheetEntry, formatHours } from '../types';
 import { Filter, Loader2, Download } from 'lucide-react';
 
+const parseLocalDate = (dateStr: string) => new Date(`${dateStr}T00:00:00`);
+
 export const ManagerReports: React.FC = () => {
   const location = useLocation();
   const [entries, setEntries] = useState<TimesheetEntry[]>([]);
@@ -173,7 +175,7 @@ export const ManagerReports: React.FC = () => {
                     <tbody className="divide-y divide-gray-100">
                         {filteredEntries.map(e => (
                             <tr key={e.id} className="hover:bg-slate-50">
-                                <td className="px-6 py-3 whitespace-nowrap">{new Date(e.date).toLocaleDateString('pt-BR')}</td>
+                                <td className="px-6 py-3 whitespace-nowrap">{parseLocalDate(e.date).toLocaleDateString('pt-BR')}</td>
                                 <td className="px-6 py-3">{getUserName(e.userId)}</td>
                                 <td className="px-6 py-3">{getProjectName(e.projectId)}</td>
                                 <td className="px-6 py-3 text-slate-500 truncate max-w-xs">{e.description}</td>

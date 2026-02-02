@@ -14,6 +14,8 @@ const getLocalDateString = (date = new Date()) => {
   return localTime.toISOString().split('T')[0];
 };
 
+const parseLocalDate = (dateStr: string) => new Date(`${dateStr}T00:00:00`);
+
 export const UserDashboard: React.FC = () => {
   const user = store.getCurrentUser();
   const navigate = useNavigate();
@@ -73,7 +75,7 @@ export const UserDashboard: React.FC = () => {
     ]);
 
     setPeriodStatus(status);
-    setEntries(allEntries.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+    setEntries(allEntries.sort((a, b) => parseLocalDate(b.date).getTime() - parseLocalDate(a.date).getTime()));
     
     // Calculate Daily Totals for Alert Logic
     const totals: Record<string, number> = {};
@@ -100,7 +102,7 @@ export const UserDashboard: React.FC = () => {
 
     // Calc KPIs
     const currentMonthEntries = allEntries.filter(e => {
-        const d = new Date(e.date);
+        const d = parseLocalDate(e.date);
         return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
     });
 
@@ -118,7 +120,7 @@ export const UserDashboard: React.FC = () => {
         const d = new Date(currentYear, currentMonth - i, 1);
         const monthName = d.toLocaleDateString('pt-BR', { month: 'short' });
         const monthEntries = allEntries.filter(e => {
-            const entD = new Date(e.date);
+            const entD = parseLocalDate(e.date);
             return entD.getMonth() === d.getMonth() && entD.getFullYear() === d.getFullYear();
         });
         const mTotal = monthEntries.reduce((acc, curr) => acc + curr.hours, 0);
@@ -140,7 +142,7 @@ export const UserDashboard: React.FC = () => {
 
   const checkPeriodLocked = async (dateStr: string) => {
     if (!user) return true;
-    const date = new Date(dateStr);
+    const date = parseLocalDate(dateStr);
     const status = await store.getPeriodStatus(user.id, date.getFullYear(), date.getMonth());
     return status.status === 'SUBMITTED' || status.status === 'APPROVED';
   };
@@ -429,7 +431,7 @@ export const UserDashboard: React.FC = () => {
                                 return (
                                     <tr key={entry.id} className={`transition-colors ${hasAlert ? 'bg-yellow-50 hover:bg-yellow-100' : 'hover:bg-gray-50'}`}>
                                         <td className="px-6 py-3 whitespace-nowrap flex items-center gap-2">
-                                            {new Date(entry.date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
+                                            {parseLocalDate(entry.date).toLocaleDateString('pt-BR')}
                                             {isOverLimit && (
                                                 <div className="group relative">
                                                     <AlertOctagon size={16} className="text-amber-500 cursor-help" />

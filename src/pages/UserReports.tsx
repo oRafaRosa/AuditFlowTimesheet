@@ -11,6 +11,8 @@ const getLocalDateString = (date = new Date()) => {
   return localTime.toISOString().split('T')[0];
 };
 
+const parseLocalDate = (dateStr: string) => new Date(`${dateStr}T00:00:00`);
+
 export const UserReports: React.FC = () => {
   const location = useLocation();
   const [entries, setEntries] = useState<TimesheetEntry[]>([]);
@@ -70,7 +72,7 @@ export const UserReports: React.FC = () => {
     setPeriodStatuses(statusMap);
 
     // Sort by date desc
-    allEntries.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    allEntries.sort((a,b) => parseLocalDate(b.date).getTime() - parseLocalDate(a.date).getTime());
     setEntries(allEntries);
     
     setProjects(allProjects);
@@ -109,7 +111,7 @@ export const UserReports: React.FC = () => {
   };
 
   const isEntryLocked = (entry: TimesheetEntry) => {
-      const d = new Date(entry.date);
+    const d = parseLocalDate(entry.date);
       const key = `${d.getFullYear()}-${d.getMonth()}`;
       const status = periodStatuses[key];
       // If status exists and is SUBMITTED or APPROVED, it's locked.
@@ -230,7 +232,7 @@ export const UserReports: React.FC = () => {
                             const locked = isEntryLocked(e);
                             return (
                                 <tr key={e.id} className="hover:bg-slate-50">
-                                    <td className="px-6 py-3 whitespace-nowrap">{new Date(e.date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</td>
+                                    <td className="px-6 py-3 whitespace-nowrap">{parseLocalDate(e.date).toLocaleDateString('pt-BR')}</td>
                                     <td className="px-6 py-3 font-medium text-slate-700">{getProjectName(e.projectId)}</td>
                                     <td className="px-6 py-3 text-slate-500 truncate max-w-lg" title={e.description}>{e.description}</td>
                                     <td className="px-6 py-3 text-right font-bold text-slate-600">{formatHours(e.hours)}</td>

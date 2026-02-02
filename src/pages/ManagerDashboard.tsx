@@ -8,6 +8,8 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, Cell
 import { Download, AlertCircle, Loader2, CheckCircle, XCircle, ArrowRight, Search, Clock, Calendar, Briefcase, FileText } from 'lucide-react';
 import { MyStatusWidget } from '../components/MyStatusWidget';
 
+const parseLocalDate = (dateStr: string) => new Date(`${dateStr}T00:00:00`);
+
 export const ManagerDashboard: React.FC = () => {
   const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -88,7 +90,7 @@ export const ManagerDashboard: React.FC = () => {
     // Team Performance Stats
     const stats = members.map(m => {
         const memberEntries = entries.filter(e => {
-            const d = new Date(e.date);
+            const d = parseLocalDate(e.date);
             return e.userId === m.id && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear();
         });
         const total = memberEntries.reduce((acc, curr) => acc + curr.hours, 0);
@@ -128,9 +130,9 @@ export const ManagerDashboard: React.FC = () => {
       ]);
 
       const periodEntries = allEntries.filter(e => {
-          const d = new Date(e.date);
+          const d = parseLocalDate(e.date);
           return d.getFullYear() === period.year && d.getMonth() === period.month;
-      }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    }).sort((a, b) => parseLocalDate(a.date).getTime() - parseLocalDate(b.date).getTime());
 
       const total = periodEntries.reduce((acc, curr) => acc + curr.hours, 0);
 
@@ -496,7 +498,7 @@ export const ManagerDashboard: React.FC = () => {
                                           {reviewDetails.entries.map(e => (
                                               <tr key={e.id} className="hover:bg-brand-50/20">
                                                   <td className="px-4 py-2 text-slate-600 whitespace-nowrap">
-                                                      {new Date(e.date).toLocaleDateString('pt-BR')}
+                                                      {parseLocalDate(e.date).toLocaleDateString('pt-BR')}
                                                   </td>
                                                   <td className="px-4 py-2">
                                                       <div className="font-medium text-slate-800">{projects.find(p=>p.id===e.projectId)?.code}</div>

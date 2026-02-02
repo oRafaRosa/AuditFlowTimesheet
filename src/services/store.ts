@@ -264,7 +264,6 @@ class StoreService {
       user_id: entry.userId,
       project_id: entry.projectId,
       date: entry.date,
-      work_date: entry.date,
       hours: entry.hours,
       description: entry.description
     };
@@ -274,10 +273,7 @@ class StoreService {
   async updateEntry(id: string, entry: Partial<TimesheetEntry>) {
     const dbEntry: any = {};
     if (entry.projectId) dbEntry.project_id = entry.projectId;
-    if (entry.date) {
-      dbEntry.date = entry.date;
-      dbEntry.work_date = entry.date;
-    }
+    if (entry.date) dbEntry.date = entry.date;
     if (entry.hours) dbEntry.hours = entry.hours;
     if (entry.description) dbEntry.description = entry.description;
 
