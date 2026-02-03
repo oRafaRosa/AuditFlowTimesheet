@@ -5,6 +5,7 @@ import { Layout } from './components/Layout';
 import { UserDashboard } from './pages/UserDashboard';
 import { UserReports } from './pages/UserReports'; // Import
 import { ManagerDashboard } from './pages/ManagerDashboard';
+import { ManagerProjectBudget } from './pages/ManagerProjectBudget';
 import { ManagerReports } from './pages/ManagerReports';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { HelpCenter } from './pages/HelpCenter'; 
@@ -89,6 +90,14 @@ const App: React.FC = () => {
           element={
             <ProtectedRoute allowedRoles={['MANAGER', 'ADMIN']}>
               <ManagerReports />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/manager/budget" 
+          element={
+            <ProtectedRoute allowedRoles={['MANAGER', 'ADMIN']}>
+              <ManagerProjectBudget />
             </ProtectedRoute>
           } 
         />

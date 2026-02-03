@@ -19,7 +19,8 @@ import {
   Bell,
   BookOpen,
   ExternalLink,
-  TableProperties
+  TableProperties,
+  TrendingUp
 } from 'lucide-react';
 
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -274,6 +275,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             <>
               <div className="px-4 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider mt-4">Gestão</div>
               <NavItem to="/manager" icon={PieChart} label="Dashboard Equipe" />
+              <NavItem to="/manager/budget" icon={TrendingUp} label="Orçado vs Realizado" />
               <NavItem to="/manager/reports" icon={FileBarChart} label="Relatórios" />
             </>
           )}

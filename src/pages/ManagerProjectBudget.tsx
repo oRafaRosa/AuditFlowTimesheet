@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { store } from '../services/store';
 import { Project, TimesheetEntry, User, formatHours, formatPercentage } from '../types';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, Legend, PieChart, Pie } from 'recharts';
 import { Search, TrendingUp, AlertTriangle, CheckCircle, Loader2 } from 'lucide-react';
 
 interface ProjectBudgetData {
@@ -129,18 +128,11 @@ export const ManagerProjectBudget: React.FC = () => {
     navigate(`/manager/reports?projectId=${projectId}`);
   };
 
-  // Calculate KPIs
-  const totalBudgeted = projectData.reduce((acc, p) => acc + p.budgeted, 0);
-  const totalConsumed = projectData.reduce((acc, p) => acc + p.consumed, 0);
-  const overBudget = projectData.filter(p => p.status === 'danger').length;
-  const atRisk = projectData.filter(p => p.status === 'warning').length;
-
-  // Data for pie chart (status distribution)
-  const statusDistribution = [
-    { name: 'Dentro do Orçado', value: projectData.filter(p => p.status === 'safe').length, fill: '#10b981' },
-    { name: 'Próximo do Limite', value: projectData.filter(p => p.status === 'warning').length, fill: '#f59e0b' },
-    { name: 'Acima do Orçado', value: projectData.filter(p => p.status === 'danger').length, fill: '#ef4444' }
-  ].filter(item => item.value > 0);
+  // Calculate KPIs (respect current filters)
+  const totalBudgeted = filteredData.reduce((acc, p) => acc + p.budgeted, 0);
+  const totalConsumed = filteredData.reduce((acc, p) => acc + p.consumed, 0);
+  const overBudget = filteredData.filter(p => p.status === 'danger').length;
+  const atRisk = filteredData.filter(p => p.status === 'warning').length;
 
   if (loading) {
     return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin text-brand-600" size={48} /></div>;
@@ -158,13 +150,13 @@ export const ManagerProjectBudget: React.FC = () => {
         <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
           <p className="text-xs font-bold text-slate-500 uppercase mb-2">Total Orçado</p>
           <div className="text-3xl font-bold text-slate-800">{formatHours(totalBudgeted)}h</div>
-          <p className="text-xs text-slate-400 mt-2">{projectData.length} projetos</p>
+          <p className="text-xs text-slate-400 mt-2">{filteredData.length} projetos</p>
         </div>
 
         <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
           <p className="text-xs font-bold text-slate-500 uppercase mb-2">Total Realizado</p>
           <div className="text-3xl font-bold text-slate-800">{formatHours(totalConsumed)}h</div>
-          <p className="text-xs text-slate-400 mt-2">{formatPercentage((totalConsumed / totalBudgeted) * 100)}% consumido</p>
+          <p className="text-xs text-slate-400 mt-2">{totalBudgeted > 0 ? formatPercentage((totalConsumed / totalBudgeted) * 100) : '0'}% consumido</p>
         </div>
 
         <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
@@ -177,97 +169,6 @@ export const ManagerProjectBudget: React.FC = () => {
           <p className="text-xs font-bold text-slate-500 uppercase mb-2">Acima do Orçado</p>
           <div className="text-3xl font-bold text-red-600">{overBudget}</div>
           <p className="text-xs text-slate-400 mt-2">{formatHours(projectData.filter(p => p.status === 'danger').reduce((acc, p) => acc + (p.consumed - p.budgeted), 0))}h de excesso</p>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Gráfico de Barras - Orçado vs Realizado */}
-        <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-100 p-6">
-          <h2 className="text-lg font-bold text-slate-800 mb-6">Orçamento vs Realizado por Projeto</h2>
-          <div className="overflow-y-auto" style={{ maxHeight: '500px' }}>
-            <ResponsiveContainer width="100%" height={Math.max(400, filteredData.length * 45)}>
-              <BarChart
-                data={filteredData}
-                layout="vertical"
-                margin={{ left: 120, right: 20, top: 10, bottom: 10 }}
-              >
-                <XAxis type="number" />
-                <YAxis
-                  dataKey="code"
-                  type="category"
-                  width={110}
-                  tick={{ fontSize: 12 }}
-                />
-                <Tooltip
-                  content={({ active, payload }) => {
-                    if (active && payload && payload.length) {
-                      const data = payload[0].payload as ProjectBudgetData;
-                      const label = payload[0].name;
-                      const value = payload[0].value;
-                      return (
-                        <div className="bg-white p-3 border border-slate-200 rounded-lg shadow-lg text-xs">
-                          <p className="font-bold text-slate-800">{data.name}</p>
-                          <p className="text-slate-600">
-                            {label}: {formatHours(value as number)}h
-                          </p>
-                        </div>
-                      );
-                    }
-                    return null;
-                  }}
-                />
-                <Legend />
-                <Bar dataKey="budgeted" name="Orçado" fill="#D1D0CB" onClick={(data) => handleProjectClick(data.id)} cursor="pointer" />
-                <Bar dataKey="consumed" name="Realizado" fill="#0033C6" onClick={(data) => handleProjectClick(data.id)} cursor="pointer">
-                  {filteredData.map((entry, index) => (
-                    <Cell
-                      key={`cell-${index}`}
-                      fill={entry.status === 'danger' ? '#ef4444' : entry.status === 'warning' ? '#f59e0b' : '#0033C6'}
-                    />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Status Distribution Pie Chart */}
-        <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
-          <h2 className="text-lg font-bold text-slate-800 mb-6">Status dos Projetos</h2>
-          {statusDistribution.length > 0 ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={statusDistribution}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={false}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {statusDistribution.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.fill} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value) => `${value} projetos`} />
-              </PieChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="h-[300px] flex items-center justify-center text-slate-400">Sem dados</div>
-          )}
-          {statusDistribution.length > 0 && (
-            <div className="mt-4 space-y-2 text-sm">
-              {statusDistribution.map(item => (
-                <div key={item.name} className="flex items-center gap-2">
-                  <span className="inline-block w-3 h-3 rounded-full" style={{ backgroundColor: item.fill }}></span>
-                  <span className="text-slate-700">{item.name}</span>
-                  <span className="text-slate-400">({item.value})</span>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       </div>
 
