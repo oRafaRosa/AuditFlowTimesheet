@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { store } from '../services/store';
 import { Project, TimesheetEntry, User, formatHours, formatPercentage } from '../types';
@@ -106,7 +106,7 @@ export const ManagerProjectBudget: React.FC = () => {
     result = [...result].sort((a, b) => b.consumed - a.consumed);
 
     setFilteredData(result);
-  }, [searchTerm, statusFilter, projectData, selectedProjectIds, codePrefixFilter]);
+  }, [searchTerm, statusFilter, projectData, selectedProjectIds, codePrefixFilter, teamFilter]);
 
   useEffect(() => {
     if (!projects.length) return;
@@ -122,7 +122,21 @@ export const ManagerProjectBudget: React.FC = () => {
 
     const updatedData = buildProjectData(projects, scopedEntries);
     setProjectData(updatedData);
+    setSelectedProjectIds(new Set());
   }, [teamFilter, projects, entries, users]);
+
+  const projectOptions = useMemo(() => {
+    if (!teamFilter) return projects;
+
+    const teamUserIds = users
+      .filter(u => u.managerId === teamFilter || u.id === teamFilter)
+      .map(u => u.id);
+    const teamProjectIds = new Set(
+      entries.filter(e => teamUserIds.includes(e.userId)).map(e => e.projectId)
+    );
+
+    return projects.filter(p => teamProjectIds.has(p.id));
+  }, [teamFilter, projects, users, entries]);
 
   const handleProjectClick = (projectId: string) => {
     navigate(`/manager/reports?projectId=${projectId}`);
@@ -244,7 +258,7 @@ export const ManagerProjectBudget: React.FC = () => {
             <label className="block text-xs font-bold text-slate-500 mb-2">Selecionar Projetos</label>
             <div className="max-h-40 overflow-y-auto border border-slate-200 rounded-lg p-3 bg-slate-50">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-                {projects.map(p => (
+                {projectOptions.map(p => (
                   <label key={p.id} className="flex items-center gap-2">
                     <input
                       type="checkbox"
