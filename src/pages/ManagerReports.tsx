@@ -80,9 +80,26 @@ export const ManagerReports: React.FC = () => {
         store.getProjects()
     ]);
     
+    console.log('DEBUG: allEntries sample:', allEntries.slice(0, 3));
+    console.log('DEBUG: allEntries febrero count:', allEntries.filter(e => e.date.includes('2026-02')).length);
+    console.log('DEBUG: allEntries enero count:', allEntries.filter(e => e.date.includes('2026-01')).length);
+    console.log('DEBUG: Kelson entries in allEntries:', allEntries.filter(e => e.userId === '86442e36-66e4-4a6f-917c-2afbd4238d28'));
+    
     // Pre-filter entries to only show my team
     const myTeamIds = myTeam.map(m => m.id);
     const teamEntries = allEntries.filter(e => myTeamIds.includes(e.userId));
+    
+    console.log('DEBUG ManagerReports:', {
+      currentUserRole: currentUser.role,
+      currentUserId: currentUser.id,
+      allUsersCount: allUsers.length,
+      myTeamCount: myTeam.length,
+      allEntriesCount: allEntries.length,
+      teamEntriesCount: teamEntries.length,
+      kelsonInTeam: myTeamIds.includes('86442e36-66e4-4a6f-917c-2afbd4238d28'),
+      kelsonEntriesInAll: allEntries.filter(e => e.userId === '86442e36-66e4-4a6f-917c-2afbd4238d28').length,
+      kelsonEntriesInTeam: teamEntries.filter(e => e.userId === '86442e36-66e4-4a6f-917c-2afbd4238d28').length
+    });
     
     setEntries(teamEntries);
     
