@@ -60,7 +60,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       const permission = Notification.permission;
       setNotificationPermission(permission);
 
-        const shouldPrompt = permission !== 'granted' && permission !== 'unsupported';
+      const shouldPrompt = permission !== 'granted';
         const lastPrompt = localStorage.getItem('last_notif_prompt');
         const now = Date.now();
 
