@@ -200,20 +200,74 @@ class StoreService {
   // --- Team Delegation ---
 
   async delegateTeamManagement(managerId: string, delegatedManagerId: string): Promise<boolean> {
-    const { error } = await supabase
+    const { error: delegError } = await supabase
         .from('profiles')
         .update({ delegated_manager_id: delegatedManagerId })
         .eq('id', managerId);
     
-    return !error;
+    if (delegError) return false;
+
+    // Create notification for delegated manager
+    const currentUser = this.getCurrentUser();
+    const { data: delegatedManager } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', delegatedManagerId)
+        .single();
+
+    if (delegatedManager && currentUser) {
+      const message = `${currentUser.name} delegou sua equipe a você. Você será responsável pelas aprovações até que recupere o controle.`;
+      
+      const { error: notifError } = await supabase
+          .from('notifications')
+          .insert([{
+              user_id: delegatedManagerId,
+              type: 'delegation',
+              title: 'Delegação de Equipe Recebida',
+              message,
+              read: false,
+              created_at: new Date().toISOString()
+          }]);
+      
+      if (notifError) console.error('Erro ao criar notificação:', notifError);
+    }
+
+    return true;
   }
 
   async removeDelegation(managerId: string): Promise<boolean> {
+    const { data: manager } = await supabase
+        .from('profiles')
+        .select('delegated_manager_id')
+        .eq('id', managerId)
+        .single();
+
     const { error } = await supabase
         .from('profiles')
         .update({ delegated_manager_id: null })
         .eq('id', managerId);
     
+    if (!error && manager?.delegated_manager_id) {
+      // Create notification for previous delegated manager
+      const currentUser = this.getCurrentUser();
+      if (currentUser) {
+        const message = `${currentUser.name} recuperou o controle de sua equipe. Você não é mais responsável pelas aprovações.`;
+        
+        const { error: notifError } = await supabase
+            .from('notifications')
+            .insert([{
+                user_id: manager.delegated_manager_id,
+                type: 'delegation_removed',
+                title: 'Delegação de Equipe Removida',
+                message,
+                read: false,
+                created_at: new Date().toISOString()
+            }]);
+        
+        if (notifError) console.error('Erro ao criar notificação:', notifError);
+      }
+    }
+
     return !error;
   }
 

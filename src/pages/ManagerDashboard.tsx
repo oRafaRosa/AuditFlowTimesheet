@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { store } from '../services/store';
 import { User, Project, TimesheetEntry, TimesheetPeriod, formatHours, formatPercentage } from '../types';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, Cell } from 'recharts';
-import { Download, AlertCircle, Loader2, CheckCircle, XCircle, ArrowRight, Search, Clock, Calendar, Briefcase, FileText, TrendingUp } from 'lucide-react';
+import { Download, AlertCircle, Loader2, CheckCircle, XCircle, ArrowRight, Search, Clock, Calendar, Briefcase, FileText, TrendingUp, Info, X } from 'lucide-react';
 import { MyStatusWidget } from '../components/MyStatusWidget';
 import { ManagerProjectBudget } from './ManagerProjectBudget';
 
@@ -42,6 +42,7 @@ export const ManagerDashboard: React.FC = () => {
   const [selectedDelegateManager, setSelectedDelegateManager] = useState<string>('');
   const [allManagers, setAllManagers] = useState<User[]>([]);
   const [delegatingLoading, setDelegatingLoading] = useState(false);
+  const [delegationAlert, setDelegationAlert] = useState<{ type: 'received' | 'removed'; managerName?: string } | null>(null);
 
   useEffect(() => {
     loadData();
@@ -55,12 +56,15 @@ export const ManagerDashboard: React.FC = () => {
 
     const allUsers = await store.getUsers();
     
-    // Admins see all, Managers see their team
+    // Admins see all, Managers see their team + delegated teams
     let myTeam = [];
     if (user.role === 'ADMIN') {
         myTeam = allUsers;
     } else {
         myTeam = allUsers.filter(u => u.managerId === user.id || u.id === user.id);
+        // Also load teams delegated to this manager
+        const delegatedTeams = await store.getDelegatedTeams(user.id);
+        myTeam = [...myTeam, ...delegatedTeams];
     }
     setTeamMembers(myTeam);
 
@@ -210,10 +214,12 @@ export const ManagerDashboard: React.FC = () => {
     setDelegatingLoading(true);
     try {
         await store.delegateTeamManagement(currentUser.id, selectedDelegateManager);
-        alert('Equipe delegada com sucesso!');
+        const delegatedManager = allManagers.find(m => m.id === selectedDelegateManager);
+        setDelegationAlert({ type: 'received', managerName: delegatedManager?.name });
         setShowDelegationModal(false);
         setSelectedDelegateManager('');
         loadData();
+        setTimeout(() => setDelegationAlert(null), 5000);
     } catch (error) {
         console.error('Erro ao delegar equipe:', error);
         alert('Erro ao delegar equipe. Tente novamente.');
@@ -228,8 +234,9 @@ export const ManagerDashboard: React.FC = () => {
     setDelegatingLoading(true);
     try {
         await store.removeDelegation(currentUser.id);
-        alert('Delegação removida com sucesso!');
+        setDelegationAlert({ type: 'removed' });
         loadData();
+        setTimeout(() => setDelegationAlert(null), 5000);
     } catch (error) {
         console.error('Erro ao remover delegação:', error);
         alert('Erro ao remover delegação. Tente novamente.');
@@ -270,6 +277,36 @@ export const ManagerDashboard: React.FC = () => {
     return (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-8">
+            
+            {/* Delegation Alerts */}
+            {delegationAlert && delegationAlert.type === 'received' && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-start justify-between">
+                    <div className="flex items-start gap-3">
+                        <CheckCircle className="text-green-600 mt-0.5" size={20} />
+                        <div>
+                            <p className="font-semibold text-green-900">Equipe delegada com sucesso!</p>
+                            <p className="text-sm text-green-800 mt-1">A equipe foi delegada a <strong>{delegationAlert.managerName}</strong>. Notificação enviada!</p>
+                        </div>
+                    </div>
+                    <button onClick={() => setDelegationAlert(null)} className="text-green-600 hover:text-green-800">
+                        <X size={18} />
+                    </button>
+                </div>
+            )}
+            {delegationAlert && delegationAlert.type === 'removed' && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start justify-between">
+                    <div className="flex items-start gap-3">
+                        <CheckCircle className="text-blue-600 mt-0.5" size={20} />
+                        <div>
+                            <p className="font-semibold text-blue-900">Gestão recuperada!</p>
+                            <p className="text-sm text-blue-800 mt-1">Você recuperou o controle de sua equipe. Notificação enviada ao gestor anterior.</p>
+                        </div>
+                    </div>
+                    <button onClick={() => setDelegationAlert(null)} className="text-blue-600 hover:text-blue-800">
+                        <X size={18} />
+                    </button>
+                </div>
+            )}
             
             {/* Pending Approvals Section */}
             {pendingApprovals.length > 0 ? (
@@ -448,7 +485,13 @@ export const ManagerDashboard: React.FC = () => {
             <h1 className="text-2xl font-bold text-slate-800">Visão da Equipe</h1>
             <p className="text-slate-500">Acompanhamento de GRC e Auditoria</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-3 items-center">
+            <button 
+                onClick={handleExport}
+                className="flex items-center gap-2 px-4 py-2 border border-slate-300 rounded-lg text-slate-600 hover:bg-white hover:border-slate-400 transition-colors bg-white">
+                <Download size={18} />
+                Exportar
+            </button>
             {currentUser?.delegatedManagerId ? (
                 <button
                     onClick={handleRemoveDelegation}
@@ -461,18 +504,12 @@ export const ManagerDashboard: React.FC = () => {
             ) : (
                 <button
                     onClick={() => setShowDelegationModal(true)}
-                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-lg transition-colors flex items-center gap-2"
+                    className="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white font-medium rounded-lg transition-colors flex items-center gap-2"
                 >
                     <FileText size={16} /> Delegar Equipe
                 </button>
             )}
         </div>
-        <button 
-            onClick={handleExport}
-            className="flex items-center gap-2 px-4 py-2 border border-slate-300 rounded-lg text-slate-600 hover:bg-white hover:border-slate-400 transition-colors bg-white">
-            <Download size={18} />
-            Exportar CSV
-        </button>
       </div>
 
       {/* Tab Navigation */}

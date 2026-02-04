@@ -1,7 +1,7 @@
 
 
 import React, { useState } from 'react';
-import { BookOpen, HelpCircle, ShieldCheck, Lock, FileText, CheckCircle, UserCheck, Server } from 'lucide-react';
+import { BookOpen, HelpCircle, ShieldCheck, Lock, FileText, CheckCircle, UserCheck, Server, AlertCircle } from 'lucide-react';
 
 export const HelpCenter: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'manual' | 'faq' | 'about'>('manual');
@@ -69,6 +69,17 @@ export const HelpCenter: React.FC = () => {
                             </p>
                         </div>
                     </div>
+                </section>
+
+                <hr className="border-gray-100" />
+
+                <section className="bg-amber-50 border border-amber-100 rounded-lg p-4 mt-4">
+                    <h3 className="font-bold text-amber-900 mb-2 flex items-center gap-2">
+                        <AlertCircle size={18} /> Aviso: Gestor Delegado
+                    </h3>
+                    <p className="text-sm text-amber-800">
+                        Se você vir um alerta "Gestor Temporário" no seu Dashboard, significa que seu gerente está ausente e designou um outro gerente para aprovar seus timesheets durante esse período. <strong>O processo permanece igual</strong> — você envia normalmente, mas a aprovação vai para o gestor designado.
+                    </p>
                 </section>
 
                 <hr className="border-gray-100" />
@@ -219,6 +230,53 @@ export const HelpCenter: React.FC = () => {
                         </summary>
                         <p className="text-sm text-slate-600 mt-3 leading-relaxed">
                             <strong>Feriados Nacionais:</strong> O sistema já desconta feriados do cálculo de "Horas Esperadas". Você não precisa lançar nada nesses dias.
+                        </p>
+                    </details>
+
+                    <details className="group bg-gray-50 p-4 rounded-lg cursor-pointer">
+                        <summary className="font-semibold text-slate-800 flex justify-between items-center list-none">
+                            O que significa "Gestor Temporário"?
+                            <span className="transition group-open:rotate-180">▼</span>
+                        </summary>
+                        <p className="text-sm text-slate-600 mt-3 leading-relaxed">
+                            Quando vê este alerta, significa que <strong>seu gerente está ausente</strong> e designou outro gerente como substituto. Esse gestor temporário irá <strong>aprovar ou rejeitar seus timesheets</strong> durante a ausência. O processo de envio permanece igual — você clica em "Enviar Mês" normalmente, mas a aprovação vai para o gerente substituto.
+                        </p>
+                    </details>
+
+                    <details className="group bg-gray-50 p-4 rounded-lg cursor-pointer">
+                        <summary className="font-semibold text-slate-800 flex justify-between items-center list-none">
+                            Como delego minha equipe? (Para Gerentes)
+                            <span className="transition group-open:rotate-180">▼</span>
+                        </summary>
+                        <p className="text-sm text-slate-600 mt-3 leading-relaxed">
+                            Se você vai se ausentar e precisa delegar a gestão de sua equipe:
+                        </p>
+                        <ol className="list-decimal pl-5 text-sm text-slate-600 mt-2 space-y-1">
+                            <li>Acesse seu <strong>Dashboard Gerencial</strong></li>
+                            <li>Clique no botão <strong>"Delegar Equipe"</strong> no header (canto superior)</li>
+                            <li>Selecione o gerente substituto na janela modal</li>
+                            <li>Confirme a delegação</li>
+                        </ol>
+                        <p className="text-sm text-slate-600 mt-2">
+                            Seu sistema notificará o gerente substituto e todos os seus subordinados receberão um alerta sobre quem irá aprová-los.
+                        </p>
+                    </details>
+
+                    <details className="group bg-gray-50 p-4 rounded-lg cursor-pointer">
+                        <summary className="font-semibold text-slate-800 flex justify-between items-center list-none">
+                            Como recupero a gestão após delegação? (Para Gerentes)
+                            <span className="transition group-open:rotate-180">▼</span>
+                        </summary>
+                        <p className="text-sm text-slate-600 mt-3 leading-relaxed">
+                            Quando retornar de sua ausência:
+                        </p>
+                        <ol className="list-decimal pl-5 text-sm text-slate-600 mt-2 space-y-1">
+                            <li>Acesse seu <strong>Dashboard Gerencial</strong></li>
+                            <li>Clique no botão <strong>"Recuperar Gestão"</strong> (aparece quando há delegação ativa)</li>
+                            <li>Confirme a ação</li>
+                        </ol>
+                        <p className="text-sm text-slate-600 mt-2">
+                            A delegação será removida e <strong>você voltará a ser responsável</strong> pelas aprovações de sua equipe. Seus subordinados serão notificados.
                         </p>
                     </details>
                 </div>

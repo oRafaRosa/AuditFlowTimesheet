@@ -13,6 +13,7 @@ AuditFlow Timesheet é uma aplicação web moderna para gerenciamento de tempo e
 - **Dashboard Gerencial**: Monitore a equipe, aprove entradas e visualize métricas.
 - **Aprovação de Horas**: Revise e aprove registros de tempo dos membros da equipe.
 - **Relatórios de Equipe**: Acesse relatórios consolidados da equipe.
+- **Delegação de Equipe**: Delegue temporariamente a gestão de sua equipe a outro gerente durante ausências. Todas as aprovações serão direcionadas ao gestor designado.
 
 ### Para Administradores
 - **Painel Administrativo**: Gerencie usuários, projetos e configurações do sistema.
