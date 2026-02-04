@@ -240,7 +240,7 @@ class StoreService {
   // --- Timesheets ---
   
   async getEntries(userId?: string): Promise<TimesheetEntry[]> {
-    let query = supabase.from('timesheets').select('*');
+    let query = supabase.from('timesheets').select('*').order('created_at', { ascending: false });
     if (userId) {
         query = query.eq('user_id', userId);
     }
