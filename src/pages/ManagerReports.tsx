@@ -119,9 +119,14 @@ export const ManagerReports: React.FC = () => {
   const applyFilters = () => {
       let result = entries;
 
+      console.log('DEBUG applyFilters: filterData COMPLETO:', JSON.stringify(filterData));
+
       console.log('DEBUG applyFilters:', {
         entriesBeforeFilter: result.length,
-        filterData,
+        filterDataUserId: filterData.userId,
+        filterDataProjectId: filterData.projectId,
+        filterDataStartDate: filterData.startDate,
+        filterDataEndDate: filterData.endDate,
         kelsonBeforeFilter: result.filter(e => e.userId === '86442e36-66e4-4a6f-917c-2afbd4238d28').length,
         februaryBeforeFilter: result.filter(e => e.date.includes('2026-02')).length
       });
