@@ -43,12 +43,35 @@ export const ManagerReports: React.FC = () => {
 
     const allUsers = await store.getUsers();
     
-    // Filter users to only show my team
+    // Filter users to only show my team (including sub-managers and their teams)
     let myTeam = [];
     if (currentUser.role === 'ADMIN') {
         myTeam = allUsers;
     } else {
-        myTeam = allUsers.filter(u => u.managerId === currentUser.id || u.id === currentUser.id);
+        // Include: self, direct reports, managers who report to me
+        myTeam = allUsers.filter(u => 
+            u.id === currentUser.id ||  // Self
+            u.managerId === currentUser.id ||  // Direct reports
+            (u.role === 'MANAGER' && allUsers.some(sub => sub.managerId === u.id && allUsers.some(parent => parent.id === currentUser.id && (sub.managerId === currentUser.id || parent.id === u.managerId))))
+        );
+        
+        // Also include all users who report to managers in my team
+        const directManagerIds = [currentUser.id];
+        const allManagerIds = new Set<string>(directManagerIds);
+        
+        // Find all managers who report to me
+        allUsers.forEach(u => {
+            if (u.managerId === currentUser.id && u.role === 'MANAGER') {
+                allManagerIds.add(u.id);
+            }
+        });
+        
+        // Include me, my direct reports, and reports of managers under me
+        myTeam = allUsers.filter(u => 
+            u.id === currentUser.id || 
+            u.managerId === currentUser.id ||
+            Array.from(allManagerIds).includes(u.managerId || '')
+        );
     }
     setUsers(myTeam);
 
