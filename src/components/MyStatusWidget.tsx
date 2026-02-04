@@ -9,7 +9,7 @@ const parseLocalDate = (dateStr: string) => new Date(`${dateStr}T00:00:00`);
 
 interface MyStatusWidgetProps {
   userId: string;
-  onUpdate?: () => void; // Trigger to refresh parent data if needed
+    onUpdate?: () => void; // gatilho pra atualizar o pai se precisar
 }
 
 export const MyStatusWidget: React.FC<MyStatusWidgetProps> = ({ userId, onUpdate }) => {
@@ -31,7 +31,7 @@ export const MyStatusWidget: React.FC<MyStatusWidgetProps> = ({ userId, onUpdate
     setPeriodStatus(status);
     setPeriodHistory(history);
     
-    // Check if current user's MANAGER has delegated to someone else
+    // checa se o gestor do user delegou pra outra pessoa
     if (user) {
       const currentUserData = users.find(u => u.id === userId);
       if (currentUserData?.managerId) {
@@ -57,7 +57,7 @@ export const MyStatusWidget: React.FC<MyStatusWidgetProps> = ({ userId, onUpdate
       const dateName = new Date(year, month, 1).toLocaleDateString('pt-BR', {month: 'long', year: 'numeric'});
 
       try {
-        // 1. Get stats for validation
+        // 1. pega stats pra validar
         const [allEntries, expectedHours] = await Promise.all([
             store.getEntries(userId),
             store.getExpectedHours(year, month)
@@ -70,32 +70,32 @@ export const MyStatusWidget: React.FC<MyStatusWidgetProps> = ({ userId, onUpdate
 
         const totalLogged = periodEntries.reduce((acc, curr) => acc + curr.hours, 0);
         const diff = expectedHours - totalLogged;
-        const TOLERANCE = 40; // 40 hours tolerance
+        const TOLERANCE = 40; // tolerância de 40h
 
-        // 2. Rules Logic
+        // 2. regra do jogo
         const today = new Date();
-        const lastDayOfMonth = new Date(year, month + 1, 0); // Last day of target month
+        const lastDayOfMonth = new Date(year, month + 1, 0); // último dia do mês alvo
         
         const isPastMonth = today > lastDayOfMonth;
         
-        // Check if we are in the last 7 days of the month
+        // checa se tá nos últimos 7 dias do mês
         const sevenDaysBeforeEnd = new Date(lastDayOfMonth);
         sevenDaysBeforeEnd.setDate(lastDayOfMonth.getDate() - 7);
         
-        // Only check "last 7 days" if we are IN the target month
+        // só olha "últimos 7 dias" se for o mês certo
         const isLastDays = (today >= sevenDaysBeforeEnd) && (today.getMonth() === month) && (today.getFullYear() === year);
 
-        // Check if hours are complete (approx)
+        // checa se as horas tão ok (approx msm)
         const isComplete = totalLogged >= (expectedHours - TOLERANCE);
 
-        // 3. Validation Check
+        // 3. validação
         if (!isPastMonth && !isLastDays && !isComplete) {
             alert(`Você não pode enviar este mês ainda.\n\nRegras para envio:\n1. O mês já deve ter fechado; OU\n2. Estar nos últimos 7 dias do mês; OU\n3. Ter lançado o total próximo do esperado (Tolerância de 40h).\n\nEsperado: ${expectedHours}h\nLançado: ${formatHours(totalLogged)}h\nFaltam: ${formatHours(diff)}h`);
             setProcessing(false);
             return;
         }
 
-        // 4. Confirmation Message Construction
+        // 4. monta a msg de confirmação
         let confirmMsg = `Confirma o fechamento de ${dateName}?\n\n`;
         confirmMsg += `Horas Esperadas: ${expectedHours}h\n`;
         confirmMsg += `Horas Lançadas: ${formatHours(totalLogged)}h\n`;
@@ -115,10 +115,10 @@ export const MyStatusWidget: React.FC<MyStatusWidgetProps> = ({ userId, onUpdate
             return;
         }
         
-        // Submit (No longer passing user.managerId manually, let store fetch fresh data)
+        // envia (sem passar managerId na mão, deixa a store buscar atualizada)
         await store.submitPeriod(userId, year, month);
         
-        // Refresh
+        // refresh do rolê
         await loadStatus(); 
         if(onUpdate) onUpdate(); 
         
@@ -141,7 +141,7 @@ export const MyStatusWidget: React.FC<MyStatusWidgetProps> = ({ userId, onUpdate
 
   return (
     <div className="space-y-6">
-        {/* Delegated Manager Alert */}
+        {/* alerta de gestor delegado */}
         {delegatedManagerName && (
             <div className="bg-amber-50 border border-amber-200 p-4 rounded-lg flex items-start gap-3">
                 <AlertCircle size={20} className="text-amber-600 flex-shrink-0 mt-0.5" />
@@ -154,7 +154,7 @@ export const MyStatusWidget: React.FC<MyStatusWidgetProps> = ({ userId, onUpdate
             </div>
         )}
 
-        {/* Current Status Card */}
+        {/* card do status atual */}
         <div className="bg-gradient-to-br from-brand-600 to-brand-800 p-6 rounded-xl text-white shadow-lg">
             <h3 className="text-lg font-bold mb-2">Mês Atual</h3>
             <div className="flex items-center justify-between gap-2 mb-4">
@@ -169,7 +169,7 @@ export const MyStatusWidget: React.FC<MyStatusWidgetProps> = ({ userId, onUpdate
                      periodStatus?.status === 'REJECTED' ? 'Rejeitado' : 'Aprovado'}
                 </span>
                 
-                {/* Submit button for Current Month directly in the card */}
+                {/* botão de envio do mês atual direto no card */}
                 {(periodStatus?.status === 'OPEN' || periodStatus?.status === 'REJECTED') && (
                     <button 
                         onClick={() => periodStatus && validateAndSubmit(periodStatus.year, periodStatus.month)}
@@ -195,7 +195,7 @@ export const MyStatusWidget: React.FC<MyStatusWidgetProps> = ({ userId, onUpdate
             )}
         </div>
 
-        {/* History List */}
+        {/* lista de histórico */}
         <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
             <div className="p-4 bg-gray-50 border-b border-gray-100 flex items-center gap-2">
                 <History size={18} className="text-slate-500"/>
@@ -232,7 +232,7 @@ export const MyStatusWidget: React.FC<MyStatusWidgetProps> = ({ userId, onUpdate
                                     )}
                                 </div>
 
-                                {/* Action Button: If Open/Rejected, allow submit */}
+                                {/* botão de ação: se aberto/rejeitado, libera enviar */}
                                 {(ph.status === 'OPEN' || ph.status === 'REJECTED') && (
                                     <button 
                                         onClick={() => validateAndSubmit(ph.year, ph.month)}

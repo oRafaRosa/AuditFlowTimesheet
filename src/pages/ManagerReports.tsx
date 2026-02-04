@@ -16,7 +16,7 @@ export const ManagerReports: React.FC = () => {
   const [filteredEntries, setFilteredEntries] = useState<TimesheetEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Filters
+    // filtros
   const [filterData, setFilterData] = useState({
       userId: '',
       projectId: '',
@@ -25,7 +25,7 @@ export const ManagerReports: React.FC = () => {
   });
 
   useEffect(() => {
-    // Parse Query Params for Deep Linking
+    // parse dos params da url pro deep link
     const params = new URLSearchParams(location.search);
     setFilterData(prev => ({
         ...prev,
@@ -43,30 +43,30 @@ export const ManagerReports: React.FC = () => {
 
     const allUsers = await store.getUsers();
     
-    // Filter users to only show my team (including sub-managers and their teams)
+    // filtra usuários pra mostrar só minha equipe (inclui subgestores e times deles)
     let myTeam = [];
     if (currentUser.role === 'ADMIN') {
         myTeam = allUsers;
     } else {
-        // Include: self, direct reports, managers who report to me
+        // inclui: eu, diretos e gestores que respondem pra mim
         myTeam = allUsers.filter(u => 
-            u.id === currentUser.id ||  // Self
-            u.managerId === currentUser.id ||  // Direct reports
+            u.id === currentUser.id ||  // eu
+            u.managerId === currentUser.id ||  // diretos
             (u.role === 'MANAGER' && allUsers.some(sub => sub.managerId === u.id && allUsers.some(parent => parent.id === currentUser.id && (sub.managerId === currentUser.id || parent.id === u.managerId))))
         );
         
-        // Also include all users who report to managers in my team
+        // também inclui quem responde pros gestores do meu time
         const directManagerIds = [currentUser.id];
         const allManagerIds = new Set<string>(directManagerIds);
         
-        // Find all managers who report to me
+        // acha todos os gestores que me reportam
         allUsers.forEach(u => {
             if (u.managerId === currentUser.id && u.role === 'MANAGER') {
                 allManagerIds.add(u.id);
             }
         });
         
-        // Include me, my direct reports, and reports of managers under me
+        // inclui eu, meus diretos e os diretos dos gestores abaixo
         myTeam = allUsers.filter(u => 
             u.id === currentUser.id || 
             u.managerId === currentUser.id ||
@@ -85,7 +85,7 @@ export const ManagerReports: React.FC = () => {
     console.log('DEBUG: allEntries enero count:', allEntries.filter(e => e.date.includes('2026-01')).length);
     console.log('DEBUG: Kelson entries in allEntries:', allEntries.filter(e => e.userId === '86442e36-66e4-4a6f-917c-2afbd4238d28'));
     
-    // Pre-filter entries to only show my team
+    // pré-filtro das entradas só da minha equipe
     const myTeamIds = myTeam.map(m => m.id);
     const teamEntries = allEntries.filter(e => myTeamIds.includes(e.userId));
     
@@ -103,7 +103,7 @@ export const ManagerReports: React.FC = () => {
     
     setEntries(teamEntries);
     
-    // Filter projects for the dropdown (Avoid clutter)
+    // filtra projetos pro dropdown (menos bagunça)
     const visibleProjects = currentUser.role === 'ADMIN' 
         ? allProjects 
         : allProjects.filter(p => !p.allowedManagerIds?.length || p.allowedManagerIds.includes(currentUser.id));

@@ -1,10 +1,10 @@
 
-// Utility function to format hours with proper rounding
+// utilzinha pra formatar horas com arredondamento ok
 export const formatHours = (hours: number, decimals: number = 1): string => {
   return hours.toFixed(decimals);
 };
 
-// Utility function to format percentage
+// utilzinha pra formatar percentual
 export const formatPercentage = (value: number): string => {
   return Math.round(value).toString();
 };
@@ -16,10 +16,10 @@ export interface User {
   name: string;
   email: string;
   role: Role;
-  managerId?: string; // ID of the manager
-  delegatedManagerId?: string; // ID of the temporary delegated manager
+  managerId?: string; // id do gestor
+  delegatedManagerId?: string; // id do gestor temporário
   avatarUrl?: string;
-  isDefaultPassword?: boolean; // Flag to force password change
+  isDefaultPassword?: boolean; // flag pra forçar troca de senha
 }
 
 export interface Project {
@@ -29,14 +29,14 @@ export interface Project {
   classification: 'Backoffice' | 'Audit' | 'Consulting' | 'Training' | 'Vacation';
   budgetedHours: number;
   active: boolean;
-  allowedManagerIds?: string[]; // List of manager IDs whose teams can see this project
+  allowedManagerIds?: string[]; // lista de ids dos gestores que podem ver esse projeto
 }
 
 export interface TimesheetEntry {
   id: string;
   userId: string;
   projectId: string;
-  date: string; // work_date (YYYY-MM-DD)
+  date: string; // work_date (yyyy-mm-dd)
   hours: number;
   description: string;
   createdAt: string;
@@ -48,12 +48,12 @@ export interface TimesheetPeriod {
   id: string;
   userId: string;
   year: number;
-  month: number; // 0-11 to match JS Date
+  month: number; // 0-11 pra bater com o js date
   status: PeriodStatus;
   managerId?: string;
   rejectionReason?: string;
   updatedAt: string;
-  userName?: string; // Propriedade opcional para exibição em listas
+  userName?: string; // opcional pra exibir em listas
 }
 
 export interface Holiday {
@@ -65,13 +65,13 @@ export interface Holiday {
 export interface CalendarException {
   id: string;
   date: string;
-  type: 'OFFDAY' | 'WORKDAY'; // OFFDAY = Company Holiday/Bridge, WORKDAY = Extra working day (e.g. Saturday)
+  type: 'OFFDAY' | 'WORKDAY'; // offday = folga/ponte, workday = dia extra (tipo sábado)
   name: string;
 }
 
-export const HOURS_PER_DAY = 8.8; // 8h 48m = 8.8 hours
+export const HOURS_PER_DAY = 8.8; // 8h48m = 8.8 horas
 
-// Mock Data Interfaces
+// interfaces de mock
 export interface KPI {
   label: string;
   value: string | number;

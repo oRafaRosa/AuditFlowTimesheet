@@ -68,7 +68,7 @@ export const ManagerProjectBudget: React.FC = () => {
     setEntries(allEntries);
     setUsers(allUsers);
 
-    // Calculate budget data for ALL projects
+    // calcula budget de todos os projetos, sem dó
     const budgetData = buildProjectData(allProjects, allEntries);
 
     setProjectData(budgetData);
@@ -79,7 +79,7 @@ export const ManagerProjectBudget: React.FC = () => {
   useEffect(() => {
     let result = projectData;
 
-    // Search filter
+    // filtro de busca
     if (searchTerm.trim()) {
       result = result.filter(p =>
         p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -87,22 +87,22 @@ export const ManagerProjectBudget: React.FC = () => {
       );
     }
 
-    // Project checkbox filter
+    // filtro por checkbox de projeto
     if (selectedProjectIds.size > 0) {
       result = result.filter(p => selectedProjectIds.has(p.id));
     }
 
-    // Code prefix filter (HT, BO, AD)
+    // filtro por prefixo do código (ht, bo, ad)
     if (codePrefixFilter) {
       result = result.filter(p => p.code.startsWith(codePrefixFilter));
     }
 
-    // Status filter
+    // filtro de status
     if (statusFilter !== 'all') {
       result = result.filter(p => p.status === statusFilter);
     }
 
-    // Sort by consumption (desc)
+    // ordena por consumo (desc)
     result = [...result].sort((a, b) => b.consumed - a.consumed);
 
     setFilteredData(result);
@@ -142,7 +142,7 @@ export const ManagerProjectBudget: React.FC = () => {
     navigate(`/manager/reports?projectId=${projectId}`);
   };
 
-  // Calculate KPIs (respect current filters)
+  // calcula kpis respeitando os filtros
   const totalBudgeted = filteredData.reduce((acc, p) => acc + p.budgeted, 0);
   const totalConsumed = filteredData.reduce((acc, p) => acc + p.consumed, 0);
   const overBudget = filteredData.filter(p => p.status === 'danger').length;
@@ -159,7 +159,7 @@ export const ManagerProjectBudget: React.FC = () => {
         <p className="text-slate-500">Visão consolidada de horas por projeto em toda a diretoria</p>
       </div>
 
-      {/* KPI Cards */}
+      {/* cards de kpi */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
           <p className="text-xs font-bold text-slate-500 uppercase mb-2">Total Orçado</p>
@@ -186,11 +186,11 @@ export const ManagerProjectBudget: React.FC = () => {
         </div>
       </div>
 
-      {/* Filters and Table */}
+      {/* filtros e tabela */}
       <div className="space-y-4">
         <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-4">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            {/* Search */}
+            {/* busca */}
             <div>
               <label className="block text-xs font-bold text-slate-500 mb-2">Buscar Projeto</label>
               <div className="relative">
@@ -205,7 +205,7 @@ export const ManagerProjectBudget: React.FC = () => {
               </div>
             </div>
 
-            {/* Team Filter */}
+            {/* filtro de time */}
             <div>
               <label className="block text-xs font-bold text-slate-500 mb-2">Equipe</label>
               <select
@@ -222,7 +222,7 @@ export const ManagerProjectBudget: React.FC = () => {
               </select>
             </div>
 
-            {/* Status Filter */}
+            {/* filtro de status */}
             <div>
               <label className="block text-xs font-bold text-slate-500 mb-2">Status</label>
               <select
@@ -237,7 +237,7 @@ export const ManagerProjectBudget: React.FC = () => {
               </select>
             </div>
 
-            {/* Code Prefix Filter */}
+            {/* filtro de prefixo do código */}
             <div>
               <label className="block text-xs font-bold text-slate-500 mb-2">Tipo (Código)</label>
               <select
@@ -253,7 +253,7 @@ export const ManagerProjectBudget: React.FC = () => {
             </div>
           </div>
 
-          {/* Project Checkbox Filter */}
+          {/* filtro de checkbox por projeto */}
           <div className="mt-4">
             <label className="block text-xs font-bold text-slate-500 mb-2">Selecionar Projetos</label>
             <div className="max-h-40 overflow-y-auto border border-slate-200 rounded-lg p-3 bg-slate-50">
@@ -284,7 +284,7 @@ export const ManagerProjectBudget: React.FC = () => {
           </div>
         </div>
 
-        {/* Table */}
+        {/* tabela */}
         <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
@@ -372,7 +372,7 @@ export const ManagerProjectBudget: React.FC = () => {
           </div>
         </div>
 
-        {/* Legenda */}
+        {/* legenda */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <p className="text-xs font-bold text-blue-900 mb-3">Legenda de Status:</p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-blue-800">

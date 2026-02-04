@@ -40,7 +40,7 @@ const App: React.FC = () => {
       <Routes>
         <Route path="/" element={<Login />} />
         
-        {/* User Routes */}
+        {/* rotas de usuário */}
         <Route 
           path="/dashboard" 
           element={
@@ -66,7 +66,7 @@ const App: React.FC = () => {
           } 
         />
 
-        {/* Common Help Route (All authenticated users) */}
+        {/* rota de ajuda comum (todo mundo logado) */}
         <Route 
           path="/help" 
           element={
@@ -76,7 +76,7 @@ const App: React.FC = () => {
           } 
         />
 
-        {/* Manager Routes */}
+        {/* rotas de gestor */}
         <Route 
           path="/manager" 
           element={
@@ -102,7 +102,7 @@ const App: React.FC = () => {
           } 
         />
 
-        {/* Admin Routes */}
+        {/* rotas de admin */}
         <Route 
           path="/admin/*" 
           element={

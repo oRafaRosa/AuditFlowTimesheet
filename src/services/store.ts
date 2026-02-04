@@ -7,21 +7,21 @@ const SUPABASE_KEY = 'sb_publishable_kWDnXvgjYwU7sc4Ypb9SWA_n48HTGgV';
 
 export const supabase: SupabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// Storage Keys (Only for Local Session)
+// chaves de storage (só sessão local)
 const KEYS = {
   CURRENT_USER: 'grc_current_user',
-  HOLIDAYS: 'grc_holidays', // Fallback
+  HOLIDAYS: 'grc_holidays', // fallback se não tiver no banco
 };
 
-// SHA-256 Hash of 'AuditFlow@2025'
+// hash sha-256 de 'AuditFlow@2025'
 const DEFAULT_PASSWORD_HASH = '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918';
 
 class StoreService {
   constructor() {
-    // Optional: Check connection or initialize stuff
+    // opcional: checar conexão ou dar init
   }
 
-  // --- Helper: Simple Browser SHA-256 Hash ---
+  // --- helper: hash sha-256 no browser ---
   async hashPassword(plainText: string): Promise<string> {
     try {
         if (typeof crypto === 'undefined' || !crypto.subtle) {
@@ -38,13 +38,13 @@ class StoreService {
     }
   }
 
-  // --- Auth (Hybrid: Local Session + Remote Verify) ---
+  // --- auth (híbrido: sessão local + verify remoto) ---
   
   async login(email: string, password?: string): Promise<User | null> {
     try {
         console.log(`Tentando login para: ${email}`);
         
-        // Use maybeSingle to avoid errors on 0 results
+        // usa maybeSingle pra não quebrar com 0 resultado
         const { data, error } = await supabase
             .from('profiles')
             .select('*')
@@ -61,18 +61,18 @@ class StoreService {
             return null;
         }
 
-        // Validate Password
+        // valida senha
         if (password) {
             const dbPassword = data.password ? data.password.trim() : null;
             
-            // 1. Bypass Check for Default Password
+            // 1. bypass pra senha padrão
             const isDefaultInput = password === 'AuditFlow@2025';
             const isDefaultDB = dbPassword === DEFAULT_PASSWORD_HASH;
 
             if (isDefaultInput && isDefaultDB) {
                 console.log("Login: Senha padrão reconhecida (Bypass Hash).");
             } else if (dbPassword) {
-                 // 2. Standard Hash Check
+                 // 2. checagem padrão do hash
                  const inputHash = await this.hashPassword(password);
                  
                  const hashMatch = inputHash && (dbPassword.toLowerCase() === inputHash);
@@ -85,7 +85,7 @@ class StoreService {
             }
         }
 
-        // Check if current password (hash or plain) matches the Default
+        // checa se a senha atual (hash ou plain) bate com a padrão
         const isDefault = data.password === DEFAULT_PASSWORD_HASH || data.password === 'AuditFlow@2025';
 
         const user: User = {
@@ -140,7 +140,7 @@ class StoreService {
     return stored ? JSON.parse(stored) : null;
   }
 
-  // --- Users ---
+  // --- usuários ---
   
   async getUsers(): Promise<User[]> {
     const { data, error } = await supabase.from('profiles').select('*');
@@ -165,7 +165,7 @@ class StoreService {
         email: user.email.trim(),
         role: user.role,
         manager_id: managerIdValue,
-        password: DEFAULT_PASSWORD_HASH // Set default password for new users
+        password: DEFAULT_PASSWORD_HASH // seta senha padrão pros novos
     };
 
     const { data, error } = await supabase.from('profiles').insert(dbUser).select().single();
@@ -197,7 +197,7 @@ class StoreService {
     await supabase.from('profiles').update(dbUpdate).eq('id', id);
   }
 
-  // --- Team Delegation ---
+  // --- delegação de equipe ---
 
   async delegateTeamManagement(managerId: string, delegatedManagerId: string): Promise<boolean> {
     const { error: delegError } = await supabase
@@ -207,7 +207,7 @@ class StoreService {
     
     if (delegError) return false;
 
-    // Create notification for delegated manager
+    // cria notificação pro gestor delegado
     const currentUser = this.getCurrentUser();
     const { data: delegatedManager } = await supabase
         .from('profiles')
@@ -248,7 +248,7 @@ class StoreService {
         .eq('id', managerId);
     
     if (!error && manager?.delegated_manager_id) {
-      // Create notification for previous delegated manager
+      // cria notificação pro gestor anterior
       const currentUser = this.getCurrentUser();
       if (currentUser) {
         const message = `${currentUser.name} recuperou o controle de sua equipe. Você não é mais responsável pelas aprovações.`;
@@ -290,7 +290,7 @@ class StoreService {
     }));
   }
 
-  // --- Projects ---
+  // --- projetos ---
   
   async getProjects(): Promise<Project[]> {
     const { data, error } = await supabase.from('projects').select('*');
@@ -331,7 +331,7 @@ class StoreService {
     await supabase.from('projects').update(dbUpdate).eq('id', id);
   }
 
-  // --- Timesheets ---
+  // --- lançamentos ---
   
   async getEntries(userId?: string): Promise<TimesheetEntry[]> {
     let allData: any[] = [];
@@ -373,7 +373,7 @@ class StoreService {
         return null;
       };
 
-      // Use work_date if available, otherwise fall back to date
+      // usa work_date se tiver, senão cai no date
       const displayDate = normalizeDate(e.work_date) || normalizeDate(e.date) || '';
 
       return {
@@ -415,7 +415,7 @@ class StoreService {
     await supabase.from('timesheets').delete().eq('id', id);
   }
 
-  // --- Approval Workflow (Periods) ---
+  // --- fluxo de aprovação (períodos) ---
 
   async getPeriodStatus(userId: string, year: number, month: number): Promise<TimesheetPeriod> {
       const { data } = await supabase
@@ -449,21 +449,21 @@ class StoreService {
       };
   }
 
-  // Returns ONLY periods where user has entries or a status record
+  // retorna só períodos onde tem lançamento ou status
   async getLastPeriods(userId: string): Promise<TimesheetPeriod[]> {
-      // 1. Get all period statuses recorded
+      // 1. pega todos os status de período
       const { data: statusData } = await supabase
         .from('timesheet_periods')
         .select('*')
         .eq('user_id', userId);
       
-      // 2. Get distinct months from entries
+      // 2. pega meses distintos dos lançamentos
       const { data: entriesData } = await supabase
         .from('timesheets')
         .select('date, work_date')
         .eq('user_id', userId);
 
-      // 3. Merge unique YYYY-MM
+      // 3. junta yyyy-mm único
       const uniquePeriods = new Set<string>();
 
       statusData?.forEach((s: any) => {
@@ -475,11 +475,11 @@ class StoreService {
           if (!entryDate) return;
           const parts = entryDate.split('-');
           const year = parseInt(parts[0]);
-          const month = parseInt(parts[1]) - 1; // 0-based
+          const month = parseInt(parts[1]) - 1; // base 0
           uniquePeriods.add(`${year}-${month}`);
       });
       
-      // Convert back to objects
+      // volta pra objetos
       const results: TimesheetPeriod[] = [];
       
       for (const periodStr of uniquePeriods) {
@@ -517,8 +517,8 @@ class StoreService {
   }
 
   async submitPeriod(userId: string, year: number, month: number) {
-      // UPDATED: Fetch fresh user data to get the current manager_id and delegated_manager_id directly from DB.
-      // If manager is delegated, use delegated_manager_id for approval instead.
+      // atualizado: busca user fresco pra pegar manager_id e delegated_manager_id do db
+      // se o gestor delegou, usa delegated_manager_id pra aprovação
       
       const { data: userProfile, error: profileError } = await supabase
           .from('profiles')
@@ -531,14 +531,14 @@ class StoreService {
           throw new Error("Falha ao identificar seu gestor. Tente novamente.");
       }
 
-      // If user's manager has a delegated manager, use the delegated one. Otherwise use the original manager.
+      // se o gestor do user tem delegado, usa o delegado; senão usa o original
       let currentManagerId = userProfile?.delegated_manager_id || userProfile?.manager_id;
       
-      // If user has a manager (or delegated manager), Submit. If not, Auto-Approve.
+      // se o user tem gestor (ou delegado), envia. se não, aprova direto
       const newStatus: PeriodStatus = currentManagerId ? 'SUBMITTED' : 'APPROVED';
 
       try {
-          // Upsert logic
+          // lógica de upsert
           const { data, error } = await supabase
             .from('timesheet_periods')
             .upsert({
@@ -546,7 +546,7 @@ class StoreService {
                 year: year,
                 month: month,
                 status: newStatus,
-                manager_id: currentManagerId, // Save the manager ID (or delegated) at the time of submission
+                manager_id: currentManagerId, // salva o gestor (ou delegado) no envio
                 updated_at: new Date().toISOString(),
                 rejection_reason: null
             }, {
@@ -585,10 +585,10 @@ class StoreService {
   }
 
   async getPendingApprovals(managerId: string): Promise<TimesheetPeriod[]> {
-      // UPDATED: Split Query Approach to avoid "Relationship not found" errors
-      // caused by multiple FKs to the 'profiles' table.
+      // atualizado: query separada pra evitar erro de "relationship not found"
+      // causado por várias fks na tabela profiles
       
-      // 1. Get the periods that need approval
+      // 1. pega os períodos que precisam de aprovação
       const { data: periods, error } = await supabase
         .from('timesheet_periods')
         .select('*')
@@ -602,16 +602,16 @@ class StoreService {
 
       if (!periods || periods.length === 0) return [];
 
-      // 2. Extract unique user IDs involved
+      // 2. extrai ids únicos dos usuários envolvidos
       const userIds = [...new Set(periods.map((p: any) => p.user_id))];
 
-      // 3. Fetch user details manually
+      // 3. busca detalhes dos usuários na mão
       const { data: users } = await supabase
           .from('profiles')
           .select('id, full_name, email, avatar_url')
           .in('id', userIds);
 
-      // 4. Map the results
+      // 4. mapeia os resultados
       return periods.map((d: any) => {
           const user = users?.find((u: any) => u.id === d.user_id);
           return {
@@ -626,7 +626,7 @@ class StoreService {
       });
   }
 
-  // --- Calendar Management ---
+  // --- gestão de calendário ---
   
   async getExceptions(): Promise<CalendarException[]> {
     const { data, error } = await supabase.from('calendar_exceptions').select('*');
@@ -643,7 +643,7 @@ class StoreService {
     await supabase.from('calendar_exceptions').delete().eq('id', id);
   }
 
-  // --- Analytics Helpers ---
+  // --- helpers de analytics ---
   
   private isWorkingDay(d: Date, holidays: Holiday[], exceptions: CalendarException[]): boolean {
       const dateString = d.toISOString().split('T')[0];

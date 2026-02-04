@@ -4,7 +4,7 @@ import { store } from '../services/store';
 import { Project, TimesheetEntry, HOURS_PER_DAY, formatHours } from '../types';
 import { Filter, Loader2, Download, Edit, Trash2 } from 'lucide-react';
 
-// Helper to fix timezone issue (UTC vs Local)
+// helper pra arrumar o rolê do fuso (utc vs local)
 const getLocalDateString = (date = new Date()) => {
   const offset = date.getTimezoneOffset() * 60000;
   const localTime = new Date(date.getTime() - offset);
@@ -22,14 +22,14 @@ export const UserReports: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [periodStatuses, setPeriodStatuses] = useState<Record<string, string>>({});
 
-  // Filters
+    // filtros
   const [filterData, setFilterData] = useState({
       projectId: '',
       startDate: '',
       endDate: ''
   });
 
-  // Edit Modal State
+    // estado do modal de edição
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
@@ -41,7 +41,7 @@ export const UserReports: React.FC = () => {
   const [formLoading, setFormLoading] = useState(false);
 
   useEffect(() => {
-    // Parse Query Params for Deep Linking (from Dashboard Chart)
+    // parse dos params da url pra deep link (do gráfico do dashboard)
     const params = new URLSearchParams(location.search);
     setFilterData(prev => ({
         ...prev,
@@ -64,20 +64,20 @@ export const UserReports: React.FC = () => {
         store.getLastPeriods(currentUser.id)
     ]);
     
-    // Create a map of "YYYY-MM" -> Status for quick lookup
+    // cria map de "yyyy-mm" -> status pra achar rápido
     const statusMap: Record<string, string> = {};
     periods.forEach(p => {
         statusMap[`${p.year}-${p.month}`] = p.status;
     });
     setPeriodStatuses(statusMap);
 
-    // Sort by date desc
+    // ordena por data desc
     allEntries.sort((a,b) => parseLocalDate(b.date).getTime() - parseLocalDate(a.date).getTime());
     setEntries(allEntries);
     
     setProjects(allProjects);
 
-    // Projects available for Dropdown (Active & Permission)
+    // projetos disponíveis pro dropdown (ativo + permissão)
     const available = allProjects.filter(p => {
         if (!p.active) return false;
         if (!p.allowedManagerIds || p.allowedManagerIds.length === 0) return true;
@@ -114,8 +114,8 @@ export const UserReports: React.FC = () => {
     const d = parseLocalDate(entry.date);
       const key = `${d.getFullYear()}-${d.getMonth()}`;
       const status = periodStatuses[key];
-      // If status exists and is SUBMITTED or APPROVED, it's locked.
-      // If doesn't exist (undefined), it implies OPEN (not generated yet).
+    // se tem status e é submitted/approved, tá travado
+    // se não existe (undefined), é open (ainda não gerou)
       return status === 'SUBMITTED' || status === 'APPROVED';
   };
 
@@ -267,7 +267,7 @@ export const UserReports: React.FC = () => {
             </div>
         </div>
 
-        {/* Edit Modal (Copied/Adapted from Dashboard) */}
+        {/* modal de edição (copiado/adaptado do dashboard) */}
         {isFormOpen && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
                 <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden">

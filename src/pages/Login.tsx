@@ -38,7 +38,7 @@ export const Login: React.FC = () => {
     <div className="min-h-screen flex items-center justify-center bg-brand-50 p-4">
       <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8">
         
-        {/* Logo Section */}
+        {/* seção do logo */}
         <div className="text-center mb-8 flex flex-col items-center justify-center min-h-[160px]">
             <img 
                 src="https://i.postimg.cc/bv4S9DFS/logo.png" 

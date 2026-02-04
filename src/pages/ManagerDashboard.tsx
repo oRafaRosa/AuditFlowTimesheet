@@ -25,7 +25,7 @@ export const ManagerDashboard: React.FC = () => {
   const [pendingApprovals, setPendingApprovals] = useState<TimesheetPeriod[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // --- Review Modal State ---
+    // --- estado do modal de revisão ---
   const [reviewPeriod, setReviewPeriod] = useState<TimesheetPeriod | null>(null);
   const [reviewDetails, setReviewDetails] = useState<{
       entries: TimesheetEntry[];
@@ -37,13 +37,13 @@ export const ManagerDashboard: React.FC = () => {
   const [showRejectInput, setShowRejectInput] = useState(false);
   const [processingAction, setProcessingAction] = useState(false);
 
-  // --- Delegation Modal State ---
+    // --- estado do modal de delegação ---
   const [showDelegationModal, setShowDelegationModal] = useState(false);
   const [selectedDelegateManager, setSelectedDelegateManager] = useState<string>('');
   const [allManagers, setAllManagers] = useState<User[]>([]);
   const [delegatingLoading, setDelegatingLoading] = useState(false);
     const [delegationAlert, setDelegationAlert] = useState<{ type: 'received' | 'removed'; managerName?: string } | null>(null);
-    const [receivedDelegation, setReceivedDelegation] = useState<string | null>(null); // Managers who delegated to me
+    const [receivedDelegation, setReceivedDelegation] = useState<string | null>(null); // gestores que me delegaram
 
   useEffect(() => {
     loadData();
@@ -56,11 +56,11 @@ export const ManagerDashboard: React.FC = () => {
 
     const allUsers = await store.getUsers();
     
-    // Get fresh user data from allUsers to reflect any recent changes (like delegated_manager_id)
+    // puxa user fresquinho pra refletir mudanças (tipo delegated_manager_id)
     const freshUserData = allUsers.find(u => u.id === user.id) || user;
     setCurrentUser(freshUserData);
     
-        // Check if THIS manager received a delegation from someone
+        // checa se este gestor recebeu delegação de alguém
         const delegatingManagers = allUsers.filter(u => u.delegatedManagerId === freshUserData.id);
         if (delegatingManagers.length > 0) {
             setReceivedDelegation(delegatingManagers.map(m => m.name).join(', '));
@@ -68,7 +68,7 @@ export const ManagerDashboard: React.FC = () => {
             setReceivedDelegation(null);
         }
     
-        // Admins see all, Managers see their team + delegated teams
+        // admin vê geral, gestor vê seu time + delegados
         let myTeam = [] as User[];
         let delegatedMemberIdSet = new Set<string>();
         if (freshUserData.role === 'ADMIN') {
@@ -84,7 +84,7 @@ export const ManagerDashboard: React.FC = () => {
                 myTeam = [...directTeam, ...delegatingManagers, ...delegatedMembers];
         }
 
-        // Remove duplicates (if any)
+        // remove duplicados (se tiver)
         const uniqueTeam = Array.from(new Map(myTeam.map(m => [m.id, m])).values());
         setTeamMembers(uniqueTeam);
 
@@ -94,11 +94,11 @@ export const ManagerDashboard: React.FC = () => {
         store.getPendingApprovals(freshUserData.id)
     ]);
     
-    // Load all managers for delegation dropdown
+    // carrega todos os gestores pro dropdown de delegação
     const allManagersList = allUsers.filter(u => u.role === 'MANAGER' && u.id !== freshUserData.id);
     setAllManagers(allManagersList);
     
-    // Associate user names to approvals
+    // cola nome nos pedidos de aprovação
     const approvalsWithNames = approvals.map(a => ({
         ...a,
         userName: allUsers.find(u => u.id === a.userId)?.name || 'Desconhecido',
@@ -110,7 +110,7 @@ export const ManagerDashboard: React.FC = () => {
     const filteredEntries = allEntries.filter(e => myTeamIds.includes(e.userId));
     setTeamEntries(filteredEntries);
     
-    // Filter projects relevant to this manager to avoid clutter
+    // filtra projetos relevantes pra evitar bagunça
     const relevantProjects = freshUserData.role === 'ADMIN' 
         ? allProjects 
         : allProjects.filter(p => !p.allowedManagerIds?.length || p.allowedManagerIds.includes(freshUserData.id));
@@ -125,7 +125,7 @@ export const ManagerDashboard: React.FC = () => {
     const today = new Date();
     const currentMonthExpected = await store.getExpectedHoursToDate(today.getFullYear(), today.getMonth());
     
-    // Team Performance Stats
+    // stats de performance do time
     const stats = members.map(m => {
         const memberEntries = entries.filter(e => {
             const d = parseLocalDate(e.date);
@@ -143,7 +143,7 @@ export const ManagerDashboard: React.FC = () => {
     });
     setTeamStats(stats);
 
-    // Project Budget Stats (Only for filtered projects)
+    // stats de budget (só projetos filtrados)
     const projStats = projs.filter(p => p.budgetedHours > 0).map(p => {
         const projEntries = entries.filter(e => e.projectId === p.id);
         const consumed = projEntries.reduce((acc, curr) => acc + curr.hours, 0);
@@ -158,11 +158,11 @@ export const ManagerDashboard: React.FC = () => {
     setProjectBudgets(projStats);
   };
 
-  // --- Review Logic ---
+    // --- lógica de revisão ---
 
   const openReviewModal = async (period: TimesheetPeriod) => {
       setProcessingAction(true);
-      // Fetch specific data for this period
+    // puxa dados específicos desse período
       const [allEntries, expected] = await Promise.all([
           store.getEntries(period.userId),
           store.getExpectedHours(period.year, period.month)
@@ -175,7 +175,7 @@ export const ManagerDashboard: React.FC = () => {
 
       const total = periodEntries.reduce((acc, curr) => acc + curr.hours, 0);
 
-      // Group by Project
+    // agrupa por projeto
       const projMap = new Map<string, number>();
       periodEntries.forEach(e => {
           const current = projMap.get(e.projectId) || 0;
@@ -183,9 +183,9 @@ export const ManagerDashboard: React.FC = () => {
       });
 
       const projSummary = Array.from(projMap.entries()).map(([pid, hours]) => {
-          // Projects might contain filtered list, we need to find from full list if possible or ensure projects contains everything
-          // But since we filtered projects in loadData, we might miss some if the user worked on a project that is no longer relevant?
-          // To be safe, we try to find it in the current filtered list.
+          // pode rolar do projeto não estar no filtro atual
+          // como a lista tá filtrada no loadData, às vezes some
+          // então tenta achar no que tem agora pra não quebrar
           const proj = projects.find(p => p.id === pid) || { code: 'N/A', name: 'Projeto Desconhecido' } as Project;
           return {
               project: proj,
@@ -286,18 +286,18 @@ export const ManagerDashboard: React.FC = () => {
       return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin text-brand-600" size={48} /></div>;
   }
 
-  // Render selected tab content
+    // render da tab selecionada
   const renderContent = () => {
     if (activeTab === 'budget') {
       return <ManagerProjectBudget />;
     }
 
-    // Default overview tab
+    // visão geral padrão
     return (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-8">
             
-            {/* Delegation Status Alert - When THIS manager received delegation */}
+            {/* alerta de delegação - quando este gestor recebeu */}
             {receivedDelegation && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start gap-3">
                     <Info className="text-blue-600 mt-0.5 flex-shrink-0" size={20} />
@@ -310,7 +310,7 @@ export const ManagerDashboard: React.FC = () => {
                 </div>
             )}
 
-            {/* Delegation Alerts */}
+            {/* alertas de delegação */}
             {delegationAlert && delegationAlert.type === 'received' && (
                 <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-start justify-between">
                     <div className="flex items-start gap-3">
@@ -340,7 +340,7 @@ export const ManagerDashboard: React.FC = () => {
                 </div>
             )}
             
-            {/* Pending Approvals Section */}
+            {/* seção de aprovações pendentes */}
             {pendingApprovals.length > 0 ? (
                 <div className="bg-white rounded-xl shadow-md border border-brand-100 overflow-hidden ring-1 ring-brand-100">
                     <div className="p-4 bg-brand-50 border-b border-brand-100 flex justify-between items-center">
@@ -400,7 +400,7 @@ export const ManagerDashboard: React.FC = () => {
                 </div>
             )}
 
-            {/* Divergence Alerts */}
+            {/* alertas de divergência */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {teamStats.filter(s => s.divergence < -10).map((s, idx) => (
                     <div key={idx} className="bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg flex items-start gap-3">
@@ -432,7 +432,7 @@ export const ManagerDashboard: React.FC = () => {
                 ))}
             </div>
 
-            {/* Team Hours Chart */}
+            {/* gráfico de horas do time */}
             <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 h-96 overflow-y-auto">
                 <h3 className="text-lg font-semibold text-slate-800 mb-6">Desempenho da Equipe (Mês Atual)</h3>
                 <ResponsiveContainer width="100%" height={Math.max(300, teamStats.length * 40)}>
@@ -460,7 +460,7 @@ export const ManagerDashboard: React.FC = () => {
                 </ResponsiveContainer>
             </div>
 
-            {/* Project Budget Chart */}
+            {/* gráfico de orçamento dos projetos */}
             <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 h-96 overflow-x-auto">
                 <h3 className="text-lg font-semibold text-slate-800 mb-6">Orçado vs Realizado (Projetos da Equipe)</h3>
                 <ResponsiveContainer width={Math.max(600, projectBudgets.length * 120)} height="85%">
@@ -515,7 +515,7 @@ export const ManagerDashboard: React.FC = () => {
             </div>
         </div>
 
-        {/* Right Column: Personal Status (Manager also has to submit timesheets) */}
+        {/* coluna direita: meu controle (gestor também lança timesheet) */}
         <div className="space-y-6">
             <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider">Meu Controle</h3>
             {currentUser && <MyStatusWidget userId={currentUser.id} />}
@@ -558,7 +558,7 @@ export const ManagerDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Tab Navigation */}
+    {/* navegação de abas */}
       <div className="flex border-b border-slate-200 gap-1">
         <button
           onClick={() => setActiveTab('overview')}
@@ -584,12 +584,12 @@ export const ManagerDashboard: React.FC = () => {
 
       {renderContent()}
 
-      {/* --- Detailed Review Modal --- */}
+    {/* --- modal de revisão detalhada --- */}
       {reviewPeriod && reviewDetails && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
               <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
                   
-                  {/* Header */}
+                  {/* header */}
                   <div className="bg-brand-600 p-6 flex justify-between items-center shrink-0">
                       <div>
                           <h2 className="text-xl font-bold text-white flex items-center gap-3">
@@ -608,10 +608,10 @@ export const ManagerDashboard: React.FC = () => {
                       </button>
                   </div>
 
-                  {/* Scrollable Content */}
+                  {/* conteúdo scrollável */}
                   <div className="flex-1 overflow-y-auto bg-gray-50 p-6">
                       
-                      {/* KPI Cards */}
+                      {/* cards de kpi */}
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                           <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
                               <p className="text-xs text-slate-500 font-bold uppercase mb-1">Total Lançado</p>
@@ -644,7 +644,7 @@ export const ManagerDashboard: React.FC = () => {
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                           
-                          {/* Left: Project Breakdown */}
+                          {/* esquerda: breakdown por projeto */}
                           <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 h-fit">
                               <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2">
                                   <Briefcase size={18} /> Resumo por Projeto
@@ -664,7 +664,7 @@ export const ManagerDashboard: React.FC = () => {
                               </div>
                           </div>
 
-                          {/* Right: Detailed Entries Table */}
+                          {/* direita: tabela detalhada */}
                           <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden flex flex-col h-[400px]">
                               <div className="p-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between sticky top-0">
                                   <h3 className="font-bold text-slate-700 flex items-center gap-2">
@@ -700,7 +700,7 @@ export const ManagerDashboard: React.FC = () => {
                       </div>
                   </div>
 
-                  {/* Footer / Actions */}
+                  {/* footer / ações */}
                   <div className="p-6 border-t border-gray-200 bg-white shrink-0">
                       {showRejectInput ? (
                           <div className="animate-in slide-in-from-bottom duration-300">
@@ -757,7 +757,7 @@ export const ManagerDashboard: React.FC = () => {
           </div>
       )}
 
-      {/* Delegation Modal */}
+    {/* modal de delegação */}
       {showDelegationModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
               <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-8 animate-in slide-in-from-bottom duration-300">

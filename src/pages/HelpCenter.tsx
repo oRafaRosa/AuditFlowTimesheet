@@ -14,7 +14,7 @@ export const HelpCenter: React.FC = () => {
             <p className="text-slate-500">Documentação, suporte e informações institucionais.</p>
         </div>
         
-        {/* Tabs */}
+        {/* abas */}
         <div className="flex bg-white rounded-lg p-1 shadow-sm border border-gray-200">
             <button 
                 onClick={() => setActiveTab('manual')}
@@ -39,7 +39,7 @@ export const HelpCenter: React.FC = () => {
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6 md:p-8 min-h-[60vh]">
         
-        {/* --- MANUAL TAB --- */}
+        {/* --- aba manual --- */}
         {activeTab === 'manual' && (
             <div className="space-y-8 animate-in fade-in duration-300">
                 <section>
@@ -108,7 +108,7 @@ export const HelpCenter: React.FC = () => {
             </div>
         )}
 
-        {/* --- FAQ TAB --- */}
+        {/* --- aba faq --- */}
         {activeTab === 'faq' && (
             <div className="space-y-6 max-w-4xl animate-in fade-in duration-300">
                 <h2 className="text-xl font-bold text-brand-800 mb-6 flex items-center gap-2">
@@ -283,7 +283,7 @@ export const HelpCenter: React.FC = () => {
             </div>
         )}
 
-        {/* --- ABOUT TAB --- */}
+        {/* --- aba sobre --- */}
         {activeTab === 'about' && (
             <div className="space-y-8 animate-in fade-in duration-300">
                 <div className="bg-gradient-to-r from-brand-900 to-brand-700 text-white p-8 rounded-2xl shadow-lg">

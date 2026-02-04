@@ -6,8 +6,9 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 
 import { Clock, Calendar, CheckCircle, AlertTriangle, Plus, Trash2, Loader2, Lock, XCircle, Search, Filter, AlertOctagon, Copy, Edit } from 'lucide-react';
 import { MyStatusWidget } from '../components/MyStatusWidget';
 
-// Helper to fix timezone issue (UTC vs Local)
-// Returns YYYY-MM-DD based on Browser's local time, not UTC.
+// helper pra arrumar o rolê do fuso (utc vs local), vrau
+// devolve yyyy-mm-dd no horário local do navegador, não no utc. funcionou caralho
+// r² solutions group vibes: https://orafarosa.github.io/R2-Solutions-Group/
 const getLocalDateString = (date = new Date()) => {
   const offset = date.getTimezoneOffset() * 60000;
   const localTime = new Date(date.getTime() - offset);
@@ -22,33 +23,33 @@ export const UserDashboard: React.FC = () => {
   const [entries, setEntries] = useState<TimesheetEntry[]>([]);
   const [periodStatus, setPeriodStatus] = useState<TimesheetPeriod | null>(null);
   
-  // State separation: 
-  // selectableProjects = Active projects allowed for NEW entries
-  // allProjectsHistory = ALL projects (active or inactive) for displaying names in tables
+    // separação de estado:
+    // selectableProjects = projetos ativos liberados pra criar novo lançamento
+    // allProjectsHistory = todos os projetos (ativos/inativos) pra mostrar nome na tabela
   const [selectableProjects, setSelectableProjects] = useState<Project[]>([]);
   const [allProjectsHistory, setAllProjectsHistory] = useState<Project[]>([]);
   
   const [loading, setLoading] = useState(true);
   
-  // Filters
+    // filtros
   const [entryFilterDate, setEntryFilterDate] = useState('');
 
-  // KPI States
+    // estados dos kpis
   const [currentMonthHours, setCurrentMonthHours] = useState(0);
   const [expectedHours, setExpectedHours] = useState(0);
   const [pendingHours, setPendingHours] = useState(0);
   const [monthlyData, setMonthlyData] = useState<any[]>([]);
   
-  // Alerts Data (Calculated locally)
+    // dados de alertas (calculado local)
   const [dailyTotals, setDailyTotals] = useState<Record<string, number>>({});
 
-  // Form State
+    // estado do form
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [formMode, setFormMode] = useState<'single' | 'bulk'>('single');
-  const [editingId, setEditingId] = useState<string | null>(null); // To track which entry is being edited
+    const [editingId, setEditingId] = useState<string | null>(null); // pra saber qual linha tá sendo editada
   const [formData, setFormData] = useState({
     projectId: '',
-    date: getLocalDateString(), // Initialized with correct Local Date
+    date: getLocalDateString(), // já nasce com data local certinha
     endDate: getLocalDateString(), 
     hours: HOURS_PER_DAY,
     description: ''
@@ -77,21 +78,21 @@ export const UserDashboard: React.FC = () => {
     setPeriodStatus(status);
     setEntries(allEntries.sort((a, b) => parseLocalDate(b.date).getTime() - parseLocalDate(a.date).getTime()));
     
-    // Calculate Daily Totals for Alert Logic
+    // soma do dia pra regra de alerta
     const totals: Record<string, number> = {};
     allEntries.forEach(e => {
         totals[e.date] = (totals[e.date] || 0) + e.hours;
     });
     setDailyTotals(totals);
 
-    // 1. Store ALL projects for history lookup (so inactive projects still show names in the table)
+    // 1. guarda todos os projetos pro histórico (até inativo, pra nome na tabela)
     setAllProjectsHistory(allProjects);
 
-    // 2. Filter projects for the Dropdown (Active & Permissioned only)
+    // 2. filtra projetos pro select (só ativo e permitido)
     const availableProjects = allProjects.filter(p => {
-        if (!p.active) return false; // Must be active
+        if (!p.active) return false; // tem que estar ativo
         
-        // Permission logic
+        // regra de permissão
         if (!p.allowedManagerIds || p.allowedManagerIds.length === 0) return true;
         if (p.allowedManagerIds.includes(user.id)) return true;
         if (user.managerId && p.allowedManagerIds.includes(user.managerId)) return true;
@@ -100,7 +101,7 @@ export const UserDashboard: React.FC = () => {
 
     setSelectableProjects(availableProjects);
 
-    // Calc KPIs
+    // calcula kpis
     const currentMonthEntries = allEntries.filter(e => {
         const d = parseLocalDate(e.date);
         return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
@@ -114,7 +115,7 @@ export const UserDashboard: React.FC = () => {
     setExpectedHours(expected);
     setPendingHours(expected - totalHours);
 
-    // Chart Data (Last 6 months)
+    // dados do gráfico (últimos 6 meses)
     const chartData = [];
     for(let i=5; i>=0; i--) {
         const d = new Date(currentYear, currentMonth - i, 1);
@@ -126,7 +127,7 @@ export const UserDashboard: React.FC = () => {
         const mTotal = monthEntries.reduce((acc, curr) => acc + curr.hours, 0);
         const mExpected = await store.getExpectedHours(d.getFullYear(), d.getMonth());
         
-        // IMPORTANT: Add year/month to data so we can navigate on click
+        // importante: salva ano/mes pra clicar e navegar depois
         chartData.push({ 
             name: monthName, 
             hours: mTotal, 
@@ -162,7 +163,7 @@ export const UserDashboard: React.FC = () => {
           hours: entry.hours,
           description: entry.description
       });
-      setFormMode('single'); // Edits are always single
+    setFormMode('single'); // edição é sempre single msm
       setIsFormOpen(true);
   };
 
@@ -186,7 +187,7 @@ export const UserDashboard: React.FC = () => {
     setLoading(true);
 
     if (editingId) {
-        // UPDATE MODE
+        // modo update
         await store.updateEntry(editingId, {
             projectId: formData.projectId,
             date: formData.date,
@@ -194,9 +195,9 @@ export const UserDashboard: React.FC = () => {
             description: formData.description
         });
     } else {
-        // CREATE MODE
-        // Check current month status (approx, naive check for "Create")
-        // Ideally we should check status for formData.date, but for now we rely on UI blocking
+        // modo create
+        // checa status do mês (na raça) antes de criar
+        // o ideal era validar pelo formData.date, mas por ora a ui segura
         const d = new Date(formData.date);
         const status = await store.getPeriodStatus(user.id, d.getFullYear(), d.getMonth());
         if (status.status === 'SUBMITTED' || status.status === 'APPROVED') {
@@ -252,7 +253,7 @@ export const UserDashboard: React.FC = () => {
     return proj.active ? proj.name : `${proj.name} (Inativo)`;
   }
 
-  // Handle Chart Click
+    // clique no gráfico
   const handleChartClick = (data: any) => {
       if (data && data.activePayload && data.activePayload.length > 0) {
           const payload = data.activePayload[0].payload;
@@ -277,13 +278,13 @@ export const UserDashboard: React.FC = () => {
       ).length > 0;
   };
 
-  // Status visual check for "New Entry" button (Current Month)
+    // check visual do botão "novo lançamento" (mês atual)
   const isCurrentPeriodLocked = periodStatus?.status === 'SUBMITTED' || periodStatus?.status === 'APPROVED';
 
-  // Filtered Entries Logic
+    // lógica de filtro das entradas
   const displayEntries = entryFilterDate 
       ? entries.filter(e => e.date === entryFilterDate)
-      : entries.slice(0, 20); // Show more recent entries
+    : entries.slice(0, 20); // mostra as mais recentes
 
   if (loading && entries.length === 0) {
       return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin text-brand-600" size={48} /></div>;
@@ -321,7 +322,7 @@ export const UserDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* KPI Cards */}
+    {/* cards de kpi */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
             <div className="flex items-center gap-4">
@@ -363,13 +364,13 @@ export const UserDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Content Grid */}
+    {/* grid principal */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        {/* Left Col: Chart & History */}
+        {/* coluna esquerda: gráfico + histórico */}
         <div className="lg:col-span-2 space-y-6">
             
-            {/* Chart */}
+            {/* gráfico */}
             <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 h-80 relative">
                 <h3 className="text-lg font-semibold text-slate-800 mb-4">Histórico Semestral</h3>
                 <ResponsiveContainer width="100%" height="90%">
@@ -386,14 +387,14 @@ export const UserDashboard: React.FC = () => {
                 </div>
             </div>
 
-            {/* Recent Entries & Filter */}
+            {/* lançamentos recentes + filtro */}
             <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
                 <div className="p-6 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-center gap-4">
                     <h3 className="text-lg font-semibold text-slate-800">
                         {entryFilterDate ? 'Registros do Dia' : 'Últimos Lançamentos'}
                     </h3>
                     
-                    {/* Filter */}
+                    {/* filtro */}
                     <div className="flex items-center gap-2 bg-gray-50 p-1.5 rounded-lg border border-gray-200">
                         <Filter size={16} className="text-slate-400 ml-2" />
                         <input 
@@ -482,13 +483,13 @@ export const UserDashboard: React.FC = () => {
             </div>
         </div>
 
-        {/* Right Col: Status and History Widget */}
+        {/* coluna direita: status e histórico */}
         <div className="space-y-6">
             {user && <MyStatusWidget userId={user.id} onUpdate={loadData} />}
         </div>
       </div>
 
-      {/* Modal Form (Create / Edit) */}
+    {/* modal do form (criar / editar) */}
       {isFormOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden">
@@ -498,7 +499,7 @@ export const UserDashboard: React.FC = () => {
                 </div>
                 <form onSubmit={handleSubmitEntry} className="p-6 space-y-4">
                     
-                    {/* Mode Switcher (Only for Create) */}
+                    {/* troca de modo (só pra criar) */}
                     {!editingId && (
                         <div className="flex bg-gray-100 p-1 rounded-lg">
                             <button 

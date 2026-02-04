@@ -20,21 +20,21 @@ export const AdminDashboard: React.FC = () => {
   const [showSqlModal, setShowSqlModal] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // Users State
+    // estado de usuários
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [userData, setUserData] = useState({ name: '', email: '', role: 'USER' as any, managerId: '' });
 
-  // Projects State
+    // estado de projetos
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [projectData, setProjectData] = useState({ name: '', code: '', classification: 'Audit' as any, budgetedHours: 0, active: true, allowedManagerIds: [] as string[] });
 
-  // Calendar Exception State
+    // estado de exceções do calendário
   const [exceptionData, setExceptionData] = useState({ date: '', type: 'OFFDAY' as any, name: '' });
 
-  // Report State
+    // estado de relatório
   const [filterData, setFilterData] = useState({
       userId: '',
-      managerId: '', // To filter by "Team"
+    managerId: '', // filtro por "time"
       projectId: '',
       startDate: '',
       endDate: ''
@@ -45,7 +45,7 @@ export const AdminDashboard: React.FC = () => {
     refreshData();
   }, []);
 
-  // Sync Tab with URL
+    // sincroniza aba com a url
   useEffect(() => {
     const path = location.pathname;
     if (path.includes('/projects')) {
@@ -57,14 +57,14 @@ export const AdminDashboard: React.FC = () => {
     } else if (path.includes('/users')) {
         setActiveTab('users');
     } else {
-        // Default route /admin maps to users
+        // rota padrão /admin cai em usuários
         setActiveTab('users');
     }
   }, [location]);
 
   const handleTabChange = (tab: 'users' | 'projects' | 'reports' | 'settings') => {
       setActiveTab(tab);
-      // Update URL to match tab
+    // atualiza url pra bater com a aba
       if (tab === 'users') navigate('/admin/users');
       else navigate(`/admin/${tab}`);
   };
@@ -87,7 +87,7 @@ export const AdminDashboard: React.FC = () => {
     setLoading(false);
   };
 
-  // --- User Handlers ---
+    // --- handlers de usuário ---
   const handleEditUserClick = (u: User) => {
       setEditingUser(u);
       setUserData({ name: u.name, email: u.email, role: u.role, managerId: u.managerId || '' });
@@ -113,7 +113,7 @@ export const AdminDashboard: React.FC = () => {
     refreshData();
   };
 
-  // --- Project Handlers ---
+    // --- handlers de projeto ---
   const handleEditProjectClick = (p: Project) => {
       setEditingProject(p);
       setProjectData({ 
@@ -152,7 +152,7 @@ export const AdminDashboard: React.FC = () => {
       }
   };
 
-  // --- Calendar Handlers ---
+    // --- handlers de calendário ---
   const handleAddException = async (e: React.FormEvent) => {
       e.preventDefault();
       await store.addException(exceptionData);
@@ -165,7 +165,7 @@ export const AdminDashboard: React.FC = () => {
       refreshData();
   };
 
-  // --- Report Filters ---
+    // --- filtros de relatório ---
   const applyFilters = () => {
       let result = entries;
 
@@ -182,7 +182,7 @@ export const AdminDashboard: React.FC = () => {
           result = result.filter(e => e.userId === filterData.userId);
       }
       if (filterData.managerId) {
-          // Find users who report to this manager
+          // acha quem reporta pra esse gestor
           const teamUserIds = users.filter(u => u.managerId === filterData.managerId || u.id === filterData.managerId).map(u => u.id);
           result = result.filter(e => teamUserIds.includes(e.userId));
       }
@@ -195,7 +195,7 @@ export const AdminDashboard: React.FC = () => {
   }, [filterData, activeTab, entries]);
 
 
-  // Helpers
+    // helpers
   const managers = users.filter(u => u.role === 'MANAGER' || u.role === 'ADMIN');
   const getManagerName = (id?: string) => users.find(u => u.id === id)?.name || '-';
   const getUserName = (id: string) => users.find(u => u.id === id)?.name || 'Desconhecido';
@@ -509,7 +509,7 @@ export const AdminDashboard: React.FC = () => {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               <div className="lg:col-span-2 space-y-6">
                   
-                  {/* Calendar Exceptions List */}
+                  {/* lista de exceções do calendário */}
                   <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
                       <div className="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
                           <h3 className="font-semibold text-slate-600 flex items-center gap-2">
@@ -575,7 +575,7 @@ export const AdminDashboard: React.FC = () => {
                   </div>
               </div>
 
-              {/* Calendar Add Form */}
+              {/* form de adicionar calendário */}
               <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 h-fit">
                   <h3 className="font-bold text-slate-800 mb-4">Gerenciar Calendário</h3>
                   <p className="text-xs text-slate-500 mb-4">Adicione feriados, emendas (pontes) ou dias úteis extras (sábados trabalhados) para ajustar o cálculo automático de horas esperadas.</p>
@@ -622,7 +622,7 @@ export const AdminDashboard: React.FC = () => {
         )}
       </div>
 
-      {/* Right Column: Personal Status for Admin */}
+    {/* coluna direita: status pessoal do admin */}
       <div className="lg:col-span-1 space-y-6">
            <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider">Meu Controle</h3>
            {currentUser && <MyStatusWidget userId={currentUser.id} />}

@@ -29,42 +29,42 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
   
-  // Password Change State
+  // estado da troca de senha
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [pwdData, setPwdData] = useState({ newPassword: '', confirmPassword: '' });
   const [pwdError, setPwdError] = useState('');
   const [pwdSuccess, setPwdSuccess] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Notifications State
+  // estado das notificações
   const [notifications, setNotifications] = useState<string[]>([]);
   const [showNotificationPanel, setShowNotificationPanel] = useState(false);
 
-  // Trigger modal automatically if default password is detected
+  // abre o modal sozinho se detectou senha padrão
   React.useEffect(() => {
     if (user?.isDefaultPassword) {
         setShowPasswordModal(true);
     }
   }, [user?.isDefaultPassword]);
 
-  // --- Notification Logic ---
+  // --- lógica de notificação ---
   useEffect(() => {
       if (!user) return;
 
-      // 1. Request Permission on mount
+      // 1. pede permissão quando monta
       NotificationService.requestPermission();
 
       const checkNotifications = async () => {
           const alerts: string[] = [];
           const today = new Date();
           
-          // A. Gestor: Aprovações Pendentes
+          // a. gestor: aprovações pendentes
           if (user.role === 'MANAGER' || user.role === 'ADMIN') {
               const pending = await store.getPendingApprovals(user.id);
               if (pending.length > 0) {
                   const msg = `Você tem ${pending.length} timesheets aguardando aprovação.`;
                   alerts.push(msg);
-                  // Envia Push apenas se não tiver enviado recentemente
+                  // manda push só se não tiver mandado recentemente
                   const lastNotify = sessionStorage.getItem('notified_approvals_ts');
                   const now = Date.now();
                   if (!lastNotify || (now - Number(lastNotify) > 4 * 60 * 60 * 1000)) {
@@ -74,7 +74,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               }
           }
 
-          // B. Usuário: Timesheet Rejeitado
+          // b. usuário: timesheet rejeitado
           const currentYear = today.getFullYear();
           const currentMonth = today.getMonth();
           const status = await store.getPeriodStatus(user.id, currentYear, currentMonth);
@@ -91,13 +91,13 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               }
           }
 
-          // C. Usuário: Lembrete Diário (após as 16h)
+          // c. usuário: lembrete diário (depois das 16h)
           const dayOfWeek = today.getDay();
           const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
           
           if (!isWeekend && today.getHours() >= 16) {
               const entries = await store.getEntries(user.id);
-              // Usa UTC date string para coincidir com a forma como são salvos no banco
+              // usa data utc pra bater com o jeito que salva no banco
               const todayStr = today.toISOString().split('T')[0];
               
               const todayHours = entries
@@ -108,7 +108,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                   const msg = `Você lançou apenas ${formatHours(todayHours)}h hoje. A meta diária é 8.8h.`;
                   alerts.push(msg);
                   
-                  // Controle de frequência de notificação (a cada 4h)
+                  // controla frequência da notificação (a cada 4h)
                   const lastReminded = localStorage.getItem('last_daily_reminder');
                   const now = Date.now();
                   
@@ -119,14 +119,14 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               }
           }
 
-          // D. Usuário: Pendências de Lançamentos (dias úteis da semana sem horas)
+          // d. usuário: pendências de lançamentos (dias úteis sem horas)
           if (user.role === 'USER') {
               const entries = await store.getEntries(user.id);
               const currentWeekStart = new Date(today);
-              currentWeekStart.setDate(today.getDate() - today.getDay() + 1); // Monday of current week
+              currentWeekStart.setDate(today.getDate() - today.getDay() + 1); // segunda da semana atual
               
               const weekDates: string[] = [];
-              for (let i = 0; i < 5; i++) { // Monday to Friday
+              for (let i = 0; i < 5; i++) { // de segunda a sexta
                   const date = new Date(currentWeekStart);
                   date.setDate(currentWeekStart.getDate() + i);
                   weekDates.push(date.toISOString().split('T')[0]);
@@ -147,7 +147,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                   const msg = `Você ainda não lançou horas para: ${missingDays.join(', ')}. Lembre-se de registrar seu trabalho!`;
                   alerts.push(msg);
                   
-                  // Notificação push a cada 6 horas para não ser muito frequente
+                  // notificação push a cada 6 horas pra não virar spam
                   const lastPendingNotify = localStorage.getItem('last_pending_reminder');
                   const now = Date.now();
                   
@@ -163,11 +163,11 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
       checkNotifications();
       
-      // Polling a cada 5 minutos
+      // polling a cada 5 minutos
       const interval = setInterval(checkNotifications, 1000 * 60 * 5); 
 
       return () => clearInterval(interval);
-  }, [user?.id, user?.role]); // Dependência ajustada para evitar loops desnecessários
+  }, [user?.id, user?.role]); // dependência ajustada pra evitar loop inútil
 
   if (!user) return <>{children}</>;
 
@@ -255,7 +255,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      {/* Sidebar Desktop */}
+      {/* sidebar desktop */}
       <aside className="hidden md:flex flex-col w-64 bg-white border-r border-gray-200 fixed h-full z-10">
         <div className="py-4 flex items-center justify-center">
             <BrandLogo />
@@ -333,7 +333,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         </div>
       </aside>
 
-      {/* Mobile Header */}
+      {/* header mobile */}
       <div className="md:hidden fixed top-0 w-full bg-white border-b border-gray-200 z-20 px-4 py-3 flex items-center justify-between shadow-sm">
          <div className="flex items-center gap-2">
              <BrandLogo size="small" />
@@ -353,7 +353,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
          </div>
       </div>
 
-      {/* Desktop Top Bar */}
+      {/* barra topo desktop */}
       <div className="hidden md:block fixed top-6 right-8 z-20">
           <div className="relative">
               <button 
@@ -387,7 +387,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           </div>
       </div>
 
-      {/* Mobile Notification Panel */}
+      {/* painel de notificação mobile */}
       {showNotificationPanel && (
           <div className="md:hidden fixed inset-0 z-40 bg-black/50" onClick={() => setShowNotificationPanel(false)}>
                <div className="absolute top-16 right-4 left-4 bg-white rounded-xl shadow-xl overflow-hidden" onClick={e => e.stopPropagation()}>
@@ -407,12 +407,12 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           </div>
       )}
 
-      {/* Main Content */}
+      {/* conteúdo principal */}
       <main className={`flex-1 md:ml-64 p-4 md:p-8 pt-20 md:pt-8 overflow-y-auto min-h-screen ${user.isDefaultPassword ? 'filter blur-sm pointer-events-none select-none overflow-hidden h-screen' : ''}`}>
         {children}
       </main>
 
-      {/* Password Change Modal */}
+      {/* modal de troca de senha */}
       {showPasswordModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
               <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
