@@ -476,18 +476,18 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                 <div className="p-5 border-b border-amber-100 bg-amber-50">
                   <h3 className="text-lg font-bold text-amber-900">⚠️ notificações desativadas</h3>
                   <p className="text-sm text-amber-800 mt-1">
-                    pra não esquecer prazos e pendências, ativa as notificações aqui. evita dor de cabeça depois.
+                    Pra não esquecer prazos e pendências, ativa as notificações aqui. Isso evita esquecimentos.
                   </p>
                 </div>
                 <div className="p-5 space-y-3">
                   {notificationPermission === 'denied' && (
                     <div className="text-xs text-slate-600 bg-slate-50 border border-slate-100 rounded-lg p-3">
-                      seu navegador bloqueou as notificações. libera nas configurações do site e volta aqui pra tentar de novo.
+                      Seu navegador bloqueou as notificações. Libere nas configurações do site e volte aqui para tentar de novo.
                     </div>
                   )}
                   {notificationPermission === 'default' && (
                     <div className="text-xs text-slate-600 bg-slate-50 border border-slate-100 rounded-lg p-3">
-                      clica em “ativar notificações” pra liberar agora.
+                      Clique em “ativar notificações” para liberar agora.
                     </div>
                   )}
                   <div className="flex items-center gap-2 pt-1">
