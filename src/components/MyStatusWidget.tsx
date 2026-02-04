@@ -31,14 +31,17 @@ export const MyStatusWidget: React.FC<MyStatusWidgetProps> = ({ userId, onUpdate
     setPeriodStatus(status);
     setPeriodHistory(history);
     
-    // Get current user info to check if their manager is delegated
+    // Check if current user's MANAGER has delegated to someone else
     if (user) {
       const currentUserData = users.find(u => u.id === userId);
-      if (currentUserData?.delegatedManagerId) {
-        const delegatedManager = users.find(u => u.id === currentUserData.delegatedManagerId);
-        setDelegatedManagerName(delegatedManager?.name || null);
-      } else {
-        setDelegatedManagerName(null);
+      if (currentUserData?.managerId) {
+        const userManager = users.find(u => u.id === currentUserData.managerId);
+        if (userManager?.delegatedManagerId) {
+          const delegatedManager = users.find(u => u.id === userManager.delegatedManagerId);
+          setDelegatedManagerName(delegatedManager?.name || null);
+        } else {
+          setDelegatedManagerName(null);
+        }
       }
     }
     

@@ -43,6 +43,7 @@ export const ManagerDashboard: React.FC = () => {
   const [allManagers, setAllManagers] = useState<User[]>([]);
   const [delegatingLoading, setDelegatingLoading] = useState(false);
   const [delegationAlert, setDelegationAlert] = useState<{ type: 'received' | 'removed'; managerName?: string } | null>(null);
+  const [receivedDelegation, setReceivedDelegation] = useState<string | null>(null); // Manager who delegated to me
 
   useEffect(() => {
     loadData();
@@ -52,18 +53,29 @@ export const ManagerDashboard: React.FC = () => {
     setLoading(true);
     const user = store.getCurrentUser();
     if (!user) return;
-    setCurrentUser(user);
 
     const allUsers = await store.getUsers();
     
+    // Get fresh user data from allUsers to reflect any recent changes (like delegated_manager_id)
+    const freshUserData = allUsers.find(u => u.id === user.id) || user;
+    setCurrentUser(freshUserData);
+    
+    // Check if THIS manager received a delegation from someone
+    const delegatingManager = allUsers.find(u => u.delegatedManagerId === freshUserData.id);
+    if (delegatingManager) {
+      setReceivedDelegation(delegatingManager.name);
+    } else {
+      setReceivedDelegation(null);
+    }
+    
     // Admins see all, Managers see their team + delegated teams
     let myTeam = [];
-    if (user.role === 'ADMIN') {
+    if (freshUserData.role === 'ADMIN') {
         myTeam = allUsers;
     } else {
-        myTeam = allUsers.filter(u => u.managerId === user.id || u.id === user.id);
+        myTeam = allUsers.filter(u => u.managerId === freshUserData.id || u.id === freshUserData.id);
         // Also load teams delegated to this manager
-        const delegatedTeams = await store.getDelegatedTeams(user.id);
+        const delegatedTeams = await store.getDelegatedTeams(freshUserData.id);
         myTeam = [...myTeam, ...delegatedTeams];
     }
     setTeamMembers(myTeam);
@@ -71,11 +83,11 @@ export const ManagerDashboard: React.FC = () => {
     const [allEntries, allProjects, approvals] = await Promise.all([
         store.getEntries(),
         store.getProjects(),
-        store.getPendingApprovals(user.id)
+        store.getPendingApprovals(freshUserData.id)
     ]);
     
     // Load all managers for delegation dropdown
-    const allManagersList = allUsers.filter(u => u.role === 'MANAGER' && u.id !== user.id);
+    const allManagersList = allUsers.filter(u => u.role === 'MANAGER' && u.id !== freshUserData.id);
     setAllManagers(allManagersList);
     
     // Associate user names to approvals
@@ -91,9 +103,9 @@ export const ManagerDashboard: React.FC = () => {
     setTeamEntries(filteredEntries);
     
     // Filter projects relevant to this manager to avoid clutter
-    const relevantProjects = user.role === 'ADMIN' 
+    const relevantProjects = freshUserData.role === 'ADMIN' 
         ? allProjects 
-        : allProjects.filter(p => !p.allowedManagerIds?.length || p.allowedManagerIds.includes(user.id));
+        : allProjects.filter(p => !p.allowedManagerIds?.length || p.allowedManagerIds.includes(freshUserData.id));
         
     setProjects(relevantProjects);
 
@@ -278,6 +290,19 @@ export const ManagerDashboard: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-8">
             
+            {/* Delegation Status Alert - When THIS manager received delegation */}
+            {receivedDelegation && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start gap-3">
+                    <Info className="text-blue-600 mt-0.5 flex-shrink-0" size={20} />
+                    <div>
+                        <p className="font-semibold text-blue-900">Delegação de Equipe Ativa</p>
+                        <p className="text-sm text-blue-800 mt-1">
+                            <strong>{receivedDelegation}</strong> delegou sua equipe a você. Você é responsável pelas aprovações de sua equipe enquanto ele está ausente.
+                        </p>
+                    </div>
+                </div>
+            )}
+
             {/* Delegation Alerts */}
             {delegationAlert && delegationAlert.type === 'received' && (
                 <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-start justify-between">
