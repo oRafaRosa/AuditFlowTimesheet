@@ -39,6 +39,8 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   // estado das notificações
   const [notifications, setNotifications] = useState<string[]>([]);
   const [showNotificationPanel, setShowNotificationPanel] = useState(false);
+  const [showNotificationsBlocked, setShowNotificationsBlocked] = useState(false);
+  const [notificationPermission, setNotificationPermission] = useState<'default' | 'denied' | 'granted' | 'unsupported'>('default');
 
   // abre o modal sozinho se detectou senha padrão
   React.useEffect(() => {
@@ -47,6 +49,27 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     }
   }, [user?.isDefaultPassword]);
 
+    // checa se o user bloqueou notificação e avisa (pop-up incisivo)
+    useEffect(() => {
+      if (!user) return;
+      if (!('Notification' in window)) {
+        setNotificationPermission('unsupported');
+        return;
+      }
+
+      const permission = Notification.permission;
+      setNotificationPermission(permission);
+
+        const shouldPrompt = permission !== 'granted' && permission !== 'unsupported';
+        const lastPrompt = localStorage.getItem('last_notif_prompt');
+        const now = Date.now();
+
+        if (shouldPrompt && (!lastPrompt || (now - Number(lastPrompt) > 24 * 60 * 60 * 1000))) {
+          setShowNotificationsBlocked(true);
+          localStorage.setItem('last_notif_prompt', String(now));
+        }
+    }, [user?.id]);
+
   // --- lógica de notificação ---
   useEffect(() => {
       if (!user) return;
@@ -54,9 +77,10 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       // 1. pede permissão quando monta
       NotificationService.requestPermission();
 
-      const checkNotifications = async () => {
+        const checkNotifications = async () => {
           const alerts: string[] = [];
           const today = new Date();
+          let entriesCache: any[] | null = null;
           
           // a. gestor: aprovações pendentes
           if (user.role === 'MANAGER' || user.role === 'ADMIN') {
@@ -65,11 +89,11 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                   const msg = `Você tem ${pending.length} timesheets aguardando aprovação.`;
                   alerts.push(msg);
                   // manda push só se não tiver mandado recentemente
-                  const lastNotify = sessionStorage.getItem('notified_approvals_ts');
+                const lastNotify = localStorage.getItem('last_approval_reminder');
                   const now = Date.now();
-                  if (!lastNotify || (now - Number(lastNotify) > 4 * 60 * 60 * 1000)) {
+                if (!lastNotify || (now - Number(lastNotify) > 60 * 60 * 1000)) {
                       NotificationService.send('Aprovação Pendente', msg, 'approval_tag');
-                      sessionStorage.setItem('notified_approvals_ts', String(now));
+                  localStorage.setItem('last_approval_reminder', String(now));
                   }
               }
           }
@@ -83,11 +107,11 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               const msg = `Atenção: Seu timesheet de ${currentMonth + 1}/${currentYear} foi devolvido. Verifique o motivo.`;
               alerts.push(msg);
               
-              const lastNotify = sessionStorage.getItem('notified_rejected_ts');
+              const lastNotify = localStorage.getItem('last_rejected_reminder');
               const now = Date.now();
-              if (!lastNotify || (now - Number(lastNotify) > 4 * 60 * 60 * 1000)) {
+              if (!lastNotify || (now - Number(lastNotify) > 60 * 60 * 1000)) {
                   NotificationService.send('Timesheet Devolvido', msg, 'rejected_tag');
-                  sessionStorage.setItem('notified_rejected_ts', String(now));
+                localStorage.setItem('last_rejected_reminder', String(now));
               }
           }
 
@@ -96,7 +120,8 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
           
           if (!isWeekend && today.getHours() >= 16) {
-              const entries = await store.getEntries(user.id);
+              const entries = entriesCache ?? await store.getEntries(user.id);
+              entriesCache = entries;
               // usa data utc pra bater com o jeito que salva no banco
               const todayStr = today.toISOString().split('T')[0];
               
@@ -121,7 +146,8 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
           // d. usuário: pendências de lançamentos (dias úteis sem horas)
           if (user.role === 'USER') {
-              const entries = await store.getEntries(user.id);
+              const entries = entriesCache ?? await store.getEntries(user.id);
+              entriesCache = entries;
               const currentWeekStart = new Date(today);
               currentWeekStart.setDate(today.getDate() - today.getDay() + 1); // segunda da semana atual
               
@@ -156,6 +182,27 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                       localStorage.setItem('last_pending_reminder', String(now));
                   }
               }
+
+                  const monthStr = String(currentMonth + 1).padStart(2, '0');
+                  const monthPrefix = `${currentYear}-${monthStr}-`;
+                  const monthHours = entries
+                  .filter(e => e.date && e.date.startsWith(monthPrefix))
+                  .reduce((acc, curr) => acc + curr.hours, 0);
+                  const expectedToDate = await store.getExpectedHoursToDate(currentYear, currentMonth);
+                  const pendingHours = expectedToDate - monthHours;
+
+                  if (pendingHours > 20) {
+                    const msg = `Você está com ${formatHours(pendingHours)}h pendentes no mês. Regularize seus lançamentos.`;
+                    alerts.push(msg);
+
+                    const lastPendingHoursNotify = localStorage.getItem('last_pending_hours_reminder');
+                    const now = Date.now();
+
+                    if (!lastPendingHoursNotify || (now - Number(lastPendingHoursNotify) > 60 * 60 * 1000)) {
+                      NotificationService.send('Pendência Alta de Horas', msg, 'pending_hours_tag');
+                      localStorage.setItem('last_pending_hours_reminder', String(now));
+                    }
+                  }
           }
 
           setNotifications(alerts);
@@ -176,6 +223,21 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     navigate('/');
     window.location.reload();
   };
+
+  const handleEnableNotifications = async () => {
+      const granted = await NotificationService.requestPermission();
+      if (!('Notification' in window)) return;
+      const permission = Notification.permission;
+      setNotificationPermission(permission);
+      if (granted || permission === 'granted') {
+          setShowNotificationsBlocked(false);
+      }
+  };
+
+    const handleDismissNotificationsPrompt = () => {
+      localStorage.setItem('last_notif_prompt', String(Date.now()));
+      setShowNotificationsBlocked(false);
+    };
 
   const handleChangePassword = async (e: React.FormEvent) => {
       e.preventDefault();
@@ -406,6 +468,46 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                </div>
           </div>
       )}
+
+          {/* pop-up incisivo pra liberar notificação */}
+          {showNotificationsBlocked && !showPasswordModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+              <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+                <div className="p-5 border-b border-amber-100 bg-amber-50">
+                  <h3 className="text-lg font-bold text-amber-900">⚠️ notificações desativadas</h3>
+                  <p className="text-sm text-amber-800 mt-1">
+                    pra não esquecer prazos e pendências, ativa as notificações aqui. evita dor de cabeça depois.
+                  </p>
+                </div>
+                <div className="p-5 space-y-3">
+                  {notificationPermission === 'denied' && (
+                    <div className="text-xs text-slate-600 bg-slate-50 border border-slate-100 rounded-lg p-3">
+                      seu navegador bloqueou as notificações. libera nas configurações do site e volta aqui pra tentar de novo.
+                    </div>
+                  )}
+                  {notificationPermission === 'default' && (
+                    <div className="text-xs text-slate-600 bg-slate-50 border border-slate-100 rounded-lg p-3">
+                      clica em “ativar notificações” pra liberar agora.
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2 pt-1">
+                    <button
+                        onClick={handleDismissNotificationsPrompt}
+                      className="flex-1 px-4 py-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"
+                    >
+                      agora não
+                    </button>
+                    <button
+                      onClick={handleEnableNotifications}
+                      className="flex-1 px-4 py-2 rounded-lg bg-brand-600 text-white font-semibold hover:bg-brand-700"
+                    >
+                      ativar notificações
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
       {/* conteúdo principal */}
       <main className={`flex-1 md:ml-64 p-4 md:p-8 pt-20 md:pt-8 overflow-y-auto min-h-screen ${user.isDefaultPassword ? 'filter blur-sm pointer-events-none select-none overflow-hidden h-screen' : ''}`}>
