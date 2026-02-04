@@ -240,15 +240,35 @@ class StoreService {
   // --- Timesheets ---
   
   async getEntries(userId?: string): Promise<TimesheetEntry[]> {
-    let query = supabase.from('timesheets').select('*').order('created_at', { ascending: false });
-    if (userId) {
-        query = query.eq('user_id', userId);
-    }
-    
-    const { data, error } = await query;
-    if (error) return [];
+    let allData: any[] = [];
+    const pageSize = 1000;
+    let page = 0;
+    let hasMore = true;
 
-    const result = data.map((e: any) => {
+    while (hasMore) {
+        let query = supabase
+            .from('timesheets')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .range(page * pageSize, (page + 1) * pageSize - 1);
+        
+        if (userId) {
+            query = query.eq('user_id', userId);
+        }
+        
+        const { data, error } = await query;
+        if (error || !data || data.length === 0) {
+            hasMore = false;
+        } else {
+            allData = allData.concat(data);
+            if (data.length < pageSize) {
+                hasMore = false;
+            }
+        }
+        page++;
+    }
+
+    const result = allData.map((e: any) => {
       const normalizeDate = (value: any) => {
         if (!value) return null;
         if (value instanceof Date) return value.toISOString().split('T')[0];
@@ -276,7 +296,7 @@ class StoreService {
     // Debug: mostrar dados de Kelson
     const kelsonEntries = result.filter(e => e.userId === '86442e36-66e4-4a6f-917c-2afbd4238d28');
     if (kelsonEntries.length > 0) {
-      console.log('DEBUG store.getEntries - Kelson entries:', kelsonEntries.map(e => ({date: e.date, hours: e.hours, projectId: e.projectId})));
+      console.log('DEBUG store.getEntries - Kelson entries (total):', kelsonEntries.length, kelsonEntries.map(e => ({date: e.date, hours: e.hours})));
     }
 
     return result;
