@@ -42,8 +42,8 @@ export const ManagerDashboard: React.FC = () => {
   const [selectedDelegateManager, setSelectedDelegateManager] = useState<string>('');
   const [allManagers, setAllManagers] = useState<User[]>([]);
   const [delegatingLoading, setDelegatingLoading] = useState(false);
-  const [delegationAlert, setDelegationAlert] = useState<{ type: 'received' | 'removed'; managerName?: string } | null>(null);
-  const [receivedDelegation, setReceivedDelegation] = useState<string | null>(null); // Manager who delegated to me
+    const [delegationAlert, setDelegationAlert] = useState<{ type: 'received' | 'removed'; managerName?: string } | null>(null);
+    const [receivedDelegation, setReceivedDelegation] = useState<string | null>(null); // Managers who delegated to me
 
   useEffect(() => {
     loadData();
@@ -60,25 +60,33 @@ export const ManagerDashboard: React.FC = () => {
     const freshUserData = allUsers.find(u => u.id === user.id) || user;
     setCurrentUser(freshUserData);
     
-    // Check if THIS manager received a delegation from someone
-    const delegatingManager = allUsers.find(u => u.delegatedManagerId === freshUserData.id);
-    if (delegatingManager) {
-      setReceivedDelegation(delegatingManager.name);
-    } else {
-      setReceivedDelegation(null);
-    }
+        // Check if THIS manager received a delegation from someone
+        const delegatingManagers = allUsers.filter(u => u.delegatedManagerId === freshUserData.id);
+        if (delegatingManagers.length > 0) {
+            setReceivedDelegation(delegatingManagers.map(m => m.name).join(', '));
+        } else {
+            setReceivedDelegation(null);
+        }
     
-    // Admins see all, Managers see their team + delegated teams
-    let myTeam = [];
-    if (freshUserData.role === 'ADMIN') {
-        myTeam = allUsers;
-    } else {
-        myTeam = allUsers.filter(u => u.managerId === freshUserData.id || u.id === freshUserData.id);
-        // Also load teams delegated to this manager
-        const delegatedTeams = await store.getDelegatedTeams(freshUserData.id);
-        myTeam = [...myTeam, ...delegatedTeams];
-    }
-    setTeamMembers(myTeam);
+        // Admins see all, Managers see their team + delegated teams
+        let myTeam = [] as User[];
+        let delegatedMemberIdSet = new Set<string>();
+        if (freshUserData.role === 'ADMIN') {
+                myTeam = allUsers;
+        } else {
+                const directTeam = allUsers.filter(u => u.managerId === freshUserData.id || u.id === freshUserData.id);
+                const delegatingManagerIds = new Set(delegatingManagers.map(m => m.id));
+                const delegatedMembers = allUsers.filter(u => delegatingManagerIds.has(u.managerId));
+                delegatedMemberIdSet = new Set([
+                        ...delegatingManagers.map(m => m.id),
+                        ...delegatedMembers.map(m => m.id)
+                ]);
+                myTeam = [...directTeam, ...delegatingManagers, ...delegatedMembers];
+        }
+
+        // Remove duplicates (if any)
+        const uniqueTeam = Array.from(new Map(myTeam.map(m => [m.id, m])).values());
+        setTeamMembers(uniqueTeam);
 
     const [allEntries, allProjects, approvals] = await Promise.all([
         store.getEntries(),
@@ -98,7 +106,7 @@ export const ManagerDashboard: React.FC = () => {
     }));
     setPendingApprovals(approvalsWithNames);
 
-    const myTeamIds = myTeam.map(m => m.id);
+    const myTeamIds = uniqueTeam.map(m => m.id);
     const filteredEntries = allEntries.filter(e => myTeamIds.includes(e.userId));
     setTeamEntries(filteredEntries);
     
@@ -109,11 +117,11 @@ export const ManagerDashboard: React.FC = () => {
         
     setProjects(relevantProjects);
 
-    await calculateStats(myTeam, filteredEntries, relevantProjects);
+    await calculateStats(uniqueTeam, filteredEntries, relevantProjects, delegatedMemberIdSet);
     setLoading(false);
   };
 
-  const calculateStats = async (members: User[], entries: TimesheetEntry[], projs: Project[]) => {
+    const calculateStats = async (members: User[], entries: TimesheetEntry[], projs: Project[], delegatedMemberIdSet: Set<string>) => {
     const today = new Date();
     const currentMonthExpected = await store.getExpectedHoursToDate(today.getFullYear(), today.getMonth());
     
@@ -129,7 +137,8 @@ export const ManagerDashboard: React.FC = () => {
             name: m.name,
             actual: total,
             expected: currentMonthExpected,
-            divergence: total - currentMonthExpected
+            divergence: total - currentMonthExpected,
+            isDelegated: delegatedMemberIdSet.has(m.id)
         };
     });
     setTeamStats(stats);
@@ -231,7 +240,6 @@ export const ManagerDashboard: React.FC = () => {
         setShowDelegationModal(false);
         setSelectedDelegateManager('');
         loadData();
-        setTimeout(() => setDelegationAlert(null), 5000);
     } catch (error) {
         console.error('Erro ao delegar equipe:', error);
         alert('Erro ao delegar equipe. Tente novamente.');
@@ -248,7 +256,6 @@ export const ManagerDashboard: React.FC = () => {
         await store.removeDelegation(currentUser.id);
         setDelegationAlert({ type: 'removed' });
         loadData();
-        setTimeout(() => setDelegationAlert(null), 5000);
     } catch (error) {
         console.error('Erro ao remover delegação:', error);
         alert('Erro ao remover delegação. Tente novamente.');
@@ -399,7 +406,12 @@ export const ManagerDashboard: React.FC = () => {
                     <div key={idx} className="bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg flex items-start gap-3">
                         <AlertCircle className="text-red-500 shrink-0" size={20} />
                         <div onClick={() => navigate(`/manager/reports?userId=${s.id}`)} className="cursor-pointer group">
-                            <p className="font-bold text-red-900 text-sm group-hover:underline">{s.name}</p>
+                            <p className="font-bold text-red-900 text-sm group-hover:underline flex items-center gap-2">
+                                {s.name}
+                                {s.isDelegated && (
+                                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200">Delegada</span>
+                                )}
+                            </p>
                             <p className="text-xs text-red-700">Pendente: {formatHours(Math.abs(s.divergence))}h</p>
                         </div>
                     </div>
@@ -408,7 +420,12 @@ export const ManagerDashboard: React.FC = () => {
                     <div key={idx} className="bg-yellow-50 border-l-4 border-yellow-500 p-4 rounded-r-lg flex items-start gap-3">
                         <AlertCircle className="text-yellow-600 shrink-0" size={20} />
                         <div onClick={() => navigate(`/manager/reports?userId=${s.id}`)} className="cursor-pointer group">
-                            <p className="font-bold text-yellow-900 text-sm group-hover:underline">{s.name}</p>
+                            <p className="font-bold text-yellow-900 text-sm group-hover:underline flex items-center gap-2">
+                                {s.name}
+                                {s.isDelegated && (
+                                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200">Delegada</span>
+                                )}
+                            </p>
                             <p className="text-xs text-yellow-700">Excesso: {formatHours(s.divergence)}h</p>
                         </div>
                     </div>
@@ -434,7 +451,11 @@ export const ManagerDashboard: React.FC = () => {
                         <Tooltip cursor={{fill: '#F0EFEA'}} />
                         <Legend />
                         <Bar dataKey="expected" name="Esperado" fill="#D1D0CB" barSize={24} radius={[0, 4, 4, 0]} />
-                        <Bar dataKey="actual" name="Realizado" fill="#0033C6" barSize={24} radius={[0, 4, 4, 0]} />
+                        <Bar dataKey="actual" name="Realizado" barSize={24} radius={[0, 4, 4, 0]}>
+                            {teamStats.map((entry, index) => (
+                                <Cell key={`cell-actual-${index}`} fill={entry.isDelegated ? '#F59E0B' : '#0033C6'} />
+                            ))}
+                        </Bar>
                     </BarChart>
                 </ResponsiveContainer>
             </div>
