@@ -17,6 +17,7 @@ export interface User {
   email: string;
   role: Role;
   managerId?: string; // ID of the manager
+  delegatedManagerId?: string; // ID of the temporary delegated manager
   avatarUrl?: string;
   isDefaultPassword?: boolean; // Flag to force password change
 }

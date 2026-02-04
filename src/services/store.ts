@@ -152,6 +152,7 @@ class StoreService {
         email: d.email,
         role: d.role,
         managerId: d.manager_id,
+        delegatedManagerId: d.delegated_manager_id,
         avatarUrl: `https://ui-avatars.com/api/?name=${d.full_name}`
     }));
   }
@@ -194,6 +195,45 @@ class StoreService {
     }
 
     await supabase.from('profiles').update(dbUpdate).eq('id', id);
+  }
+
+  // --- Team Delegation ---
+
+  async delegateTeamManagement(managerId: string, delegatedManagerId: string): Promise<boolean> {
+    const { error } = await supabase
+        .from('profiles')
+        .update({ delegated_manager_id: delegatedManagerId })
+        .eq('id', managerId);
+    
+    return !error;
+  }
+
+  async removeDelegation(managerId: string): Promise<boolean> {
+    const { error } = await supabase
+        .from('profiles')
+        .update({ delegated_manager_id: null })
+        .eq('id', managerId);
+    
+    return !error;
+  }
+
+  async getDelegatedTeams(delegatedManagerId: string): Promise<User[]> {
+    const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('delegated_manager_id', delegatedManagerId);
+    
+    if (error) return [];
+    
+    return data.map((d: any) => ({
+        id: d.id,
+        name: d.full_name,
+        email: d.email,
+        role: d.role,
+        managerId: d.manager_id,
+        delegatedManagerId: d.delegated_manager_id,
+        avatarUrl: `https://ui-avatars.com/api/?name=${d.full_name}`
+    }));
   }
 
   // --- Projects ---
@@ -429,12 +469,12 @@ class StoreService {
   }
 
   async submitPeriod(userId: string, year: number, month: number) {
-      // UPDATED: Fetch fresh user data to get the current manager_id directly from DB.
-      // This prevents "Auto-Approval" issues if the browser session (localStorage) has old data.
+      // UPDATED: Fetch fresh user data to get the current manager_id and delegated_manager_id directly from DB.
+      // If manager is delegated, use delegated_manager_id for approval instead.
       
       const { data: userProfile, error: profileError } = await supabase
           .from('profiles')
-          .select('manager_id')
+          .select('manager_id, delegated_manager_id')
           .eq('id', userId)
           .single();
 
@@ -443,9 +483,10 @@ class StoreService {
           throw new Error("Falha ao identificar seu gestor. Tente novamente.");
       }
 
-      const currentManagerId = userProfile?.manager_id;
+      // If user's manager has a delegated manager, use the delegated one. Otherwise use the original manager.
+      let currentManagerId = userProfile?.delegated_manager_id || userProfile?.manager_id;
       
-      // If user has a manager, Submit. If not, Auto-Approve.
+      // If user has a manager (or delegated manager), Submit. If not, Auto-Approve.
       const newStatus: PeriodStatus = currentManagerId ? 'SUBMITTED' : 'APPROVED';
 
       try {
@@ -457,7 +498,7 @@ class StoreService {
                 year: year,
                 month: month,
                 status: newStatus,
-                manager_id: currentManagerId, // Save the manager ID at the time of submission
+                manager_id: currentManagerId, // Save the manager ID (or delegated) at the time of submission
                 updated_at: new Date().toISOString(),
                 rejection_reason: null
             }, {
