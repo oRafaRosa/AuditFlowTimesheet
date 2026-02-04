@@ -76,7 +76,7 @@ export const ManagerDashboard: React.FC = () => {
         } else {
                 const directTeam = allUsers.filter(u => u.managerId === freshUserData.id || u.id === freshUserData.id);
                 const delegatingManagerIds = new Set(delegatingManagers.map(m => m.id));
-                const delegatedMembers = allUsers.filter(u => delegatingManagerIds.has(u.managerId));
+                const delegatedMembers = allUsers.filter(u => u.managerId && delegatingManagerIds.has(u.managerId));
                 delegatedMemberIdSet = new Set([
                         ...delegatingManagers.map(m => m.id),
                         ...delegatedMembers.map(m => m.id)
