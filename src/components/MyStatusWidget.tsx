@@ -2,8 +2,8 @@
 
 import React, { useEffect, useState } from 'react';
 import { store } from '../services/store';
-import { TimesheetPeriod, formatHours } from '../types';
-import { History, CheckCircle, Clock, Send, Loader2, AlertCircle } from 'lucide-react';
+import { TimesheetPeriod, formatHours, User } from '../types';
+import { History, CheckCircle, Clock, Send, Loader2, AlertCircle, Users } from 'lucide-react';
 
 const parseLocalDate = (dateStr: string) => new Date(`${dateStr}T00:00:00`);
 
@@ -17,17 +17,31 @@ export const MyStatusWidget: React.FC<MyStatusWidgetProps> = ({ userId, onUpdate
   const [processing, setProcessing] = useState(false);
   const [periodStatus, setPeriodStatus] = useState<TimesheetPeriod | null>(null);
   const [periodHistory, setPeriodHistory] = useState<TimesheetPeriod[]>([]);
+  const [delegatedManagerName, setDelegatedManagerName] = useState<string | null>(null);
   const user = store.getCurrentUser();
 
   const loadStatus = async () => {
     setLoading(true);
     const today = new Date();
-    const [status, history] = await Promise.all([
+    const [status, history, users] = await Promise.all([
         store.getPeriodStatus(userId, today.getFullYear(), today.getMonth()),
-        store.getLastPeriods(userId)
+        store.getLastPeriods(userId),
+        store.getUsers()
     ]);
     setPeriodStatus(status);
     setPeriodHistory(history);
+    
+    // Get current user info to check if their manager is delegated
+    if (user) {
+      const currentUserData = users.find(u => u.id === userId);
+      if (currentUserData?.delegatedManagerId) {
+        const delegatedManager = users.find(u => u.id === currentUserData.delegatedManagerId);
+        setDelegatedManagerName(delegatedManager?.name || null);
+      } else {
+        setDelegatedManagerName(null);
+      }
+    }
+    
     setLoading(false);
   };
 
@@ -124,6 +138,19 @@ export const MyStatusWidget: React.FC<MyStatusWidgetProps> = ({ userId, onUpdate
 
   return (
     <div className="space-y-6">
+        {/* Delegated Manager Alert */}
+        {delegatedManagerName && (
+            <div className="bg-amber-50 border border-amber-200 p-4 rounded-lg flex items-start gap-3">
+                <AlertCircle size={20} className="text-amber-600 flex-shrink-0 mt-0.5" />
+                <div>
+                    <p className="font-semibold text-amber-900 text-sm">Gestor Temporário</p>
+                    <p className="text-amber-800 text-sm mt-1">
+                        Seu gestor está ausente. Suas aprovações estão sendo gerenciadas por <strong>{delegatedManagerName}</strong>.
+                    </p>
+                </div>
+            </div>
+        )}
+
         {/* Current Status Card */}
         <div className="bg-gradient-to-br from-brand-600 to-brand-800 p-6 rounded-xl text-white shadow-lg">
             <h3 className="text-lg font-bold mb-2">Mês Atual</h3>
