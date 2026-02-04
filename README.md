@@ -1,5 +1,8 @@
 # AuditFlow Timesheet
 
+> desenvolvido por **[R² Solutions Group](https://orafarosa.github.io/R2-Solutions-Group/)** 🚀  
+> tech & consulting
+
 AuditFlow Timesheet é uma aplicação web moderna para gerenciamento de tempo e projetos, desenvolvida para facilitar o controle de horas trabalhadas em auditorias e projetos de consultoria. Construída com tecnologias de ponta, oferece uma interface intuitiva para usuários, gerentes e administradores.
 
 ## 🚀 Funcionalidades
@@ -48,12 +51,24 @@ AuditFlow Timesheet é uma aplicação web moderna para gerenciamento de tempo e
    npm install
    ```
 
-3. **Configure o Supabase**:
+3. **Configure as variáveis de ambiente**:
+   - Copie o arquivo `.env.example` para `.env`:
+     ```bash
+     cp .env.example .env
+     ```
+   - Edite o arquivo `.env` e adicione suas credenciais do Supabase:
+     ```
+     VITE_SUPABASE_URL=sua_url_do_supabase
+     VITE_SUPABASE_KEY=sua_chave_publica_do_supabase
+     ```
+   - **IMPORTANTE**: Nunca commite o arquivo `.env` no Git!
+
+4. **Configure o Supabase**:
    - Crie um projeto no [Supabase](https://supabase.com)
    - Configure as tabelas e políticas de segurança conforme necessário
-   - Adicione as chaves da API no arquivo de configuração
+   - Copie a URL do projeto e a chave pública (anon key) para o arquivo `.env`
 
-4. **Execute o aplicativo**:
+5. **Execute o aplicativo**:
    ```bash
    npm run dev
    ```
@@ -120,3 +135,13 @@ Este projeto está sob a licença MIT. Veja o arquivo `LICENSE` para mais detalh
 ## 📞 Suporte
 
 Para dúvidas ou suporte, acesse o Centro de Ajuda dentro da aplicação ou entre em contato com a equipe de desenvolvimento.
+
+---
+
+<div align="center">
+
+**desenvolvido com 💙 por [R² Solutions Group](https://orafarosa.github.io/R2-Solutions-Group/)**
+
+*tech & consulting - transformando ideias em soluções*
+
+</div>

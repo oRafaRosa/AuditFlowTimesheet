@@ -12,6 +12,11 @@ dist
 dist-ssr
 *.local
 
+# variáveis de ambiente - segurança em primeiro lugar, vrau
+.env
+.env.local
+.env.*.local
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

@@ -2,8 +2,14 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { User, Project, TimesheetEntry, Holiday, CalendarException, HOURS_PER_DAY, TimesheetPeriod, PeriodStatus } from '../types';
 
 // --- CONFIGURAÇÃO DO SUPABASE ---
-const SUPABASE_URL = 'https://odynsxzfuctvqurtrwhz.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_kWDnXvgjYwU7sc4Ypb9SWA_n48HTGgV';
+// pegando credenciais do .env pra não vazar no git, segurança em primeiro lugar
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_KEY;
+
+// validação pra não quebrar se esquecer de configurar o .env
+if (!SUPABASE_URL || !SUPABASE_KEY) {
+  throw new Error('faltou configurar as variáveis VITE_SUPABASE_URL e VITE_SUPABASE_KEY no arquivo .env, vrau');
+}
 
 export const supabase: SupabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
 
