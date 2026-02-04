@@ -119,37 +119,11 @@ export const ManagerReports: React.FC = () => {
   const applyFilters = () => {
       let result = entries;
 
-      console.log('DEBUG applyFilters: filterData COMPLETO:', JSON.stringify(filterData));
-
-      console.log('DEBUG applyFilters:', {
-        entriesBeforeFilter: result.length,
-        filterDataUserId: filterData.userId,
-        filterDataProjectId: filterData.projectId,
-        filterDataStartDate: filterData.startDate,
-        filterDataEndDate: filterData.endDate,
-        kelsonBeforeFilter: result.filter(e => e.userId === '86442e36-66e4-4a6f-917c-2afbd4238d28').length,
-        februaryBeforeFilter: result.filter(e => e.date.includes('2026-02')).length
-      });
-
       if (filterData.startDate) {
-          const beforeDateFilter = result.length;
           result = result.filter(e => e.date >= filterData.startDate);
-          console.log('DEBUG: após startDate filter:', {
-            startDate: filterData.startDate,
-            before: beforeDateFilter,
-            after: result.length,
-            kelsonAfter: result.filter(e => e.userId === '86442e36-66e4-4a6f-917c-2afbd4238d28').length
-          });
       }
       if (filterData.endDate) {
-          const beforeDateFilter = result.length;
           result = result.filter(e => e.date <= filterData.endDate);
-          console.log('DEBUG: após endDate filter:', {
-            endDate: filterData.endDate,
-            before: beforeDateFilter,
-            after: result.length,
-            kelsonAfter: result.filter(e => e.userId === '86442e36-66e4-4a6f-917c-2afbd4238d28').length
-          });
       }
       if (filterData.projectId) {
           result = result.filter(e => e.projectId === filterData.projectId);
@@ -157,12 +131,6 @@ export const ManagerReports: React.FC = () => {
       if (filterData.userId) {
           result = result.filter(e => e.userId === filterData.userId);
       }
-
-      console.log('DEBUG: final filtered entries:', {
-        finalCount: result.length,
-        kelsonFinal: result.filter(e => e.userId === '86442e36-66e4-4a6f-917c-2afbd4238d28').length,
-        februaryFinal: result.filter(e => e.date.includes('2026-02')).length
-      });
 
       setFilteredEntries(result);
   };

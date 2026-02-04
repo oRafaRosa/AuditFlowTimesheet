@@ -37,6 +37,12 @@ export const ManagerDashboard: React.FC = () => {
   const [showRejectInput, setShowRejectInput] = useState(false);
   const [processingAction, setProcessingAction] = useState(false);
 
+  // --- Delegation Modal State ---
+  const [showDelegationModal, setShowDelegationModal] = useState(false);
+  const [selectedDelegateManager, setSelectedDelegateManager] = useState<string>('');
+  const [allManagers, setAllManagers] = useState<User[]>([]);
+  const [delegatingLoading, setDelegatingLoading] = useState(false);
+
   useEffect(() => {
     loadData();
   }, []);
@@ -63,6 +69,10 @@ export const ManagerDashboard: React.FC = () => {
         store.getProjects(),
         store.getPendingApprovals(user.id)
     ]);
+    
+    // Load all managers for delegation dropdown
+    const allManagersList = allUsers.filter(u => u.role === 'MANAGER' && u.id !== user.id);
+    setAllManagers(allManagersList);
     
     // Associate user names to approvals
     const approvalsWithNames = approvals.map(a => ({
@@ -192,6 +202,40 @@ export const ManagerDashboard: React.FC = () => {
       await loadData();
       setProcessingAction(false);
       closeReviewModal();
+  };
+
+  const handleDelegate = async () => {
+    if (!selectedDelegateManager || !currentUser) return;
+    
+    setDelegatingLoading(true);
+    try {
+        await store.delegateTeamManagement(currentUser.id, selectedDelegateManager);
+        alert('Equipe delegada com sucesso!');
+        setShowDelegationModal(false);
+        setSelectedDelegateManager('');
+        loadData();
+    } catch (error) {
+        console.error('Erro ao delegar equipe:', error);
+        alert('Erro ao delegar equipe. Tente novamente.');
+    } finally {
+        setDelegatingLoading(false);
+    }
+  };
+
+  const handleRemoveDelegation = async () => {
+    if (!currentUser) return;
+    
+    setDelegatingLoading(true);
+    try {
+        await store.removeDelegation(currentUser.id);
+        alert('Delegação removida com sucesso!');
+        loadData();
+    } catch (error) {
+        console.error('Erro ao remover delegação:', error);
+        alert('Erro ao remover delegação. Tente novamente.');
+    } finally {
+        setDelegatingLoading(false);
+    }
   };
 
   const handleExport = () => {
@@ -404,6 +448,25 @@ export const ManagerDashboard: React.FC = () => {
             <h1 className="text-2xl font-bold text-slate-800">Visão da Equipe</h1>
             <p className="text-slate-500">Acompanhamento de GRC e Auditoria</p>
         </div>
+        <div className="flex gap-3">
+            {currentUser?.delegatedManagerId ? (
+                <button
+                    onClick={handleRemoveDelegation}
+                    disabled={delegatingLoading}
+                    className="px-4 py-2 bg-yellow-100 hover:bg-yellow-200 text-yellow-800 font-medium rounded-lg transition-colors flex items-center gap-2"
+                >
+                    {delegatingLoading ? <Loader2 className="animate-spin" size={16} /> : <AlertCircle size={16} />}
+                    Recuperar Gestão
+                </button>
+            ) : (
+                <button
+                    onClick={() => setShowDelegationModal(true)}
+                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-lg transition-colors flex items-center gap-2"
+                >
+                    <FileText size={16} /> Delegar Equipe
+                </button>
+            )}
+        </div>
         <button 
             onClick={handleExport}
             className="flex items-center gap-2 px-4 py-2 border border-slate-300 rounded-lg text-slate-600 hover:bg-white hover:border-slate-400 transition-colors bg-white">
@@ -606,6 +669,52 @@ export const ManagerDashboard: React.FC = () => {
                               </div>
                           </div>
                       )}
+                  </div>
+              </div>
+          </div>
+      )}
+
+      {/* Delegation Modal */}
+      {showDelegationModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-8 animate-in slide-in-from-bottom duration-300">
+                  <h2 className="text-xl font-bold text-slate-800 mb-4">Delegar Gestão da Equipe</h2>
+                  <p className="text-sm text-slate-600 mb-6">
+                      Selecione um gerente para gerenciar temporariamente sua equipe enquanto você está ausente.
+                  </p>
+                  
+                  <select
+                      value={selectedDelegateManager}
+                      onChange={(e) => setSelectedDelegateManager(e.target.value)}
+                      className="w-full border border-gray-300 rounded-lg p-3 mb-6 focus:ring-2 focus:ring-brand-600 outline-none"
+                  >
+                      <option value="">Selecione um gerente...</option>
+                      {allManagers.map(manager => (
+                          <option key={manager.id} value={manager.id}>
+                              {manager.name}
+                          </option>
+                      ))}
+                  </select>
+
+                  <div className="flex justify-end gap-3">
+                      <button
+                          onClick={() => {
+                              setShowDelegationModal(false);
+                              setSelectedDelegateManager('');
+                          }}
+                          disabled={delegatingLoading}
+                          className="px-4 py-2 text-slate-600 font-medium hover:bg-slate-100 rounded-lg"
+                      >
+                          Cancelar
+                      </button>
+                      <button
+                          onClick={handleDelegate}
+                          disabled={!selectedDelegateManager || delegatingLoading}
+                          className="px-6 py-2 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-lg flex items-center gap-2 disabled:opacity-50"
+                      >
+                          {delegatingLoading ? <Loader2 className="animate-spin" size={16} /> : <FileText size={16} />}
+                          Delegar
+                      </button>
                   </div>
               </div>
           </div>

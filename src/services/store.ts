@@ -333,12 +333,6 @@ class StoreService {
       };
     });
 
-    // Debug: mostrar dados de Kelson
-    const kelsonEntries = result.filter(e => e.userId === '86442e36-66e4-4a6f-917c-2afbd4238d28');
-    if (kelsonEntries.length > 0) {
-      console.log('DEBUG store.getEntries - Kelson entries (total):', kelsonEntries.length, kelsonEntries.map(e => ({date: e.date, hours: e.hours})));
-    }
-
     return result;
   }
 
