@@ -248,7 +248,7 @@ class StoreService {
     const { data, error } = await query;
     if (error) return [];
 
-    return data.map((e: any) => {
+    const result = data.map((e: any) => {
       const normalizeDate = (value: any) => {
         if (!value) return null;
         if (value instanceof Date) return value.toISOString().split('T')[0];
@@ -272,6 +272,14 @@ class StoreService {
         createdAt: e.created_at
       };
     });
+
+    // Debug: mostrar dados de Kelson
+    const kelsonEntries = result.filter(e => e.userId === '86442e36-66e4-4a6f-917c-2afbd4238d28');
+    if (kelsonEntries.length > 0) {
+      console.log('DEBUG store.getEntries - Kelson entries:', kelsonEntries.map(e => ({date: e.date, hours: e.hours, projectId: e.projectId})));
+    }
+
+    return result;
   }
 
   async addEntry(entry: Omit<TimesheetEntry, 'id' | 'createdAt'>) {
