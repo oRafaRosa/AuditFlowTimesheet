@@ -163,9 +163,10 @@ export const ManagerDashboard: React.FC = () => {
   const openReviewModal = async (period: TimesheetPeriod) => {
       setProcessingAction(true);
     // puxa dados específicos desse período
-      const [allEntries, expected] = await Promise.all([
+      const [allEntries, expected, allProjects] = await Promise.all([
           store.getEntries(period.userId),
-          store.getExpectedHours(period.year, period.month)
+          store.getExpectedHours(period.year, period.month),
+          store.getProjects() // busca todos os projetos pra garantir que nomes apareçam
       ]);
 
       const periodEntries = allEntries.filter(e => {
@@ -183,10 +184,8 @@ export const ManagerDashboard: React.FC = () => {
       });
 
       const projSummary = Array.from(projMap.entries()).map(([pid, hours]) => {
-          // pode rolar do projeto não estar no filtro atual
-          // como a lista tá filtrada no loadData, às vezes some
-          // então tenta achar no que tem agora pra não quebrar
-          const proj = projects.find(p => p.id === pid) || { code: 'N/A', name: 'Projeto Desconhecido' } as Project;
+          // busca na lista completa de projetos pra garantir que admin veja tudo
+          const proj = allProjects.find(p => p.id === pid) || { code: 'N/A', name: 'Projeto Desconhecido' } as Project;
           return {
               project: proj,
               hours: hours,
