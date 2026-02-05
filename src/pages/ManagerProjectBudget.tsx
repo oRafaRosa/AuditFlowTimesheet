@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { store } from '../services/store';
 import { Project, TimesheetEntry, User, formatHours, formatPercentage } from '../types';
-import { Search, TrendingUp, AlertTriangle, CheckCircle, Loader2 } from 'lucide-react';
+import { Search, TrendingUp, AlertTriangle, CheckCircle, Loader2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 
 interface ProjectBudgetData {
   id: string;
@@ -27,6 +27,8 @@ export const ManagerProjectBudget: React.FC = () => {
   const [selectedProjectIds, setSelectedProjectIds] = useState<Set<string>>(new Set());
   const [teamFilter, setTeamFilter] = useState('');
   const [codePrefixFilter, setCodePrefixFilter] = useState('');
+  const [sortColumn, setSortColumn] = useState<'name' | 'budgeted' | 'consumed' | 'percentage'>('percentage');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   useEffect(() => {
     loadData();
@@ -102,11 +104,30 @@ export const ManagerProjectBudget: React.FC = () => {
       result = result.filter(p => p.status === statusFilter);
     }
 
-    // ordena por consumo (desc)
-    result = [...result].sort((a, b) => b.consumed - a.consumed);
+    // ordenação por coluna selecionada
+    result = [...result].sort((a, b) => {
+      let comparison = 0;
+      
+      switch (sortColumn) {
+        case 'name':
+          comparison = a.name.localeCompare(b.name);
+          break;
+        case 'budgeted':
+          comparison = a.budgeted - b.budgeted;
+          break;
+        case 'consumed':
+          comparison = a.consumed - b.consumed;
+          break;
+        case 'percentage':
+          comparison = a.percentage - b.percentage;
+          break;
+      }
+      
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
 
     setFilteredData(result);
-  }, [searchTerm, statusFilter, projectData, selectedProjectIds, codePrefixFilter, teamFilter]);
+  }, [searchTerm, statusFilter, projectData, selectedProjectIds, codePrefixFilter, teamFilter, sortColumn, sortDirection]);
 
   useEffect(() => {
     if (!projects.length) return;
@@ -140,6 +161,22 @@ export const ManagerProjectBudget: React.FC = () => {
 
   const handleProjectClick = (projectId: string) => {
     navigate(`/manager/reports?projectId=${projectId}`);
+  };
+
+  const handleSort = (column: 'name' | 'budgeted' | 'consumed' | 'percentage') => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('desc');
+    }
+  };
+
+  const SortIcon = ({ column }: { column: 'name' | 'budgeted' | 'consumed' | 'percentage' }) => {
+    if (sortColumn !== column) return <ArrowUpDown size={14} className="text-slate-400" />;
+    return sortDirection === 'asc' 
+      ? <ArrowUp size={14} className="text-brand-600" />
+      : <ArrowDown size={14} className="text-brand-600" />;
   };
 
   // calcula kpis respeitando os filtros
@@ -290,10 +327,42 @@ export const ManagerProjectBudget: React.FC = () => {
             <table className="w-full text-left text-sm">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
-                  <th className="px-6 py-3 font-semibold text-slate-600">Projeto</th>
-                  <th className="px-6 py-3 font-semibold text-slate-600">Orçado</th>
-                  <th className="px-6 py-3 font-semibold text-slate-600">Realizado</th>
-                  <th className="px-6 py-3 font-semibold text-slate-600">Consumo</th>
+                  <th 
+                    onClick={() => handleSort('name')}
+                    className="px-6 py-3 font-semibold text-slate-600 cursor-pointer hover:bg-slate-100 transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      Projeto
+                      <SortIcon column="name" />
+                    </div>
+                  </th>
+                  <th 
+                    onClick={() => handleSort('budgeted')}
+                    className="px-6 py-3 font-semibold text-slate-600 cursor-pointer hover:bg-slate-100 transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      Orçado
+                      <SortIcon column="budgeted" />
+                    </div>
+                  </th>
+                  <th 
+                    onClick={() => handleSort('consumed')}
+                    className="px-6 py-3 font-semibold text-slate-600 cursor-pointer hover:bg-slate-100 transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      Realizado
+                      <SortIcon column="consumed" />
+                    </div>
+                  </th>
+                  <th 
+                    onClick={() => handleSort('percentage')}
+                    className="px-6 py-3 font-semibold text-slate-600 cursor-pointer hover:bg-slate-100 transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      Consumo
+                      <SortIcon column="percentage" />
+                    </div>
+                  </th>
                   <th className="px-6 py-3 font-semibold text-slate-600">Progresso</th>
                   <th className="px-6 py-3 font-semibold text-slate-600 text-center">Status</th>
                 </tr>
