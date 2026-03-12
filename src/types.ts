@@ -87,6 +87,15 @@ export interface UserLoginActivity {
   createdAt: string;
 }
 
+export type UserActivityType = 'REPORT_VIEW';
+
+export interface UserActivityEvent {
+  userId: string;
+  activityType: UserActivityType;
+  activityDate: string;
+  createdAt: string;
+}
+
 export type PeriodEventType = 'SUBMITTED' | 'APPROVED' | 'REJECTED';
 
 export interface TimesheetPeriodEvent {
@@ -127,6 +136,8 @@ export interface UserGamificationProfile {
   bestLoggingStreak: number;
   detailedDescriptions: number;
   perfectMonths: number;
+  specialWorkDays: number;
+  reportViewDays: number;
   timelySubmissions: number;
   quickRecoveries: number;
   timelyApprovals: number;

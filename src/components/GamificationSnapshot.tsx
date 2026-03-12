@@ -16,12 +16,13 @@ export const GamificationSnapshot: React.FC<{ userId: string }> = ({ userId }) =
     const loadData = async () => {
       setLoading(true);
 
-      const [users, entries, periods, loginActivities, periodEvents, holidays, exceptions] = await Promise.all([
+      const [users, entries, periods, loginActivities, periodEvents, userActivityEvents, holidays, exceptions] = await Promise.all([
         store.getUsers(),
         store.getEntries(),
         store.getTimesheetPeriods(),
         store.getLoginActivity(),
         store.getPeriodEvents(),
+        store.getUserActivityEvents(),
         store.getHolidays(),
         store.getExceptions()
       ]);
@@ -32,6 +33,7 @@ export const GamificationSnapshot: React.FC<{ userId: string }> = ({ userId }) =
         periods,
         loginActivities,
         periodEvents,
+        userActivityEvents,
         holidays,
         exceptions
       });
@@ -53,6 +55,10 @@ export const GamificationSnapshot: React.FC<{ userId: string }> = ({ userId }) =
           return date.getFullYear() === previousMonthYear && date.getMonth() === previousMonth;
         }),
         periodEvents: periodEvents.filter((event) => event.year === previousMonthYear && event.month === previousMonth),
+        userActivityEvents: userActivityEvents.filter((event) => {
+          const date = parseDateOnly(event.activityDate);
+          return date.getFullYear() === previousMonthYear && date.getMonth() === previousMonth;
+        }),
         holidays,
         exceptions
       });

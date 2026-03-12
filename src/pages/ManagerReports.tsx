@@ -35,6 +35,13 @@ export const ManagerReports: React.FC = () => {
     loadData();
   }, [location.search]);
 
+  useEffect(() => {
+    const currentUser = store.getCurrentUser();
+    if (!currentUser) return;
+
+    store.recordUserActivityEvent(currentUser.id, 'REPORT_VIEW');
+  }, []);
+
   const loadData = async () => {
     setLoading(true);
     const currentUser = store.getCurrentUser();

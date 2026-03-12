@@ -16,12 +16,13 @@ export const AchievementsHub: React.FC = () => {
       const currentUser = store.getCurrentUser();
       if (!currentUser) return;
 
-      const [users, entries, periods, loginActivities, periodEvents, holidays, exceptions] = await Promise.all([
+      const [users, entries, periods, loginActivities, periodEvents, userActivityEvents, holidays, exceptions] = await Promise.all([
         store.getUsers(),
         store.getEntries(),
         store.getTimesheetPeriods(),
         store.getLoginActivity(),
         store.getPeriodEvents(),
+        store.getUserActivityEvents(),
         store.getHolidays(),
         store.getExceptions()
       ]);
@@ -32,6 +33,7 @@ export const AchievementsHub: React.FC = () => {
         periods,
         loginActivities,
         periodEvents,
+        userActivityEvents,
         holidays,
         exceptions
       });

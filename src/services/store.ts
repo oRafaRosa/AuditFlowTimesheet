@@ -1,5 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { User, Project, TimesheetEntry, Holiday, CalendarException, HOURS_PER_DAY, TimesheetPeriod, PeriodStatus, FrequentEntryTemplate, TimesheetPeriodEvent, UserLoginActivity } from '../types';
+import { User, Project, TimesheetEntry, Holiday, CalendarException, HOURS_PER_DAY, TimesheetPeriod, PeriodStatus, FrequentEntryTemplate, TimesheetPeriodEvent, UserActivityEvent, UserActivityType, UserLoginActivity } from '../types';
 import { formatLocalDate, normalizeDateValue } from '../utils/date';
 
 // --- CONFIGURAÇÃO DO SUPABASE ---
@@ -204,6 +204,65 @@ class StoreService {
     } catch (error) {
       if (!this.isMissingRelationError(error)) {
         console.warn('Erro ao buscar histórico de login:', error);
+      }
+      return [];
+    }
+  }
+
+  async recordUserActivityEvent(
+    userId: string,
+    activityType: UserActivityType,
+    activityDate = formatLocalDate()
+  ): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('user_activity_events')
+        .upsert({
+          user_id: userId,
+          activity_type: activityType,
+          activity_date: activityDate,
+          created_at: new Date().toISOString()
+        }, {
+          onConflict: 'user_id,activity_type,activity_date'
+        });
+
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      if (!this.isMissingRelationError(error)) {
+        console.warn('Erro ao registrar atividade do usuário:', error);
+      }
+      return false;
+    }
+  }
+
+  async getUserActivityEvents(userIds?: string[], activityType?: UserActivityType): Promise<UserActivityEvent[]> {
+    try {
+      let query = supabase
+        .from('user_activity_events')
+        .select('*')
+        .order('activity_date', { ascending: false });
+
+      if (userIds && userIds.length > 0) {
+        query = query.in('user_id', userIds);
+      }
+
+      if (activityType) {
+        query = query.eq('activity_type', activityType);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+
+      return (data || []).map((item: any) => ({
+        userId: item.user_id,
+        activityType: item.activity_type,
+        activityDate: item.activity_date,
+        createdAt: item.created_at
+      }));
+    } catch (error) {
+      if (!this.isMissingRelationError(error)) {
+        console.warn('Erro ao buscar atividades do usuário:', error);
       }
       return [];
     }
@@ -1076,6 +1135,15 @@ create table if not exists timesheet_period_events (
   month integer not null,
   event_type text check (event_type in ('SUBMITTED', 'APPROVED', 'REJECTED')) not null,
   occurred_at timestamp with time zone default timezone('utc'::text, now())
+);
+
+create table if not exists user_activity_events (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references profiles(id) not null,
+  activity_type text check (activity_type in ('REPORT_VIEW')) not null,
+  activity_date date not null,
+  created_at timestamp with time zone default timezone('utc'::text, now()),
+  unique(user_id, activity_type, activity_date)
 );
 
 -- 8. CRIAR USUÁRIO ADMIN (Senha padrão AuditFlow@2025 já no hash)

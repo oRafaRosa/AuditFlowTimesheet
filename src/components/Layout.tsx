@@ -292,11 +292,12 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
                   // aqui é a parte divertida: quando entrar conquista nova ou mexer no top 3,
                   // a pessoa recebe um cutucão pra ir ver a página de ranking.
-                  const [users, periods, loginActivities, periodEvents] = await Promise.all([
+                  const [users, periods, loginActivities, periodEvents, userActivityEvents] = await Promise.all([
                     store.getUsers(),
                     store.getTimesheetPeriods(),
                     store.getLoginActivity(),
-                    store.getPeriodEvents()
+                    store.getPeriodEvents(),
+                    store.getUserActivityEvents()
                   ]);
 
                   const allProfiles = buildGamificationProfiles({
@@ -305,6 +306,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                     periods,
                     loginActivities,
                     periodEvents,
+                    userActivityEvents,
                     holidays,
                     exceptions
                   });
@@ -361,6 +363,10 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                       return date.getFullYear() === currentRankingYear && date.getMonth() === currentRankingMonth;
                     }),
                     periodEvents: periodEvents.filter((event) => event.year === currentRankingYear && event.month === currentRankingMonth),
+                    userActivityEvents: userActivityEvents.filter((event) => {
+                      const date = parseDateOnly(event.activityDate);
+                      return date.getFullYear() === currentRankingYear && date.getMonth() === currentRankingMonth;
+                    }),
                     holidays,
                     exceptions
                   });

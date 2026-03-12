@@ -6,6 +6,7 @@ import {
   TimesheetEntry,
   TimesheetPeriod,
   TimesheetPeriodEvent,
+  UserActivityEvent,
   User,
   UserGamificationProfile,
   UserLoginActivity
@@ -24,6 +25,10 @@ const ACHIEVEMENTS: AchievementDefinition[] = [
   { key: 'detailed_30', title: 'Memória Viva', description: 'Chegou a 30 lançamentos com descrição boa de verdade.', tone: 'positive', icon: 'book-text' },
   { key: 'detailed_60', title: 'Ata Notarial', description: 'Passou de 60 lançamentos bem escritos, daqueles que ninguém precisa adivinhar.', tone: 'positive', icon: 'notebook-text' },
   { key: 'perfect_month', title: 'Mês Perfeito', description: 'Fechou um mês aprovado, sem buracos e sem gambiarra de descrição.', tone: 'positive', icon: 'sparkles' },
+  { key: 'workaholic', title: 'Workaholic', description: 'Viciado em trabalho: lançou horas em fim de semana, feriado ou folga.', tone: 'negative', icon: 'briefcase-business' },
+  { key: 'plantao', title: 'Plantão Extraoficial', description: 'Transformou vários descansos em dia útil improvisado.', tone: 'negative', icon: 'sirene' },
+  { key: 'report_5', title: 'De Olho em Tudo', description: 'Abriu relatórios em vários dias para acompanhar seus registros.', tone: 'positive', icon: 'search-check' },
+  { key: 'report_15', title: 'Raio-X dos Registros', description: 'Virou freguês dos relatórios e acompanha tudo de perto.', tone: 'positive', icon: 'scan-search' },
   { key: 'timely_submitter', title: 'Virou o Mês, Enviou', description: 'Enviou o timesheet cedo no mês seguinte, sem deixar virar novela.', tone: 'positive', icon: 'send' },
   { key: 'quick_recovery', title: 'Volta por Cima', description: 'Recebeu devolução, ajustou rápido e reenviou sem drama.', tone: 'positive', icon: 'undo-2' },
   { key: 'timely_manager', title: 'Gestor Relâmpago', description: 'Aprovou pelo menos 3 timesheets em até 2 dias.', tone: 'positive', icon: 'zap' },
@@ -236,6 +241,36 @@ const countQuickRecoveries = (events: TimesheetPeriodEvent[]) => {
 const countBackfilledEntries = (entries: TimesheetEntry[]) =>
   entries.filter((entry) => getCreatedDate(entry) > entry.date).length;
 
+const countSpecialWorkDays = (
+  entries: TimesheetEntry[],
+  holidayMap: Record<string, string>,
+  offdayMap: Record<string, string>,
+  workdayMap: Record<string, string>
+) => {
+  const specialDates = new Set<string>();
+
+  entries.forEach((entry) => {
+    const date = parseDateOnly(entry.date);
+    const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+    const isHoliday = Boolean(holidayMap[entry.date]);
+    const isOffday = Boolean(offdayMap[entry.date]);
+    const isExplicitWorkday = Boolean(workdayMap[entry.date]);
+
+    if (isHoliday || isOffday || (isWeekend && !isExplicitWorkday)) {
+      specialDates.add(entry.date);
+    }
+  });
+
+  return specialDates.size;
+};
+
+const countReportViewDays = (events: UserActivityEvent[]) =>
+  new Set(
+    events
+      .filter((event) => event.activityType === 'REPORT_VIEW')
+      .map((event) => event.activityDate)
+  ).size;
+
 const countPerfectMonths = (
   periods: TimesheetPeriod[],
   entries: TimesheetEntry[],
@@ -335,6 +370,22 @@ const buildAchievements = (
         earnedCount = profile.perfectMonths;
         progressText = `${profile.perfectMonths} mês(es) perfeitos`;
         break;
+      case 'workaholic':
+        earnedCount = profile.specialWorkDays >= 1 ? 1 : 0;
+        progressText = `${profile.specialWorkDays} dia(s) fora do expediente normal`;
+        break;
+      case 'plantao':
+        earnedCount = Math.floor(profile.specialWorkDays / 4);
+        progressText = `${profile.specialWorkDays} dia(s) fora do expediente normal`;
+        break;
+      case 'report_5':
+        earnedCount = Math.floor(profile.reportViewDays / 5);
+        progressText = `${profile.reportViewDays}/5 dia(s) acompanhando relatórios`;
+        break;
+      case 'report_15':
+        earnedCount = Math.floor(profile.reportViewDays / 15);
+        progressText = `${profile.reportViewDays}/15 dia(s) acompanhando relatórios`;
+        break;
       case 'timely_submitter':
         earnedCount = profile.timelySubmissions;
         progressText = `${profile.timelySubmissions} envio(s) cedo`;
@@ -398,6 +449,7 @@ export const buildGamificationProfiles = ({
   periods,
   loginActivities,
   periodEvents,
+  userActivityEvents,
   holidays,
   exceptions
 }: {
@@ -406,6 +458,7 @@ export const buildGamificationProfiles = ({
   periods: TimesheetPeriod[];
   loginActivities: UserLoginActivity[];
   periodEvents: TimesheetPeriodEvent[];
+  userActivityEvents: UserActivityEvent[];
   holidays: Holiday[];
   exceptions: CalendarException[];
 }): UserGamificationProfile[] => {
@@ -424,6 +477,7 @@ export const buildGamificationProfiles = ({
         event.actorUserId === user.id ||
         event.managerId === user.id
       );
+      const userActivityLog = userActivityEvents.filter((event) => event.userId === user.id);
 
       const descriptionCounts = userEntries.reduce<Record<string, number>>((acc, entry) => {
         const key = normalizeDescription(entry.description);
@@ -447,6 +501,8 @@ export const buildGamificationProfiles = ({
       const loggingStreakStats = calculateStreaks(sameDayLoggedDates, maps.holidayMap, maps.offdayMap, maps.workdayMap);
 
       const perfectMonths = countPerfectMonths(userPeriods, userEntries, maps.holidayMap, maps.offdayMap, maps.workdayMap);
+      const specialWorkDays = countSpecialWorkDays(userEntries, maps.holidayMap, maps.offdayMap, maps.workdayMap);
+      const reportViewDays = countReportViewDays(userActivityLog);
       const lazyBatchMonths = detectLazyBatchMonths(userEntries);
       const lateSubmissions = countLateSubmissions(userEvents.filter((event) => event.userId === user.id));
       const timelySubmissions = countTimelySubmissions(userEvents.filter((event) => event.userId === user.id));
@@ -466,6 +522,8 @@ export const buildGamificationProfiles = ({
         bestLoggingStreak: loggingStreakStats.best,
         detailedDescriptions,
         perfectMonths,
+        specialWorkDays,
+        reportViewDays,
         timelySubmissions,
         quickRecoveries,
         timelyApprovals,
@@ -480,6 +538,7 @@ export const buildGamificationProfiles = ({
         + baseProfile.bestLoggingStreak
         + (baseProfile.detailedDescriptions * 2)
         + (baseProfile.perfectMonths * 25)
+        + (baseProfile.reportViewDays * 2)
         + (baseProfile.timelySubmissions * 3)
         + (baseProfile.quickRecoveries * 4)
         + (baseProfile.timelyApprovals * 4)
