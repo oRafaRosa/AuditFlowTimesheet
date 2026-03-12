@@ -425,7 +425,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       const interval = setInterval(checkNotifications, 1000 * 60 * 5); 
 
       return () => clearInterval(interval);
-  }, [user?.id, user?.role]); // dependência ajustada pra evitar loop inútil
+  }, [user?.id, user?.role, location.pathname, location.search]); // quando navega, já reavalia conquistas e alertas
 
   if (!user) return <>{children}</>;
 
