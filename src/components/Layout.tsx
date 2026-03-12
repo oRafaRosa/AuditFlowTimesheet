@@ -22,7 +22,8 @@ import {
   BookOpen,
   ExternalLink,
   TableProperties,
-  TrendingUp
+  TrendingUp,
+  Trophy
 } from 'lucide-react';
 
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -50,6 +51,11 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         setShowPasswordModal(true);
     }
   }, [user?.isDefaultPassword]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    store.recordLoginActivity(user.id);
+  }, [user?.id]);
 
     // checa se o user bloqueou notificação e avisa (pop-up incisivo)
     useEffect(() => {
@@ -422,6 +428,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           <NavItem to="/dashboard" icon={LayoutDashboard} label="Meu Dashboard" />
           <NavItem to="/timesheet" icon={Clock} label="Meus Lançamentos" />
           <NavItem to="/reports" icon={TableProperties} label="Relatórios Detalhados" />
+          <NavItem to="/achievements" icon={Trophy} label="Ranking & Conquistas" />
 
           <div className="px-4 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider mt-4">Nossos Apps</div>
           <a

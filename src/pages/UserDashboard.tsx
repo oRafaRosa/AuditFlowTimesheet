@@ -5,6 +5,7 @@ import { TimesheetEntry, Project, HOURS_PER_DAY, TimesheetPeriod, formatHours, H
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { Clock, Calendar, CheckCircle, AlertTriangle, Plus, Trash2, Loader2, Lock, XCircle, Search, Filter, AlertOctagon, Copy, Edit, ChevronDown, ChevronUp, Sparkles, Bookmark } from 'lucide-react';
 import { MyStatusWidget } from '../components/MyStatusWidget';
+import { GamificationSnapshot } from '../components/GamificationSnapshot';
 import { formatDateForDisplay, formatLocalDate, parseDateOnly } from '../utils/date';
 import { buildCalendarMaps, listPendingDaysForMonth, PendingDay } from '../utils/workCalendar';
 
@@ -715,6 +716,7 @@ export const UserDashboard: React.FC = () => {
 
         {/* coluna direita: status e histórico */}
         <div className="space-y-6">
+            {user && <GamificationSnapshot userId={user.id} />}
             {user && <MyStatusWidget userId={user.id} onUpdate={loadData} />}
         </div>
       </div>

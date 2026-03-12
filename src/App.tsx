@@ -9,6 +9,7 @@ import { ManagerProjectBudget } from './pages/ManagerProjectBudget';
 import { ManagerReports } from './pages/ManagerReports';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { HelpCenter } from './pages/HelpCenter'; 
+import { AchievementsHub } from './pages/AchievementsHub';
 import { store } from './services/store';
 
 // Protected Route Wrapper
@@ -64,6 +65,14 @@ const App: React.FC = () => {
               <UserReports /> 
             </ProtectedRoute>
           } 
+        />
+        <Route
+          path="/achievements"
+          element={
+            <ProtectedRoute>
+              <AchievementsHub />
+            </ProtectedRoute>
+          }
         />
 
         {/* rota de ajuda comum (todo mundo logado) */}

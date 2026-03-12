@@ -1,5 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { User, Project, TimesheetEntry, Holiday, CalendarException, HOURS_PER_DAY, TimesheetPeriod, PeriodStatus, FrequentEntryTemplate } from '../types';
+import { User, Project, TimesheetEntry, Holiday, CalendarException, HOURS_PER_DAY, TimesheetPeriod, PeriodStatus, FrequentEntryTemplate, TimesheetPeriodEvent, UserLoginActivity } from '../types';
 import { formatLocalDate, normalizeDateValue } from '../utils/date';
 
 // --- CONFIGURAÇÃO DO SUPABASE ---
@@ -23,6 +23,16 @@ const DEFAULT_PASSWORD_HASH = '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a
 class StoreService {
   constructor() {
     // opcional: checar conexão ou dar init
+  }
+
+  private isMissingRelationError(error: any): boolean {
+    const message = error?.message || '';
+    return typeof message === 'string' && (
+      message.includes('does not exist') ||
+      message.includes('Could not find the table') ||
+      message.includes('relation') ||
+      message.includes('schema cache')
+    );
   }
 
   // --- helper: hash sha-256 no browser ---
@@ -148,6 +158,119 @@ class StoreService {
   getCurrentUser(): User | null {
     const stored = localStorage.getItem(KEYS.CURRENT_USER);
     return stored ? JSON.parse(stored) : null;
+  }
+
+  async recordLoginActivity(userId: string, activityDate = formatLocalDate()): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('user_login_activity')
+        .upsert({
+          user_id: userId,
+          activity_date: activityDate,
+          created_at: new Date().toISOString()
+        }, {
+          onConflict: 'user_id,activity_date'
+        });
+
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      if (!this.isMissingRelationError(error)) {
+        console.warn('Erro ao registrar login diário:', error);
+      }
+      return false;
+    }
+  }
+
+  async getLoginActivity(userIds?: string[]): Promise<UserLoginActivity[]> {
+    try {
+      let query = supabase
+        .from('user_login_activity')
+        .select('*')
+        .order('activity_date', { ascending: false });
+
+      if (userIds && userIds.length > 0) {
+        query = query.in('user_id', userIds);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+
+      return (data || []).map((item: any) => ({
+        userId: item.user_id,
+        activityDate: item.activity_date,
+        createdAt: item.created_at
+      }));
+    } catch (error) {
+      if (!this.isMissingRelationError(error)) {
+        console.warn('Erro ao buscar histórico de login:', error);
+      }
+      return [];
+    }
+  }
+
+  async recordPeriodEvent(event: Omit<TimesheetPeriodEvent, 'id'>): Promise<boolean> {
+    try {
+      const payload = {
+        period_id: event.periodId || null,
+        user_id: event.userId,
+        manager_id: event.managerId || null,
+        actor_user_id: event.actorUserId || null,
+        year: event.year,
+        month: event.month,
+        event_type: event.eventType,
+        occurred_at: event.occurredAt
+      };
+
+      const { error } = await supabase
+        .from('timesheet_period_events')
+        .insert(payload);
+
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      if (!this.isMissingRelationError(error)) {
+        console.warn('Erro ao registrar evento de período:', error);
+      }
+      return false;
+    }
+  }
+
+  async getPeriodEvents(userIds?: string[], managerId?: string): Promise<TimesheetPeriodEvent[]> {
+    try {
+      let query = supabase
+        .from('timesheet_period_events')
+        .select('*')
+        .order('occurred_at', { ascending: false });
+
+      if (userIds && userIds.length > 0) {
+        query = query.in('user_id', userIds);
+      }
+
+      if (managerId) {
+        query = query.eq('manager_id', managerId);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+
+      return (data || []).map((item: any) => ({
+        id: item.id,
+        periodId: item.period_id,
+        userId: item.user_id,
+        managerId: item.manager_id,
+        actorUserId: item.actor_user_id,
+        year: item.year,
+        month: item.month,
+        eventType: item.event_type,
+        occurredAt: item.occurred_at
+      }));
+    } catch (error) {
+      if (!this.isMissingRelationError(error)) {
+        console.warn('Erro ao buscar eventos de período:', error);
+      }
+      return [];
+    }
   }
 
   // --- usuários ---
@@ -521,6 +644,31 @@ class StoreService {
       });
   }
 
+  async getTimesheetPeriods(userIds?: string[]): Promise<TimesheetPeriod[]> {
+      let query = supabase
+        .from('timesheet_periods')
+        .select('*')
+        .order('updated_at', { ascending: false });
+
+      if (userIds && userIds.length > 0) {
+        query = query.in('user_id', userIds);
+      }
+
+      const { data, error } = await query;
+      if (error || !data) return [];
+
+      return data.map((item: any) => ({
+        id: item.id,
+        userId: item.user_id,
+        year: item.year,
+        month: item.month,
+        status: item.status,
+        managerId: item.manager_id,
+        rejectionReason: item.rejection_reason,
+        updatedAt: item.updated_at
+      }));
+  }
+
   async submitPeriod(userId: string, year: number, month: number) {
       // atualizado: busca user fresco pra pegar manager_id e delegated_manager_id do db
       // se o gestor delegou, usa delegated_manager_id pra aprovação
@@ -561,6 +709,17 @@ class StoreService {
             .single();
 
           if (error) throw error;
+
+          this.recordPeriodEvent({
+            periodId: data.id,
+            userId,
+            managerId: currentManagerId,
+            actorUserId: userId,
+            year,
+            month,
+            eventType: 'SUBMITTED',
+            occurredAt: new Date().toISOString()
+          });
           return data;
 
       } catch (e) {
@@ -570,14 +729,40 @@ class StoreService {
   }
 
   async approvePeriod(periodId: string) {
+      const { data: period } = await supabase
+        .from('timesheet_periods')
+        .select('*')
+        .eq('id', periodId)
+        .maybeSingle();
+
       const { error } = await supabase
         .from('timesheet_periods')
         .update({ status: 'APPROVED', updated_at: new Date().toISOString() })
         .eq('id', periodId);
       if (error) throw error;
+
+      const actorUserId = this.getCurrentUser()?.id;
+      if (period) {
+        this.recordPeriodEvent({
+          periodId,
+          userId: period.user_id,
+          managerId: period.manager_id,
+          actorUserId,
+          year: period.year,
+          month: period.month,
+          eventType: 'APPROVED',
+          occurredAt: new Date().toISOString()
+        });
+      }
   }
 
   async rejectPeriod(periodId: string, reason: string) {
+      const { data: period } = await supabase
+        .from('timesheet_periods')
+        .select('*')
+        .eq('id', periodId)
+        .maybeSingle();
+
       const { error } = await supabase
         .from('timesheet_periods')
         .update({ 
@@ -587,6 +772,20 @@ class StoreService {
         })
         .eq('id', periodId);
       if (error) throw error;
+
+      const actorUserId = this.getCurrentUser()?.id;
+      if (period) {
+        this.recordPeriodEvent({
+          periodId,
+          userId: period.user_id,
+          managerId: period.manager_id,
+          actorUserId,
+          year: period.year,
+          month: period.month,
+          eventType: 'REJECTED',
+          occurredAt: new Date().toISOString()
+        });
+      }
   }
 
   async getPendingApprovals(managerId: string): Promise<TimesheetPeriod[]> {
@@ -845,7 +1044,7 @@ create table if not exists holidays (
   name text
 );
 
--- 6. Tabela de Períodos e Aprovações (NOVO)
+-- 6. Tabela de Períodos e Aprovações
 create table if not exists timesheet_periods (
   id uuid default gen_random_uuid() primary key,
   user_id uuid references profiles(id) not null,
@@ -858,12 +1057,33 @@ create table if not exists timesheet_periods (
   unique(user_id, year, month)
 );
 
--- 7. CRIAR USUÁRIO ADMIN (Senha padrão AuditFlow@2025 já no hash)
+-- 7. Tabelas de Gamificação
+create table if not exists user_login_activity (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references profiles(id) not null,
+  activity_date date not null,
+  created_at timestamp with time zone default timezone('utc'::text, now()),
+  unique(user_id, activity_date)
+);
+
+create table if not exists timesheet_period_events (
+  id uuid default gen_random_uuid() primary key,
+  period_id uuid references timesheet_periods(id),
+  user_id uuid references profiles(id) not null,
+  manager_id uuid references profiles(id),
+  actor_user_id uuid references profiles(id),
+  year integer not null,
+  month integer not null,
+  event_type text check (event_type in ('SUBMITTED', 'APPROVED', 'REJECTED')) not null,
+  occurred_at timestamp with time zone default timezone('utc'::text, now())
+);
+
+-- 8. CRIAR USUÁRIO ADMIN (Senha padrão AuditFlow@2025 já no hash)
 insert into profiles (full_name, email, role, password)
 values ('Administrador', 'admin@auditflow.com', 'ADMIN', '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918')
 on conflict (email) do nothing;
 
--- 8. GARANTIR PERMISSÕES E RECARREGAR CACHE (Fix para erros de 'table not found')
+-- 9. GARANTIR PERMISSÕES E RECARREGAR CACHE (Fix para erros de 'table not found')
 grant all on all tables in schema public to postgres, anon, authenticated, service_role;
 NOTIFY pgrst, 'reload schema';
 `;

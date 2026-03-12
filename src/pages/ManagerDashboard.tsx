@@ -7,6 +7,7 @@ import { User, Project, TimesheetEntry, TimesheetPeriod, formatHours, formatPerc
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, Cell } from 'recharts';
 import { Download, AlertCircle, Loader2, CheckCircle, XCircle, ArrowRight, Search, Clock, Calendar, Briefcase, FileText, TrendingUp, Info, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { MyStatusWidget } from '../components/MyStatusWidget';
+import { GamificationSnapshot } from '../components/GamificationSnapshot';
 import { ManagerProjectBudget } from './ManagerProjectBudget';
 import { formatDateForDisplay, formatLocalDate, parseDateOnly } from '../utils/date';
 
@@ -776,6 +777,7 @@ export const ManagerDashboard: React.FC = () => {
         {/* coluna direita: meu controle (gestor também lança timesheet) */}
         <div className="space-y-6">
             <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider">Meu Controle</h3>
+            {currentUser && <GamificationSnapshot userId={currentUser.id} />}
             {currentUser && <MyStatusWidget userId={currentUser.id} />}
         </div>
       </div>

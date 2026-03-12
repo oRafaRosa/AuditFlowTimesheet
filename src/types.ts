@@ -81,6 +81,58 @@ export interface FrequentEntryTemplate {
   lastUsedAt: string;
 }
 
+export interface UserLoginActivity {
+  userId: string;
+  activityDate: string;
+  createdAt: string;
+}
+
+export type PeriodEventType = 'SUBMITTED' | 'APPROVED' | 'REJECTED';
+
+export interface TimesheetPeriodEvent {
+  id: string;
+  periodId?: string;
+  userId: string;
+  managerId?: string;
+  actorUserId?: string;
+  year: number;
+  month: number;
+  eventType: PeriodEventType;
+  occurredAt: string;
+}
+
+export type AchievementTone = 'positive' | 'warning' | 'negative';
+
+export interface AchievementDefinition {
+  key: string;
+  title: string;
+  description: string;
+  tone: AchievementTone;
+  icon: string;
+}
+
+export interface EarnedAchievement extends AchievementDefinition {
+  earned: boolean;
+  progressText?: string;
+}
+
+export interface UserGamificationProfile {
+  userId: string;
+  userName: string;
+  role: Role;
+  loginStreak: number;
+  loggingStreak: number;
+  bestLoginStreak: number;
+  bestLoggingStreak: number;
+  detailedDescriptions: number;
+  perfectMonths: number;
+  timelyApprovals: number;
+  strictRejections: number;
+  negativeAchievements: number;
+  achievements: EarnedAchievement[];
+  score: number;
+}
+
 export const HOURS_PER_DAY = 8.8; // 8h48m = 8.8 horas
 
 // interfaces de mock
