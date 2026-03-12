@@ -50,6 +50,7 @@ export const AchievementsHub: React.FC = () => {
   const loginLeaders = [...profiles].sort((a, b) => b.bestLoginStreak - a.bestLoginStreak).slice(0, 5);
   const loggingLeaders = [...profiles].sort((a, b) => b.bestLoggingStreak - a.bestLoggingStreak).slice(0, 5);
   const currentRank = currentUserProfile ? profiles.findIndex((profile) => profile.userId === currentUserProfile.userId) + 1 : null;
+  const earnedAchievements = currentUserProfile?.achievements.filter((achievement) => achievement.earned) || [];
 
   return (
     <div className="space-y-8">
@@ -108,20 +109,18 @@ export const AchievementsHub: React.FC = () => {
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
           <div className="p-5 border-b border-slate-100">
             <h2 className="text-lg font-bold text-slate-800">Suas conquistas</h2>
-            <p className="text-sm text-slate-500 mt-1">As boas, as engraçadas e as que dão vontade de melhorar.</p>
+            <p className="text-sm text-slate-500 mt-1">Aqui só aparecem as que você já desbloqueou. O resto continua escondido como easter egg.</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 p-5">
-            {currentUserProfile.achievements.map((achievement) => (
+            {earnedAchievements.map((achievement) => (
               <div
                 key={achievement.key}
                 className={`rounded-xl border p-4 ${
-                  achievement.earned
-                    ? achievement.tone === 'negative'
-                      ? 'border-red-200 bg-red-50'
-                      : achievement.tone === 'warning'
-                        ? 'border-amber-200 bg-amber-50'
-                        : 'border-emerald-200 bg-emerald-50'
-                    : 'border-slate-200 bg-slate-50 opacity-70'
+                  achievement.tone === 'negative'
+                    ? 'border-red-200 bg-red-50'
+                    : achievement.tone === 'warning'
+                      ? 'border-amber-200 bg-amber-50'
+                      : 'border-emerald-200 bg-emerald-50'
                 }`}
               >
                 <div className="flex items-start justify-between gap-3">
@@ -129,13 +128,21 @@ export const AchievementsHub: React.FC = () => {
                     <p className="font-bold text-slate-800">{achievement.title}</p>
                     <p className="text-sm text-slate-600 mt-1">{achievement.description}</p>
                   </div>
-                  <span className="text-xs font-bold uppercase text-slate-500">{achievement.earned ? 'Conquistada' : 'Em progresso'}</span>
+                  <div className="text-right">
+                    <span className="text-xs font-bold uppercase text-slate-500">Conquistada</span>
+                    <p className="text-sm font-bold text-slate-800 mt-2">x{achievement.earnedCount}</p>
+                  </div>
                 </div>
                 {achievement.progressText && (
                   <p className="text-xs text-slate-500 mt-3">{achievement.progressText}</p>
                 )}
               </div>
             ))}
+            {earnedAchievements.length === 0 && (
+              <div className="md:col-span-2 xl:col-span-3 rounded-xl border border-dashed border-slate-200 bg-slate-50 p-6 text-sm text-slate-500">
+                Ainda não apareceu nenhuma conquista por aqui. Quando a primeira cair, ela já aparece neste painel.
+              </div>
+            )}
           </div>
         </div>
       )}

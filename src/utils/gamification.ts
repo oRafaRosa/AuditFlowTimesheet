@@ -16,15 +16,21 @@ import { buildCalendarMaps, isExpectedWorkingDay, listPendingDaysForMonth } from
 const ACHIEVEMENTS: AchievementDefinition[] = [
   { key: 'login_5', title: 'Ritmo em Dia', description: 'Entrou no app por 5 dias úteis seguidos.', tone: 'positive', icon: 'flame' },
   { key: 'login_20', title: 'Presença de Ferro', description: 'Segurou 20 dias úteis seguidos de acesso.', tone: 'positive', icon: 'calendar' },
+  { key: 'login_60', title: 'Ponto Biométrico', description: 'Transformou login em ritual e manteve 60 dias úteis seguidos.', tone: 'positive', icon: 'fingerprint' },
   { key: 'logging_5', title: 'Lançamento no Capricho', description: 'Lançou horas no próprio dia por 5 dias úteis seguidos.', tone: 'positive', icon: 'clock-3' },
   { key: 'logging_15', title: 'Relógio Suíço', description: 'Manteve 15 dias úteis seguidos com lançamento no dia certo.', tone: 'positive', icon: 'timer' },
+  { key: 'logging_30', title: 'Modo Cravado', description: 'Segurou 30 dias úteis seguidos lançando no dia certo.', tone: 'positive', icon: 'target' },
   { key: 'detailed_10', title: 'Cronista do Projeto', description: 'Acumulou 10 lançamentos com descrição realmente detalhada.', tone: 'positive', icon: 'scroll-text' },
   { key: 'detailed_30', title: 'Memória Viva', description: 'Chegou a 30 lançamentos com descrição boa de verdade.', tone: 'positive', icon: 'book-text' },
+  { key: 'detailed_60', title: 'Ata Notarial', description: 'Passou de 60 lançamentos bem escritos, daqueles que ninguém precisa adivinhar.', tone: 'positive', icon: 'notebook-text' },
   { key: 'perfect_month', title: 'Mês Perfeito', description: 'Fechou um mês aprovado, sem buracos e sem gambiarra de descrição.', tone: 'positive', icon: 'sparkles' },
+  { key: 'timely_submitter', title: 'Virou o Mês, Enviou', description: 'Enviou o timesheet cedo no mês seguinte, sem deixar virar novela.', tone: 'positive', icon: 'send' },
+  { key: 'quick_recovery', title: 'Volta por Cima', description: 'Recebeu devolução, ajustou rápido e reenviou sem drama.', tone: 'positive', icon: 'undo-2' },
   { key: 'timely_manager', title: 'Gestor Relâmpago', description: 'Aprovou pelo menos 3 timesheets em até 2 dias.', tone: 'positive', icon: 'zap' },
   { key: 'strict_manager', title: 'Gestor Exigente', description: 'Já devolveu 3 períodos para ajuste quando precisava.', tone: 'positive', icon: 'shield-alert' },
   { key: 'late_manager', title: 'Deixou Esfriar', description: 'Demorou demais para decidir vários períodos da equipe.', tone: 'negative', icon: 'hourglass' },
   { key: 'lazy_batch', title: 'Preguiçoso do Fechamento', description: 'Empurrou lançamentos demais para o fim do mês.', tone: 'negative', icon: 'bed' },
+  { key: 'firefighter', title: 'Apagador de Incêndio', description: 'Acumulou lançamentos atrasados demais e viveu corrigindo o passado.', tone: 'negative', icon: 'flame-kindling' },
   { key: 'copy_paste', title: 'Sem Criatividade', description: 'Repetiu descrição demais nos lançamentos.', tone: 'negative', icon: 'copy' },
   { key: 'rubinho', title: 'Rubinho Barrichello', description: 'Mandou o timesheet muito tarde, já no dia 10 ou depois do mês seguinte.', tone: 'negative', icon: 'turtle' }
 ];
@@ -186,6 +192,50 @@ const countLateSubmissions = (events: TimesheetPeriodEvent[]) =>
     return occurredAt.getTime() >= deadline.getTime();
   }).length;
 
+const countTimelySubmissions = (events: TimesheetPeriodEvent[]) =>
+  events.filter((event) => {
+    if (event.eventType !== 'SUBMITTED') return false;
+
+    const occurredAt = new Date(event.occurredAt);
+    const deadline = new Date(event.year, event.month + 1, 4, 0, 0, 0, 0);
+    return occurredAt.getTime() < deadline.getTime();
+  }).length;
+
+const countQuickRecoveries = (events: TimesheetPeriodEvent[]) => {
+  const eventsByPeriod = new Map<string, TimesheetPeriodEvent[]>();
+
+  events.forEach((event) => {
+    if (!event.periodId) return;
+    const list = eventsByPeriod.get(event.periodId) || [];
+    list.push(event);
+    eventsByPeriod.set(event.periodId, list);
+  });
+
+  let recoveries = 0;
+
+  eventsByPeriod.forEach((periodEvents) => {
+    const sorted = [...periodEvents].sort((a, b) => new Date(a.occurredAt).getTime() - new Date(b.occurredAt).getTime());
+
+    for (let index = 0; index < sorted.length; index += 1) {
+      const event = sorted[index];
+      if (event.eventType !== 'REJECTED') continue;
+
+      const nextSubmission = sorted.slice(index + 1).find((candidate) => candidate.eventType === 'SUBMITTED');
+      if (!nextSubmission) continue;
+
+      const elapsedDays = (new Date(nextSubmission.occurredAt).getTime() - new Date(event.occurredAt).getTime()) / (1000 * 60 * 60 * 24);
+      if (elapsedDays <= 2) {
+        recoveries += 1;
+      }
+    }
+  });
+
+  return recoveries;
+};
+
+const countBackfilledEntries = (entries: TimesheetEntry[]) =>
+  entries.filter((entry) => getCreatedDate(entry) > entry.date).length;
+
 const countPerfectMonths = (
   periods: TimesheetPeriod[],
   entries: TimesheetEntry[],
@@ -237,63 +287,88 @@ const buildAchievements = (
   slowApprovals: number,
   lazyBatchMonths: number,
   copyPasteRatio: number,
-  lateSubmissions: number
+  lateSubmissions: number,
+  backfilledEntries: number
 ) => {
   const earned: EarnedAchievement[] = ACHIEVEMENTS.map((definition) => {
-    let match = false;
+    let earnedCount = 0;
     let progressText = '';
 
     switch (definition.key) {
       case 'login_5':
-        match = profile.bestLoginStreak >= 5;
+        earnedCount = Math.floor(profile.bestLoginStreak / 5);
         progressText = `${profile.bestLoginStreak}/5 dias úteis`;
         break;
       case 'login_20':
-        match = profile.bestLoginStreak >= 20;
+        earnedCount = Math.floor(profile.bestLoginStreak / 20);
         progressText = `${profile.bestLoginStreak}/20 dias úteis`;
         break;
+      case 'login_60':
+        earnedCount = Math.floor(profile.bestLoginStreak / 60);
+        progressText = `${profile.bestLoginStreak}/60 dias úteis`;
+        break;
       case 'logging_5':
-        match = profile.bestLoggingStreak >= 5;
+        earnedCount = Math.floor(profile.bestLoggingStreak / 5);
         progressText = `${profile.bestLoggingStreak}/5 dias úteis`;
         break;
       case 'logging_15':
-        match = profile.bestLoggingStreak >= 15;
+        earnedCount = Math.floor(profile.bestLoggingStreak / 15);
         progressText = `${profile.bestLoggingStreak}/15 dias úteis`;
         break;
+      case 'logging_30':
+        earnedCount = Math.floor(profile.bestLoggingStreak / 30);
+        progressText = `${profile.bestLoggingStreak}/30 dias úteis`;
+        break;
       case 'detailed_10':
-        match = profile.detailedDescriptions >= 10;
+        earnedCount = Math.floor(profile.detailedDescriptions / 10);
         progressText = `${profile.detailedDescriptions}/10 lançamentos`;
         break;
       case 'detailed_30':
-        match = profile.detailedDescriptions >= 30;
+        earnedCount = Math.floor(profile.detailedDescriptions / 30);
         progressText = `${profile.detailedDescriptions}/30 lançamentos`;
         break;
+      case 'detailed_60':
+        earnedCount = Math.floor(profile.detailedDescriptions / 60);
+        progressText = `${profile.detailedDescriptions}/60 lançamentos`;
+        break;
       case 'perfect_month':
-        match = profile.perfectMonths >= 1;
+        earnedCount = profile.perfectMonths;
         progressText = `${profile.perfectMonths} mês(es) perfeitos`;
         break;
+      case 'timely_submitter':
+        earnedCount = profile.timelySubmissions;
+        progressText = `${profile.timelySubmissions} envio(s) cedo`;
+        break;
+      case 'quick_recovery':
+        earnedCount = profile.quickRecoveries;
+        progressText = `${profile.quickRecoveries} retomada(s) rápidas`;
+        break;
       case 'timely_manager':
-        match = profile.timelyApprovals >= 3;
+        earnedCount = Math.floor(profile.timelyApprovals / 3);
         progressText = `${profile.timelyApprovals}/3 aprovações rápidas`;
         break;
       case 'strict_manager':
-        match = profile.strictRejections >= 3;
+        earnedCount = Math.floor(profile.strictRejections / 3);
         progressText = `${profile.strictRejections}/3 devoluções`;
         break;
       case 'late_manager':
-        match = slowApprovals >= 3;
+        earnedCount = Math.floor(slowApprovals / 3);
         progressText = `${slowApprovals} decisões demoradas`;
         break;
       case 'lazy_batch':
-        match = lazyBatchMonths >= 1;
+        earnedCount = lazyBatchMonths;
         progressText = `${lazyBatchMonths} mês(es) correndo no fim`;
         break;
+      case 'firefighter':
+        earnedCount = Math.floor(backfilledEntries / 15);
+        progressText = `${backfilledEntries} lançamentos atrasados`;
+        break;
       case 'copy_paste':
-        match = copyPasteRatio >= 0.6;
+        earnedCount = copyPasteRatio >= 0.6 ? Math.max(1, Math.round(copyPasteRatio * 10) - 5) : 0;
         progressText = `${Math.round(copyPasteRatio * 100)}% das descrições repetidas`;
         break;
       case 'rubinho':
-        match = lateSubmissions >= 1;
+        earnedCount = lateSubmissions;
         progressText = `${lateSubmissions} envio(s) depois do dia 10`;
         break;
       default:
@@ -302,7 +377,8 @@ const buildAchievements = (
 
     return {
       ...definition,
-      earned: match,
+      earned: earnedCount > 0,
+      earnedCount,
       progressText
     };
   });
@@ -313,7 +389,7 @@ const buildAchievements = (
 const scoreAchievements = (achievements: EarnedAchievement[]) =>
   achievements.reduce((acc, achievement) => {
     if (!achievement.earned) return acc;
-    return acc + (achievement.tone === 'negative' ? -8 : 20);
+    return acc + ((achievement.tone === 'negative' ? -8 : 20) * achievement.earnedCount);
   }, 0);
 
 export const buildGamificationProfiles = ({
@@ -373,6 +449,9 @@ export const buildGamificationProfiles = ({
       const perfectMonths = countPerfectMonths(userPeriods, userEntries, maps.holidayMap, maps.offdayMap, maps.workdayMap);
       const lazyBatchMonths = detectLazyBatchMonths(userEntries);
       const lateSubmissions = countLateSubmissions(userEvents.filter((event) => event.userId === user.id));
+      const timelySubmissions = countTimelySubmissions(userEvents.filter((event) => event.userId === user.id));
+      const quickRecoveries = countQuickRecoveries(userEvents.filter((event) => event.userId === user.id));
+      const backfilledEntries = countBackfilledEntries(userEntries);
       const { timelyApprovals, strictRejections, slowApprovals } = countManagerMetrics(
         userEvents.filter((event) => event.managerId === user.id || event.actorUserId === user.id)
       );
@@ -387,18 +466,22 @@ export const buildGamificationProfiles = ({
         bestLoggingStreak: loggingStreakStats.best,
         detailedDescriptions,
         perfectMonths,
+        timelySubmissions,
+        quickRecoveries,
         timelyApprovals,
         strictRejections,
         negativeAchievements: 0
       };
 
-      const achievements = buildAchievements(baseProfile, slowApprovals, lazyBatchMonths, copyPasteRatio, lateSubmissions);
+      const achievements = buildAchievements(baseProfile, slowApprovals, lazyBatchMonths, copyPasteRatio, lateSubmissions, backfilledEntries);
       const negativeAchievements = achievements.filter((achievement) => achievement.earned && achievement.tone === 'negative').length;
       const score = scoreAchievements(achievements)
         + baseProfile.bestLoginStreak
         + baseProfile.bestLoggingStreak
         + (baseProfile.detailedDescriptions * 2)
         + (baseProfile.perfectMonths * 25)
+        + (baseProfile.timelySubmissions * 3)
+        + (baseProfile.quickRecoveries * 4)
         + (baseProfile.timelyApprovals * 4)
         + (baseProfile.strictRejections * 3)
         - (negativeAchievements * 6);

@@ -113,6 +113,7 @@ export interface AchievementDefinition {
 
 export interface EarnedAchievement extends AchievementDefinition {
   earned: boolean;
+  earnedCount: number;
   progressText?: string;
 }
 
@@ -126,6 +127,8 @@ export interface UserGamificationProfile {
   bestLoggingStreak: number;
   detailedDescriptions: number;
   perfectMonths: number;
+  timelySubmissions: number;
+  quickRecoveries: number;
   timelyApprovals: number;
   strictRejections: number;
   negativeAchievements: number;
