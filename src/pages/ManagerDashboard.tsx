@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { store } from '../services/store';
 import { User, Project, TimesheetEntry, TimesheetPeriod, formatHours, formatPercentage } from '../types';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, Cell } from 'recharts';
-import { Download, AlertCircle, Loader2, CheckCircle, XCircle, ArrowRight, Search, Clock, Calendar, Briefcase, FileText, TrendingUp, Info, X } from 'lucide-react';
+import { Download, AlertCircle, Loader2, CheckCircle, XCircle, ArrowRight, Search, Clock, Calendar, Briefcase, FileText, TrendingUp, Info, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { MyStatusWidget } from '../components/MyStatusWidget';
 import { ManagerProjectBudget } from './ManagerProjectBudget';
 import { formatDateForDisplay, formatLocalDate, parseDateOnly } from '../utils/date';
@@ -27,6 +27,8 @@ export const ManagerDashboard: React.FC = () => {
   const [projectBudgets, setProjectBudgets] = useState<any[]>([]);
   const [pendingApprovals, setPendingApprovals] = useState<TimesheetPeriod[]>([]);
   const [teamPeriodBacklog, setTeamPeriodBacklog] = useState<TeamPeriodBacklogItem[]>([]);
+  const [showBacklogDetails, setShowBacklogDetails] = useState(false);
+  const [showTeamAlertsDetails, setShowTeamAlertsDetails] = useState(false);
   const [loading, setLoading] = useState(true);
 
     // --- estado do modal de revisão ---
@@ -335,6 +337,8 @@ export const ManagerDashboard: React.FC = () => {
     const previousMonthOpen = teamPeriodBacklog.filter(period => period.status === 'OPEN');
     const previousMonthSubmitted = teamPeriodBacklog.filter(period => period.status === 'SUBMITTED');
     const previousMonthRejected = teamPeriodBacklog.filter(period => period.status === 'REJECTED');
+    const pendingAlerts = teamStats.filter(s => s.divergence < -10);
+    const excessAlerts = teamStats.filter(s => s.divergence > 10);
 
     return (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -444,121 +448,182 @@ export const ManagerDashboard: React.FC = () => {
             )}
 
             <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
-                <div className="p-5 border-b border-slate-100 bg-slate-50">
-                    <h3 className="font-bold text-slate-800">Pendências de Meses Anteriores</h3>
-                    <p className="text-sm text-slate-500 mt-1">
-                        Aqui fica tudo que já deveria estar resolvido: mês não enviado, devolvido ou ainda parado em aprovação.
-                    </p>
-                </div>
+                <button
+                    type="button"
+                    onClick={() => setShowBacklogDetails(prev => !prev)}
+                    className="w-full p-5 text-left hover:bg-slate-50 transition-colors"
+                >
+                    <div className="flex items-start justify-between gap-4">
+                        <div>
+                            <h3 className="font-bold text-slate-800">Backlog de Meses Anteriores</h3>
+                            <p className="text-sm text-slate-500 mt-1">
+                                Resumo do que ficou para trás sem despejar uma lista gigante logo na sua cara.
+                            </p>
+                        </div>
+                        <div className="text-slate-400 mt-1">
+                            {showBacklogDetails ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                        </div>
+                    </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-5 border-b border-slate-100">
-                    <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
-                        <p className="text-xs font-bold uppercase text-amber-700">Não Enviados</p>
-                        <p className="text-2xl font-bold text-amber-900 mt-1">{previousMonthOpen.length}</p>
-                        <p className="text-xs text-amber-700 mt-1">Mês anterior fechado, mas ainda sem submissão</p>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+                            <p className="text-xs font-bold uppercase text-amber-700">Não Enviados</p>
+                            <p className="text-2xl font-bold text-amber-900 mt-1">{previousMonthOpen.length}</p>
+                        </div>
+                        <div className="rounded-xl border border-brand-200 bg-brand-50 p-4">
+                            <p className="text-xs font-bold uppercase text-brand-700">Aguardando Aprovação</p>
+                            <p className="text-2xl font-bold text-brand-900 mt-1">{previousMonthSubmitted.length}</p>
+                        </div>
+                        <div className="rounded-xl border border-red-200 bg-red-50 p-4">
+                            <p className="text-xs font-bold uppercase text-red-700">Devolvidos</p>
+                            <p className="text-2xl font-bold text-red-900 mt-1">{previousMonthRejected.length}</p>
+                        </div>
                     </div>
-                    <div className="rounded-xl border border-brand-200 bg-brand-50 p-4">
-                        <p className="text-xs font-bold uppercase text-brand-700">Aguardando Aprovação</p>
-                        <p className="text-2xl font-bold text-brand-900 mt-1">{previousMonthSubmitted.length}</p>
-                        <p className="text-xs text-brand-700 mt-1">Já chegaram no gestor, mas ainda não foram aprovados</p>
-                    </div>
-                    <div className="rounded-xl border border-red-200 bg-red-50 p-4">
-                        <p className="text-xs font-bold uppercase text-red-700">Devolvidos</p>
-                        <p className="text-2xl font-bold text-red-900 mt-1">{previousMonthRejected.length}</p>
-                        <p className="text-xs text-red-700 mt-1">Períodos que voltaram para ajuste e seguem pendentes</p>
-                    </div>
-                </div>
+                </button>
 
-                {teamPeriodBacklog.length > 0 ? (
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left text-sm">
-                            <thead className="bg-white text-slate-500 font-semibold border-b border-gray-100">
-                                <tr>
-                                    <th className="px-6 py-3">Colaborador</th>
-                                    <th className="px-6 py-3">Período</th>
-                                    <th className="px-6 py-3">Status</th>
-                                    <th className="px-6 py-3 text-right">Ação</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                                {teamPeriodBacklog.map((period) => (
-                                    <tr key={`${period.userId}-${period.year}-${period.month}-${period.status}`} className="hover:bg-slate-50">
-                                        <td className="px-6 py-4">
-                                            <div className="font-medium text-slate-800">{period.userName}</div>
-                                        </td>
-                                        <td className="px-6 py-4 font-medium text-slate-600">
-                                            {new Date(period.year, period.month, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }).toUpperCase()}
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <span className={`px-2 py-1 rounded text-xs font-bold ${
-                                              period.status === 'SUBMITTED'
-                                                ? 'bg-brand-100 text-brand-700'
-                                                : period.status === 'REJECTED'
-                                                  ? 'bg-red-100 text-red-700'
-                                                  : 'bg-amber-100 text-amber-700'
-                                            }`}>
-                                                {period.status === 'SUBMITTED' ? 'AGUARDANDO APROVAÇÃO' : period.status === 'REJECTED' ? 'DEVOLVIDO' : 'NÃO ENVIADO'}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 text-right">
-                                            {period.status === 'SUBMITTED' ? (
-                                                <button
-                                                    onClick={() => openReviewModal(period)}
-                                                    className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-brand-700"
-                                                >
-                                                    Analisar
-                                                </button>
-                                            ) : (
-                                                <button
-                                                    onClick={() => openPeriodDetails(period)}
-                                                    className="border border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm font-bold hover:bg-slate-50"
-                                                >
-                                                    Ver Detalhes
-                                                </button>
-                                            )}
-                                        </td>
+                {showBacklogDetails && (
+                    teamPeriodBacklog.length > 0 ? (
+                        <div className="border-t border-slate-100 overflow-x-auto">
+                            <table className="w-full text-left text-sm">
+                                <thead className="bg-white text-slate-500 font-semibold border-b border-gray-100">
+                                    <tr>
+                                        <th className="px-6 py-3">Colaborador</th>
+                                        <th className="px-6 py-3">Período</th>
+                                        <th className="px-6 py-3">Status</th>
+                                        <th className="px-6 py-3 text-right">Ação</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                ) : (
-                    <div className="p-8 text-center text-slate-500">
-                        Nenhum mês anterior pendente. O backlog da equipe está limpo.
-                    </div>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                    {teamPeriodBacklog.map((period) => (
+                                        <tr key={`${period.userId}-${period.year}-${period.month}-${period.status}`} className="hover:bg-slate-50">
+                                            <td className="px-6 py-4">
+                                                <div className="font-medium text-slate-800">{period.userName}</div>
+                                            </td>
+                                            <td className="px-6 py-4 font-medium text-slate-600">
+                                                {new Date(period.year, period.month, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }).toUpperCase()}
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <span className={`px-2 py-1 rounded text-xs font-bold ${
+                                                  period.status === 'SUBMITTED'
+                                                    ? 'bg-brand-100 text-brand-700'
+                                                    : period.status === 'REJECTED'
+                                                      ? 'bg-red-100 text-red-700'
+                                                      : 'bg-amber-100 text-amber-700'
+                                                }`}>
+                                                    {period.status === 'SUBMITTED' ? 'AGUARDANDO APROVAÇÃO' : period.status === 'REJECTED' ? 'DEVOLVIDO' : 'NÃO ENVIADO'}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 text-right">
+                                                {period.status === 'SUBMITTED' ? (
+                                                    <button
+                                                        onClick={() => openReviewModal(period)}
+                                                        className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-brand-700"
+                                                    >
+                                                        Analisar
+                                                    </button>
+                                                ) : (
+                                                    <button
+                                                        onClick={() => openPeriodDetails(period)}
+                                                        className="border border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm font-bold hover:bg-slate-50"
+                                                    >
+                                                        Ver Detalhes
+                                                    </button>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    ) : (
+                        <div className="border-t border-slate-100 p-8 text-center text-slate-500">
+                            Nenhum mês anterior pendente. O backlog da equipe está limpo.
+                        </div>
+                    )
                 )}
             </div>
 
-            {/* alertas de divergência */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {teamStats.filter(s => s.divergence < -10).map((s, idx) => (
-                    <div key={idx} className="bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg flex items-start gap-3">
-                        <AlertCircle className="text-red-500 shrink-0" size={20} />
-                        <div onClick={() => navigate(`/manager/reports?userId=${s.id}`)} className="cursor-pointer group">
-                            <p className="font-bold text-red-900 text-sm group-hover:underline flex items-center gap-2">
-                                {s.name}
-                                {s.isDelegated && (
-                                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200">Delegada</span>
-                                )}
+            <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+                <button
+                    type="button"
+                    onClick={() => setShowTeamAlertsDetails(prev => !prev)}
+                    className="w-full p-5 text-left hover:bg-slate-50 transition-colors"
+                >
+                    <div className="flex items-start justify-between gap-4">
+                        <div>
+                            <h3 className="font-bold text-slate-800">Alertas da Equipe</h3>
+                            <p className="text-sm text-slate-500 mt-1">
+                                Pendência e excesso do mês atual agrupados em um resumo só.
                             </p>
-                            <p className="text-xs text-red-700">Pendente: {formatHours(Math.abs(s.divergence))}h</p>
+                        </div>
+                        <div className="text-slate-400 mt-1">
+                            {showTeamAlertsDetails ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
                         </div>
                     </div>
-                ))}
-                {teamStats.filter(s => s.divergence > 10).map((s, idx) => (
-                    <div key={idx} className="bg-yellow-50 border-l-4 border-yellow-500 p-4 rounded-r-lg flex items-start gap-3">
-                        <AlertCircle className="text-yellow-600 shrink-0" size={20} />
-                        <div onClick={() => navigate(`/manager/reports?userId=${s.id}`)} className="cursor-pointer group">
-                            <p className="font-bold text-yellow-900 text-sm group-hover:underline flex items-center gap-2">
-                                {s.name}
-                                {s.isDelegated && (
-                                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200">Delegada</span>
-                                )}
-                            </p>
-                            <p className="text-xs text-yellow-700">Excesso: {formatHours(s.divergence)}h</p>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                        <div className="rounded-xl border border-red-200 bg-red-50 p-4">
+                            <p className="text-xs font-bold uppercase text-red-700">Com Pendência Alta</p>
+                            <p className="text-2xl font-bold text-red-900 mt-1">{pendingAlerts.length}</p>
+                        </div>
+                        <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-4">
+                            <p className="text-xs font-bold uppercase text-yellow-700">Com Excesso</p>
+                            <p className="text-2xl font-bold text-yellow-900 mt-1">{excessAlerts.length}</p>
                         </div>
                     </div>
-                ))}
+                </button>
+
+                {showTeamAlertsDetails && (
+                    <div className="border-t border-slate-100 p-5 space-y-5">
+                        <div>
+                            <h4 className="text-sm font-bold text-red-800 uppercase tracking-wide mb-3">Pendência Alta</h4>
+                            {pendingAlerts.length > 0 ? (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {pendingAlerts.map((s) => (
+                                        <div key={s.id} className="bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg flex items-start gap-3">
+                                            <AlertCircle className="text-red-500 shrink-0" size={20} />
+                                            <div onClick={() => navigate(`/manager/reports?userId=${s.id}`)} className="cursor-pointer group">
+                                                <p className="font-bold text-red-900 text-sm group-hover:underline flex items-center gap-2">
+                                                    {s.name}
+                                                    {s.isDelegated && (
+                                                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200">Delegada</span>
+                                                    )}
+                                                </p>
+                                                <p className="text-xs text-red-700">Pendente: {formatHours(Math.abs(s.divergence))}h</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="text-sm text-slate-500">Ninguém com pendência alta no momento.</p>
+                            )}
+                        </div>
+
+                        <div>
+                            <h4 className="text-sm font-bold text-yellow-800 uppercase tracking-wide mb-3">Excesso de Horas</h4>
+                            {excessAlerts.length > 0 ? (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {excessAlerts.map((s) => (
+                                        <div key={s.id} className="bg-yellow-50 border-l-4 border-yellow-500 p-4 rounded-r-lg flex items-start gap-3">
+                                            <AlertCircle className="text-yellow-600 shrink-0" size={20} />
+                                            <div onClick={() => navigate(`/manager/reports?userId=${s.id}`)} className="cursor-pointer group">
+                                                <p className="font-bold text-yellow-900 text-sm group-hover:underline flex items-center gap-2">
+                                                    {s.name}
+                                                    {s.isDelegated && (
+                                                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200">Delegada</span>
+                                                    )}
+                                                </p>
+                                                <p className="text-xs text-yellow-700">Excesso: {formatHours(s.divergence)}h</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="text-sm text-slate-500">Ninguém com excesso relevante no momento.</p>
+                            )}
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* gráfico de horas do time */}
