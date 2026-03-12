@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, Link, useNavigate } from 'react-router-dom'; 
 import { store } from '../services/store';
 import { NotificationService } from '../services/notifications';
-import { formatHours, HOURS_PER_DAY } from '../types';
+import { EarnedAchievement, formatHours, HOURS_PER_DAY } from '../types';
 import { formatDateForDisplay, formatLocalDate, parseDateOnly } from '../utils/date';
 import { buildGamificationProfiles } from '../utils/gamification';
 import { buildCalendarMaps, isExpectedWorkingDay, listPendingDaysForMonth } from '../utils/workCalendar';
@@ -48,6 +48,10 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const [showNotificationPanel, setShowNotificationPanel] = useState(false);
   const [showNotificationsBlocked, setShowNotificationsBlocked] = useState(false);
   const [notificationPermission, setNotificationPermission] = useState<'default' | 'denied' | 'granted' | 'unsupported'>('default');
+  const [achievementCelebration, setAchievementCelebration] = useState<{
+    achievement: EarnedAchievement;
+    extraCount: number;
+  } | null>(null);
 
   // abre o modal sozinho se detectou senha padrão
   React.useEffect(() => {
@@ -335,6 +339,10 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                           ? 'Você acabou de destravar uma conquista nova. Dá uma olhada em Ranking & Conquistas.'
                           : `Você acabou de destravar ${newAchievements.length} conquistas. Dá uma olhada em Ranking & Conquistas.`;
                         alerts.push(msg);
+                        setAchievementCelebration({
+                          achievement: newAchievements[0],
+                          extraCount: Math.max(0, newAchievements.length - 1)
+                        });
 
                         const achievementEventKey = `last_achievement_event_${user.id}`;
                         const lastAchievementNotify = localStorage.getItem(achievementEventKey);
@@ -437,10 +445,69 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       }
   };
 
-    const handleDismissNotificationsPrompt = () => {
+  const handleDismissNotificationsPrompt = () => {
       localStorage.setItem('last_notif_prompt', String(Date.now()));
       setShowNotificationsBlocked(false);
     };
+
+  const handleDownloadAchievementCard = () => {
+    if (!achievementCelebration || !user) return;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 1200;
+    canvas.height = 630;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+    gradient.addColorStop(0, '#0f2f7f');
+    gradient.addColorStop(1, '#1d4ed8');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.fillStyle = 'rgba(255,255,255,0.08)';
+    ctx.fillRect(70, 70, 1060, 490);
+    ctx.fillStyle = 'rgba(255,255,255,0.12)';
+    ctx.beginPath();
+    ctx.arc(1000, 120, 130, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '700 34px Arial';
+    ctx.fillText('AuditFlow', 110, 130);
+
+    ctx.font = '600 22px Arial';
+    ctx.fillStyle = '#dbeafe';
+    ctx.fillText('Nova conquista desbloqueada', 110, 180);
+
+    ctx.font = '700 58px Arial';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(achievementCelebration.achievement.title, 110, 280);
+
+    ctx.font = '400 28px Arial';
+    ctx.fillStyle = '#dbeafe';
+    ctx.fillText(user.name, 110, 332);
+
+    ctx.font = '400 24px Arial';
+    ctx.fillText(achievementCelebration.achievement.description, 110, 400);
+
+    const footerText = achievementCelebration.extraCount > 0
+      ? `E ainda vieram mais ${achievementCelebration.extraCount} conquista(s) nessa rodada.`
+      : 'Compartilhe no grupo do Teams e espalhe a moral do dia.';
+
+    ctx.fillText(footerText, 110, 445);
+
+    ctx.fillStyle = 'rgba(255,255,255,0.18)';
+    ctx.fillRect(110, 492, 470, 58);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '600 22px Arial';
+    ctx.fillText('Pronto para compartilhar no Teams', 136, 530);
+
+    const link = document.createElement('a');
+    link.href = canvas.toDataURL('image/png');
+    link.download = `auditflow-conquista-${achievementCelebration.achievement.key}.png`;
+    link.click();
+  };
 
   const handleChangePassword = async (e: React.FormEvent) => {
       e.preventDefault();
@@ -671,6 +738,75 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                     </div>
                </div>
           </div>
+      )}
+
+      {achievementCelebration && (
+        <div className="fixed inset-0 z-[65] flex items-center justify-center bg-slate-950/60 p-4">
+          <div className="w-full max-w-lg rounded-3xl bg-white shadow-2xl border border-slate-100 overflow-hidden">
+            <div className="bg-gradient-to-r from-brand-900 to-brand-700 px-6 py-5 text-white">
+              <p className="text-xs font-bold uppercase tracking-[0.22em] text-brand-100">Conquista desbloqueada</p>
+              <h2 className="text-2xl font-bold mt-2">{achievementCelebration.achievement.title}</h2>
+              <p className="text-sm text-brand-100 mt-2">
+                O AuditFlow achou justo parar tudo para registrar esse momento.
+              </p>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div className={`rounded-2xl border p-4 ${
+                achievementCelebration.achievement.tone === 'negative'
+                  ? 'border-red-200 bg-red-50'
+                  : 'border-emerald-200 bg-emerald-50'
+              }`}>
+                <p className="font-bold text-slate-800">{achievementCelebration.achievement.title}</p>
+                <p className="text-sm text-slate-600 mt-2">{achievementCelebration.achievement.description}</p>
+                {achievementCelebration.achievement.progressText && (
+                  <p className="text-xs text-slate-500 mt-3">{achievementCelebration.achievement.progressText}</p>
+                )}
+              </div>
+
+              {achievementCelebration.extraCount > 0 && (
+                <p className="text-sm text-slate-500">
+                  Veio combo: mais {achievementCelebration.extraCount} conquista(s) também entraram nessa rodada.
+                </p>
+              )}
+
+              <div className="rounded-2xl border border-brand-100 bg-brand-50 p-4">
+                <p className="text-sm font-semibold text-brand-900">Compartilhe com os colegas no Teams</p>
+                <p className="text-sm text-brand-800 mt-1">
+                  Se quiser, baixe uma imagem e mande no grupo para celebrar a nova conquista.
+                </p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  type="button"
+                  onClick={handleDownloadAchievementCard}
+                  className="flex-1 rounded-xl bg-brand-600 text-white px-4 py-3 text-sm font-semibold hover:bg-brand-700 transition-colors"
+                >
+                  Baixar imagem
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAchievementCelebration(null);
+                    navigate('/achievements');
+                  }}
+                  className="flex-1 rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                >
+                  Ver ranking
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setAchievementCelebration(null)}
+                className="w-full text-sm text-slate-500 hover:text-slate-700 transition-colors"
+              >
+                Fechar por enquanto
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
           {/* pop-up incisivo pra liberar notificação */}
