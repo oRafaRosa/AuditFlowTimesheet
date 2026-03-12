@@ -21,7 +21,7 @@ export const AdminDashboard: React.FC = () => {
 
     // estado de usuários
   const [editingUser, setEditingUser] = useState<User | null>(null);
-  const [userData, setUserData] = useState({ name: '', email: '', role: 'USER' as any, managerId: '' });
+  const [userData, setUserData] = useState({ name: '', email: '', role: 'USER' as any, managerId: '', isActive: true });
 
     // estado de projetos
   const [editingProject, setEditingProject] = useState<Project | null>(null);
@@ -89,12 +89,12 @@ export const AdminDashboard: React.FC = () => {
     // --- handlers de usuário ---
   const handleEditUserClick = (u: User) => {
       setEditingUser(u);
-      setUserData({ name: u.name, email: u.email, role: u.role, managerId: u.managerId || '' });
+      setUserData({ name: u.name, email: u.email, role: u.role, managerId: u.managerId || '', isActive: u.isActive !== false });
   };
 
   const handleCancelEditUser = () => {
       setEditingUser(null);
-      setUserData({ name: '', email: '', role: 'USER', managerId: '' });
+      setUserData({ name: '', email: '', role: 'USER', managerId: '', isActive: true });
   };
 
   const handleSaveUser = async (e: React.FormEvent) => {
@@ -108,7 +108,7 @@ export const AdminDashboard: React.FC = () => {
             avatarUrl: `https://ui-avatars.com/api/?name=${userData.name}` 
         });
     }
-    setUserData({ name: '', email: '', role: 'USER', managerId: '' });
+    setUserData({ name: '', email: '', role: 'USER', managerId: '', isActive: true });
     refreshData();
   };
 
@@ -195,7 +195,7 @@ export const AdminDashboard: React.FC = () => {
 
 
     // helpers
-  const managers = users.filter(u => u.role === 'MANAGER' || u.role === 'ADMIN');
+  const managers = users.filter(u => (u.role === 'MANAGER' || u.role === 'ADMIN') && u.isActive !== false);
   const getManagerName = (id?: string) => users.find(u => u.id === id)?.name || '-';
   const getUserName = (id: string) => users.find(u => u.id === id)?.name || 'Desconhecido';
   const getProjectName = (id: string) => projects.find(p => p.id === id)?.name || 'Desconhecido';
@@ -253,7 +253,7 @@ export const AdminDashboard: React.FC = () => {
                           </thead>
                           <tbody className="divide-y divide-gray-100">
                               {users.map(u => (
-                                  <tr key={u.id} className="hover:bg-slate-50">
+                                  <tr key={u.id} className={u.isActive === false ? 'bg-slate-50 opacity-60' : 'hover:bg-slate-50'}>
                                       <td className="px-6 py-3 flex items-center gap-2">
                                           <img src={u.avatarUrl} className="w-6 h-6 rounded-full" />
                                           <div>
@@ -262,7 +262,14 @@ export const AdminDashboard: React.FC = () => {
                                           </div>
                                       </td>
                                       <td className="px-6 py-3 text-slate-600">{getManagerName(u.managerId)}</td>
-                                      <td className="px-6 py-3"><span className="bg-slate-100 px-2 py-1 rounded text-xs font-bold text-slate-600">{u.role}</span></td>
+                                      <td className="px-6 py-3">
+                                          <div className="flex items-center gap-2">
+                                              <span className="bg-slate-100 px-2 py-1 rounded text-xs font-bold text-slate-600">{u.role}</span>
+                                              <span className={`px-2 py-1 rounded text-[10px] font-bold ${u.isActive === false ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                                                  {u.isActive === false ? 'INATIVO' : 'ATIVO'}
+                                              </span>
+                                          </div>
+                                      </td>
                                       <td className="px-6 py-3 text-right">
                                           <button onClick={() => handleEditUserClick(u)} className="text-brand-600 hover:text-brand-800 p-1 rounded hover:bg-brand-50">
                                               <Edit size={16} />
@@ -302,6 +309,20 @@ export const AdminDashboard: React.FC = () => {
                                   <option key={m.id} value={m.id}>{m.name}</option>
                               ))}
                           </select>
+                      </div>
+                      <div>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                  type="checkbox"
+                                  checked={userData.isActive}
+                                  onChange={e => setUserData({...userData, isActive: e.target.checked})}
+                                  className="rounded text-brand-600"
+                              />
+                              <span className="text-sm font-medium text-slate-700">Usuário ativo</span>
+                          </label>
+                          <p className="text-[11px] text-slate-400 mt-1">
+                              Se desativar, ele perde acesso e deixa de aparecer nas pendências do gestor.
+                          </p>
                       </div>
                       <div className="flex gap-2 pt-2">
                           {editingUser && (

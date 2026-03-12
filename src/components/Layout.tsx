@@ -54,6 +54,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     // checa se o user bloqueou notificação e avisa (pop-up incisivo)
     useEffect(() => {
       if (!user) return;
+      if (user.isActive === false) return;
       if (!('Notification' in window)) {
         setNotificationPermission('unsupported');
         return;

@@ -60,7 +60,8 @@ export const ManagerDashboard: React.FC = () => {
     setCurrentUser(freshUserData);
     
         // checa se este gestor recebeu delegação de alguém
-        const delegatingManagers = allUsers.filter(u => u.delegatedManagerId === freshUserData.id);
+        const activeUsers = allUsers.filter(u => u.isActive !== false);
+        const delegatingManagers = activeUsers.filter(u => u.delegatedManagerId === freshUserData.id);
         if (delegatingManagers.length > 0) {
             setReceivedDelegation(delegatingManagers.map(m => m.name).join(', '));
         } else {
@@ -71,11 +72,11 @@ export const ManagerDashboard: React.FC = () => {
         let myTeam = [] as User[];
         let delegatedMemberIdSet = new Set<string>();
         if (freshUserData.role === 'ADMIN') {
-                myTeam = allUsers;
+                myTeam = activeUsers;
         } else {
-                const directTeam = allUsers.filter(u => u.managerId === freshUserData.id || u.id === freshUserData.id);
+                const directTeam = activeUsers.filter(u => u.managerId === freshUserData.id || u.id === freshUserData.id);
                 const delegatingManagerIds = new Set(delegatingManagers.map(m => m.id));
-                const delegatedMembers = allUsers.filter(u => u.managerId && delegatingManagerIds.has(u.managerId));
+                const delegatedMembers = activeUsers.filter(u => u.managerId && delegatingManagerIds.has(u.managerId));
                 delegatedMemberIdSet = new Set([
                         ...delegatingManagers.map(m => m.id),
                         ...delegatedMembers.map(m => m.id)
@@ -94,14 +95,14 @@ export const ManagerDashboard: React.FC = () => {
     ]);
     
     // carrega todos os gestores pro dropdown de delegação
-    const allManagersList = allUsers.filter(u => u.role === 'MANAGER' && u.id !== freshUserData.id);
+    const allManagersList = activeUsers.filter(u => u.role === 'MANAGER' && u.id !== freshUserData.id);
     setAllManagers(allManagersList);
     
     // cola nome nos pedidos de aprovação
     const approvalsWithNames = approvals.map(a => ({
         ...a,
-        userName: allUsers.find(u => u.id === a.userId)?.name || 'Desconhecido',
-        userAvatar: allUsers.find(u => u.id === a.userId)?.avatarUrl
+        userName: activeUsers.find(u => u.id === a.userId)?.name || 'Desconhecido',
+        userAvatar: activeUsers.find(u => u.id === a.userId)?.avatarUrl
     }));
     setPendingApprovals(approvalsWithNames);
 

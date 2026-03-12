@@ -66,9 +66,11 @@ export const ManagerProjectBudget: React.FC = () => {
       store.getUsers()
     ]);
 
+    const activeUsers = allUsers.filter(user => user.isActive !== false);
+
     setProjects(allProjects);
     setEntries(allEntries);
-    setUsers(allUsers);
+    setUsers(activeUsers);
 
     // calcula budget de todos os projetos, sem dó
     const budgetData = buildProjectData(allProjects, allEntries);

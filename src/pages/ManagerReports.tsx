@@ -40,7 +40,7 @@ export const ManagerReports: React.FC = () => {
     const currentUser = store.getCurrentUser();
     if (!currentUser) return;
 
-    const allUsers = await store.getUsers();
+    const allUsers = (await store.getUsers()).filter(u => u.isActive !== false);
     
     // filtra usuários pra mostrar só minha equipe (inclui subgestores e times deles)
     let myTeam = [];

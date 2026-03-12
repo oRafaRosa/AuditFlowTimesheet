@@ -26,7 +26,7 @@ export const Login: React.FC = () => {
       else if(user.role === 'MANAGER') navigate('/manager');
       else navigate('/dashboard');
     } else {
-      setError('Credenciais inválidas. Verifique seu email e senha.');
+      setError('Credenciais inválidas ou usuário desativado. Verifique seu email, senha ou fale com o administrador.');
     }
   };
 

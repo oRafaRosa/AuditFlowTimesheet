@@ -16,6 +16,7 @@ export interface User {
   name: string;
   email: string;
   role: Role;
+  isActive?: boolean;
   managerId?: string; // id do gestor
   delegatedManagerId?: string; // id do gestor temporário
   avatarUrl?: string;

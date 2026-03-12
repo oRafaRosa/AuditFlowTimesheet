@@ -92,11 +92,17 @@ class StoreService {
         // checa se a senha atual (hash ou plain) bate com a padrão
         const isDefault = data.password === DEFAULT_PASSWORD_HASH || data.password === 'AuditFlow@2025';
 
+        if (data.is_active === false) {
+            console.warn(`Login bloqueado para usuário inativo: ${email}`);
+            return null;
+        }
+
         const user: User = {
             id: data.id,
             name: data.full_name,
             email: data.email,
             role: data.role,
+            isActive: data.is_active !== false,
             managerId: data.manager_id,
             avatarUrl: `https://ui-avatars.com/api/?name=${data.full_name}`,
             isDefaultPassword: isDefault
@@ -155,6 +161,7 @@ class StoreService {
         name: d.full_name,
         email: d.email,
         role: d.role,
+        isActive: d.is_active !== false,
         managerId: d.manager_id,
         delegatedManagerId: d.delegated_manager_id,
         avatarUrl: `https://ui-avatars.com/api/?name=${d.full_name}`
@@ -169,6 +176,7 @@ class StoreService {
         email: user.email.trim(),
         role: user.role,
         manager_id: managerIdValue,
+        is_active: user.isActive !== false,
         password: DEFAULT_PASSWORD_HASH // seta senha padrão pros novos
     };
 
@@ -183,6 +191,7 @@ class StoreService {
         name: data.full_name,
         email: data.email,
         role: data.role,
+        isActive: data.is_active !== false,
         managerId: data.manager_id,
         avatarUrl: `https://ui-avatars.com/api/?name=${data.full_name}`
     };
@@ -193,6 +202,7 @@ class StoreService {
     if (data.name) dbUpdate.full_name = data.name;
     if (data.email) dbUpdate.email = data.email.trim();
     if (data.role) dbUpdate.role = data.role;
+    if (data.isActive !== undefined) dbUpdate.is_active = data.isActive;
     
     if (data.managerId !== undefined) {
         dbUpdate.manager_id = (data.managerId && data.managerId.trim() !== '') ? data.managerId : null;
@@ -288,6 +298,7 @@ class StoreService {
         name: d.full_name,
         email: d.email,
         role: d.role,
+        isActive: d.is_active !== false,
         managerId: d.manager_id,
         delegatedManagerId: d.delegated_manager_id,
         avatarUrl: `https://ui-avatars.com/api/?name=${d.full_name}`
@@ -602,11 +613,16 @@ class StoreService {
       // 3. busca detalhes dos usuários na mão
       const { data: users } = await supabase
           .from('profiles')
-          .select('id, full_name, email, avatar_url')
+          .select('id, full_name, email, avatar_url, is_active')
           .in('id', userIds);
 
       // 4. mapeia os resultados
-      return periods.map((d: any) => {
+      return periods
+        .filter((d: any) => {
+          const user = users?.find((u: any) => u.id === d.user_id);
+          return user && user.is_active !== false;
+        })
+        .map((d: any) => {
           const user = users?.find((u: any) => u.id === d.user_id);
           return {
             id: d.id,
@@ -785,6 +801,7 @@ create table if not exists profiles (
   id uuid default gen_random_uuid() primary key,
   full_name text not null,
   role text default 'USER' check (role in ('ADMIN', 'MANAGER', 'USER')),
+  is_active boolean default true,
   manager_id uuid references profiles(id),
   email text unique not null,
   password text
