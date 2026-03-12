@@ -57,7 +57,7 @@ export const AchievementsHub: React.FC = () => {
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Ranking & Conquistas</h1>
-          <p className="text-slate-500">Uma vitrine leve do que está redondo, consistente e bem feito no uso do app.</p>
+          <p className="text-slate-500">Uma vitrine leve do que está redondo, consistente e bem feito nos registros.</p>
         </div>
         {currentUserProfile && (
           <div className="rounded-2xl border border-brand-100 bg-brand-50 px-5 py-4">
