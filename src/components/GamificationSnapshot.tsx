@@ -2,12 +2,15 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { store } from '../services/store';
 import { CalendarException, Holiday, TimesheetEntry, TimesheetPeriod, TimesheetPeriodEvent, User, UserGamificationProfile, UserLoginActivity } from '../types';
-import { Flame, Medal, Trophy, Loader2 } from 'lucide-react';
+import { Flame, Medal, Trophy, Loader2, Crown } from 'lucide-react';
 import { buildGamificationProfiles } from '../utils/gamification';
+import { parseDateOnly } from '../utils/date';
 
 export const GamificationSnapshot: React.FC<{ userId: string }> = ({ userId }) => {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<UserGamificationProfile | null>(null);
+  const [previousMonthTopThree, setPreviousMonthTopThree] = useState<UserGamificationProfile[]>([]);
+  const [previousMonthLabel, setPreviousMonthLabel] = useState('');
 
   useEffect(() => {
     const loadData = async () => {
@@ -33,7 +36,30 @@ export const GamificationSnapshot: React.FC<{ userId: string }> = ({ userId }) =
         exceptions
       });
 
+      const previousMonthDate = new Date();
+      previousMonthDate.setMonth(previousMonthDate.getMonth() - 1);
+      const previousMonthYear = previousMonthDate.getFullYear();
+      const previousMonth = previousMonthDate.getMonth();
+
+      const previousMonthProfiles = buildGamificationProfiles({
+        users,
+        entries: entries.filter((entry) => {
+          const date = parseDateOnly(entry.date);
+          return date.getFullYear() === previousMonthYear && date.getMonth() === previousMonth;
+        }),
+        periods: periods.filter((period) => period.year === previousMonthYear && period.month === previousMonth),
+        loginActivities: loginActivities.filter((activity) => {
+          const date = parseDateOnly(activity.activityDate);
+          return date.getFullYear() === previousMonthYear && date.getMonth() === previousMonth;
+        }),
+        periodEvents: periodEvents.filter((event) => event.year === previousMonthYear && event.month === previousMonth),
+        holidays,
+        exceptions
+      });
+
       setProfile(profiles.find((item) => item.userId === userId) || null);
+      setPreviousMonthTopThree(previousMonthProfiles.slice(0, 3));
+      setPreviousMonthLabel(previousMonthDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }));
       setLoading(false);
     };
 
@@ -95,6 +121,30 @@ export const GamificationSnapshot: React.FC<{ userId: string }> = ({ userId }) =
       >
         Ver ranking completo
       </Link>
+
+      {previousMonthTopThree.length > 0 && (
+        <div className="mt-4 rounded-xl border border-slate-100 bg-slate-50 p-4">
+          <div className="flex items-center gap-2">
+            <Crown className="text-amber-500" size={16} />
+            <div>
+              <p className="text-xs font-bold uppercase text-slate-500">Pódio do mês anterior</p>
+              <p className="text-sm text-slate-600">{previousMonthLabel}</p>
+            </div>
+          </div>
+
+          <div className="mt-3 space-y-2">
+            {previousMonthTopThree.map((item, index) => (
+              <div key={item.userId} className="flex items-center justify-between gap-3 text-sm">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-base">{index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉'}</span>
+                  <span className="truncate font-medium text-slate-700">{item.userName}</span>
+                </div>
+                <span className="text-xs font-semibold text-slate-500">{item.score} pts</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
