@@ -25,7 +25,8 @@ const ACHIEVEMENTS: AchievementDefinition[] = [
   { key: 'strict_manager', title: 'Gestor Exigente', description: 'Já devolveu 3 períodos para ajuste quando precisava.', tone: 'positive', icon: 'shield-alert' },
   { key: 'late_manager', title: 'Deixou Esfriar', description: 'Demorou demais para decidir vários períodos da equipe.', tone: 'negative', icon: 'hourglass' },
   { key: 'lazy_batch', title: 'Preguiçoso do Fechamento', description: 'Empurrou lançamentos demais para o fim do mês.', tone: 'negative', icon: 'bed' },
-  { key: 'copy_paste', title: 'Sem Criatividade', description: 'Repetiu descrição demais nos lançamentos.', tone: 'negative', icon: 'copy' }
+  { key: 'copy_paste', title: 'Sem Criatividade', description: 'Repetiu descrição demais nos lançamentos.', tone: 'negative', icon: 'copy' },
+  { key: 'rubinho', title: 'Rubinho Barrichello', description: 'Mandou o timesheet muito tarde, já no dia 10 ou depois do mês seguinte.', tone: 'negative', icon: 'turtle' }
 ];
 
 interface StreakStats {
@@ -173,6 +174,18 @@ const detectLazyBatchMonths = (entries: TimesheetEntry[]) => {
   return lazyMonths;
 };
 
+const countLateSubmissions = (events: TimesheetPeriodEvent[]) =>
+  events.filter((event) => {
+    if (event.eventType !== 'SUBMITTED') return false;
+
+    const occurredAt = new Date(event.occurredAt);
+
+    // aqui a régua é simples: passou do dia 10 do mês seguinte, já merece a zoeira.
+    // se o envio escorregou ainda mais e caiu em outro mês depois disso, continua contando.
+    const deadline = new Date(event.year, event.month + 1, 10, 0, 0, 0, 0);
+    return occurredAt.getTime() >= deadline.getTime();
+  }).length;
+
 const countPerfectMonths = (
   periods: TimesheetPeriod[],
   entries: TimesheetEntry[],
@@ -219,7 +232,13 @@ const countPerfectMonths = (
   return perfectMonths;
 };
 
-const buildAchievements = (profile: Omit<UserGamificationProfile, 'achievements' | 'score'>, slowApprovals: number, lazyBatchMonths: number, copyPasteRatio: number) => {
+const buildAchievements = (
+  profile: Omit<UserGamificationProfile, 'achievements' | 'score'>,
+  slowApprovals: number,
+  lazyBatchMonths: number,
+  copyPasteRatio: number,
+  lateSubmissions: number
+) => {
   const earned: EarnedAchievement[] = ACHIEVEMENTS.map((definition) => {
     let match = false;
     let progressText = '';
@@ -272,6 +291,10 @@ const buildAchievements = (profile: Omit<UserGamificationProfile, 'achievements'
       case 'copy_paste':
         match = copyPasteRatio >= 0.6;
         progressText = `${Math.round(copyPasteRatio * 100)}% das descrições repetidas`;
+        break;
+      case 'rubinho':
+        match = lateSubmissions >= 1;
+        progressText = `${lateSubmissions} envio(s) depois do dia 10`;
         break;
       default:
         break;
@@ -349,6 +372,7 @@ export const buildGamificationProfiles = ({
 
       const perfectMonths = countPerfectMonths(userPeriods, userEntries, maps.holidayMap, maps.offdayMap, maps.workdayMap);
       const lazyBatchMonths = detectLazyBatchMonths(userEntries);
+      const lateSubmissions = countLateSubmissions(userEvents.filter((event) => event.userId === user.id));
       const { timelyApprovals, strictRejections, slowApprovals } = countManagerMetrics(
         userEvents.filter((event) => event.managerId === user.id || event.actorUserId === user.id)
       );
@@ -368,7 +392,7 @@ export const buildGamificationProfiles = ({
         negativeAchievements: 0
       };
 
-      const achievements = buildAchievements(baseProfile, slowApprovals, lazyBatchMonths, copyPasteRatio);
+      const achievements = buildAchievements(baseProfile, slowApprovals, lazyBatchMonths, copyPasteRatio, lateSubmissions);
       const negativeAchievements = achievements.filter((achievement) => achievement.earned && achievement.tone === 'negative').length;
       const score = scoreAchievements(achievements)
         + baseProfile.bestLoginStreak
