@@ -11,9 +11,24 @@ import { ManagerProjectBudget } from './ManagerProjectBudget';
 import { formatDateForDisplay, formatLocalDate, parseDateOnly } from '../utils/date';
 
 type TabType = 'overview' | 'budget' | 'reports';
+type TeamPerformancePeriodKey = 'current' | 'previous';
 
 interface TeamPeriodBacklogItem extends TimesheetPeriod {
   userName: string;
+}
+
+interface TeamPerformanceStat {
+  id: string;
+  name: string;
+  actual: number;
+  expected: number;
+  divergence: number;
+  isDelegated: boolean;
+}
+
+interface TeamPerformancePeriod {
+  label: string;
+  stats: TeamPerformanceStat[];
 }
 
 export const ManagerDashboard: React.FC = () => {
@@ -23,7 +38,11 @@ export const ManagerDashboard: React.FC = () => {
   const [teamMembers, setTeamMembers] = useState<User[]>([]);
   const [teamEntries, setTeamEntries] = useState<TimesheetEntry[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
-  const [teamStats, setTeamStats] = useState<any[]>([]);
+  const [teamPerformancePeriod, setTeamPerformancePeriod] = useState<TeamPerformancePeriodKey>('current');
+  const [teamStatsByPeriod, setTeamStatsByPeriod] = useState<Record<TeamPerformancePeriodKey, TeamPerformancePeriod>>({
+    current: { label: '', stats: [] },
+    previous: { label: '', stats: [] }
+  });
   const [projectBudgets, setProjectBudgets] = useState<any[]>([]);
   const [pendingApprovals, setPendingApprovals] = useState<TimesheetPeriod[]>([]);
   const [teamPeriodBacklog, setTeamPeriodBacklog] = useState<TeamPeriodBacklogItem[]>([]);
@@ -159,25 +178,48 @@ export const ManagerDashboard: React.FC = () => {
 
     const calculateStats = async (members: User[], entries: TimesheetEntry[], projs: Project[], delegatedMemberIdSet: Set<string>) => {
     const today = new Date();
-    const currentMonthExpected = await store.getExpectedHoursToDate(today.getFullYear(), today.getMonth());
-    
-    // stats de performance do time
-    const stats = members.map(m => {
-        const memberEntries = entries.filter(e => {
-            const d = parseDateOnly(e.date);
-            return e.userId === m.id && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear();
+    const currentYear = today.getFullYear();
+    const currentMonth = today.getMonth();
+    const previousDate = new Date(currentYear, currentMonth - 1, 1);
+
+    const buildTeamPerformance = async (
+      year: number,
+      month: number,
+      expectedLoader: (year: number, month: number) => Promise<number>
+    ): Promise<TeamPerformancePeriod> => {
+      const expectedHours = await expectedLoader(year, month);
+      const stats = members.map((member) => {
+        const memberEntries = entries.filter((entry) => {
+          const date = parseDateOnly(entry.date);
+          return entry.userId === member.id && date.getMonth() === month && date.getFullYear() === year;
         });
+
         const total = memberEntries.reduce((acc, curr) => acc + curr.hours, 0);
         return {
-            id: m.id,
-            name: m.name,
-            actual: total,
-            expected: currentMonthExpected,
-            divergence: total - currentMonthExpected,
-            isDelegated: delegatedMemberIdSet.has(m.id)
+          id: member.id,
+          name: member.name,
+          actual: total,
+          expected: expectedHours,
+          divergence: total - expectedHours,
+          isDelegated: delegatedMemberIdSet.has(member.id)
         };
+      });
+
+      return {
+        label: new Date(year, month, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }),
+        stats
+      };
+    };
+
+    const [currentPerformance, previousPerformance] = await Promise.all([
+      buildTeamPerformance(currentYear, currentMonth, (year, month) => store.getExpectedHoursToDate(year, month)),
+      buildTeamPerformance(previousDate.getFullYear(), previousDate.getMonth(), (year, month) => store.getExpectedHours(year, month))
+    ]);
+
+    setTeamStatsByPeriod({
+      current: currentPerformance,
+      previous: previousPerformance
     });
-    setTeamStats(stats);
 
     // stats de budget (só projetos filtrados)
     const projStats = projs.filter(p => p.budgetedHours > 0).map(p => {
@@ -337,8 +379,9 @@ export const ManagerDashboard: React.FC = () => {
     const previousMonthOpen = teamPeriodBacklog.filter(period => period.status === 'OPEN');
     const previousMonthSubmitted = teamPeriodBacklog.filter(period => period.status === 'SUBMITTED');
     const previousMonthRejected = teamPeriodBacklog.filter(period => period.status === 'REJECTED');
-    const pendingAlerts = teamStats.filter(s => s.divergence < -10);
-    const excessAlerts = teamStats.filter(s => s.divergence > 10);
+    const activeTeamStats = teamStatsByPeriod[teamPerformancePeriod];
+    const pendingAlerts = activeTeamStats.stats.filter(s => s.divergence < -10);
+    const excessAlerts = activeTeamStats.stats.filter(s => s.divergence > 10);
 
     return (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -628,9 +671,30 @@ export const ManagerDashboard: React.FC = () => {
 
             {/* gráfico de horas do time */}
             <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 h-96 overflow-y-auto">
-                <h3 className="text-lg font-semibold text-slate-800 mb-6">Desempenho da Equipe (Mês Atual)</h3>
-                <ResponsiveContainer width="100%" height={Math.max(300, teamStats.length * 40)}>
-                    <BarChart data={teamStats} layout="vertical" margin={{ left: 40, right: 20 }}>
+                <div className="flex flex-col gap-4 mb-6 md:flex-row md:items-center md:justify-between">
+                    <div>
+                        <h3 className="text-lg font-semibold text-slate-800">Desempenho da Equipe</h3>
+                        <p className="text-sm text-slate-500 capitalize">{activeTeamStats.label || 'Carregando período...'}</p>
+                    </div>
+                    <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 w-fit">
+                        <button
+                            type="button"
+                            onClick={() => setTeamPerformancePeriod('current')}
+                            className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${teamPerformancePeriod === 'current' ? 'bg-brand-600 text-white' : 'text-slate-600 hover:bg-white'}`}
+                        >
+                            Mês Atual
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setTeamPerformancePeriod('previous')}
+                            className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${teamPerformancePeriod === 'previous' ? 'bg-brand-600 text-white' : 'text-slate-600 hover:bg-white'}`}
+                        >
+                            Mês Anterior
+                        </button>
+                    </div>
+                </div>
+                <ResponsiveContainer width="100%" height={Math.max(300, activeTeamStats.stats.length * 40)}>
+                    <BarChart data={activeTeamStats.stats} layout="vertical" margin={{ left: 40, right: 20 }}>
                         <XAxis type="number" hide />
                         <YAxis 
                             dataKey="name" 
@@ -638,7 +702,7 @@ export const ManagerDashboard: React.FC = () => {
                             width={120} 
                             tick={{fontSize: 12, cursor: 'pointer'}} 
                             onClick={(data) => {
-                                const user = teamStats.find(t => t.name === data.value);
+                                const user = activeTeamStats.stats.find(t => t.name === data.value);
                                 if(user) navigate(`/manager/reports?userId=${user.id}`);
                             }}
                         />
@@ -646,7 +710,7 @@ export const ManagerDashboard: React.FC = () => {
                         <Legend />
                         <Bar dataKey="expected" name="Esperado" fill="#D1D0CB" barSize={24} radius={[0, 4, 4, 0]} />
                         <Bar dataKey="actual" name="Realizado" barSize={24} radius={[0, 4, 4, 0]}>
-                            {teamStats.map((entry, index) => (
+                            {activeTeamStats.stats.map((entry, index) => (
                                 <Cell key={`cell-actual-${index}`} fill={entry.isDelegated ? '#F59E0B' : '#0033C6'} />
                             ))}
                         </Bar>
