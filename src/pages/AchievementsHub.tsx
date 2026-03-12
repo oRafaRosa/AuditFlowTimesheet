@@ -160,8 +160,8 @@ export const AchievementsHub: React.FC = () => {
                   <th className="px-6 py-3">Posição</th>
                   <th className="px-6 py-3">Pessoa</th>
                   <th className="px-6 py-3">Pontos</th>
-                  <th className="px-6 py-3">Melhor Login</th>
-                  <th className="px-6 py-3">Melhor Registro</th>
+                  <th className="px-6 py-3">Streak Login</th>
+                  <th className="px-6 py-3">Streak Registros</th>
                   <th className="px-6 py-3">Conquistas</th>
                 </tr>
               </thead>
