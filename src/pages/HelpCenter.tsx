@@ -1,10 +1,17 @@
 
-
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { store } from '../services/store';
 import { BookOpen, HelpCircle, ShieldCheck, Lock, FileText, CheckCircle, UserCheck, Server, AlertCircle } from 'lucide-react';
 
 export const HelpCenter: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'manual' | 'faq' | 'about'>('manual');
+
+  useEffect(() => {
+    const currentUser = store.getCurrentUser();
+    if (!currentUser) return;
+
+    store.recordUserActivityEvent(currentUser.id, 'HELP_CENTER_VIEW');
+  }, []);
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">

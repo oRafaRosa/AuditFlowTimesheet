@@ -31,6 +31,7 @@ const ACHIEVEMENTS: AchievementDefinition[] = [
   { key: 'plantao', title: 'Plantão Extraoficial', description: 'Transformou vários descansos em dia útil improvisado.', tone: 'negative', icon: 'sirene' },
   { key: 'report_5', title: 'De Olho em Tudo', description: 'Abriu relatórios em vários dias para acompanhar seus registros.', tone: 'positive', icon: 'search-check' },
   { key: 'report_15', title: 'Raio-X dos Registros', description: 'Virou freguês dos relatórios e acompanha tudo de perto.', tone: 'positive', icon: 'scan-search' },
+  { key: 'leitor_rodape', title: 'Leitor de Rodapé', description: 'Passou na Central de Ajuda e Sobre para entender os bastidores do AuditFlow.', tone: 'positive', icon: 'book-open-check' },
   { key: 'auditor_de_si', title: 'Auditor de Si Mesmo', description: 'Abriu dashboard e relatórios no mesmo dia várias vezes para conferir tudo.', tone: 'positive', icon: 'badge-check' },
   { key: 'sniper_fechamento', title: 'Sniper do Fechamento', description: 'Fechou o mês redondo logo no primeiro dia útil.', tone: 'positive', icon: 'crosshair' },
   { key: 'quase_perfeito', title: 'Quase Perfeito', description: 'Por muito pouco não virou um mês perfeito.', tone: 'positive', icon: 'sparkle' },
@@ -322,6 +323,13 @@ const countDashboardViewDays = (events: UserActivityEvent[]) =>
   new Set(
     events
       .filter((event) => event.activityType === 'DASHBOARD_VIEW')
+      .map((event) => event.activityDate)
+  ).size;
+
+const countHelpCenterViewDays = (events: UserActivityEvent[]) =>
+  new Set(
+    events
+      .filter((event) => event.activityType === 'HELP_CENTER_VIEW')
       .map((event) => event.activityDate)
   ).size;
 
@@ -686,6 +694,10 @@ const buildAchievements = (
         earnedCount = Math.floor(profile.reportViewDays / 15);
         progressText = `${profile.reportViewDays}/15 dia(s) acompanhando relatórios`;
         break;
+      case 'leitor_rodape':
+        earnedCount = profile.helpCenterViewDays >= 1 ? 1 : 0;
+        progressText = `${profile.helpCenterViewDays} visita(s) na ajuda`;
+        break;
       case 'auditor_de_si':
         earnedCount = Math.floor(profile.reportDashboardComboDays / 3);
         progressText = `${profile.reportDashboardComboDays} dia(s) com dashboard + relatório`;
@@ -841,6 +853,7 @@ export const buildGamificationProfiles = ({
       } = countSpecialWorkSummary(userEntries, maps.holidayMap, maps.offdayMap, maps.workdayMap);
       const reportViewDays = countReportViewDays(userActivityLog);
       const dashboardViewDays = countDashboardViewDays(userActivityLog);
+      const helpCenterViewDays = countHelpCenterViewDays(userActivityLog);
       const reportDashboardComboDays = countReportDashboardComboDays(userActivityLog);
       const sniperClosures = countSniperClosures(userPeriods, userEntries, userEvents, maps.holidayMap, maps.offdayMap, maps.workdayMap);
       const almostPerfectMonths = countAlmostPerfectMonths(userPeriods, userEntries, maps.holidayMap, maps.offdayMap, maps.workdayMap);
@@ -875,6 +888,7 @@ export const buildGamificationProfiles = ({
         specialWorkStreak,
         reportViewDays,
         dashboardViewDays,
+        helpCenterViewDays,
         reportDashboardComboDays,
         sniperClosures,
         almostPerfectMonths,
@@ -900,6 +914,7 @@ export const buildGamificationProfiles = ({
         + (baseProfile.reportViewDays * 2)
         + (baseProfile.reportDashboardComboDays * 3)
         + (baseProfile.dashboardViewDays)
+        + (baseProfile.helpCenterViewDays * 2)
         + (baseProfile.managerReviewApprovals * 4)
         + (baseProfile.reportNoNeedDays * 2)
         + (baseProfile.controlAbsoluteStreak * 5)
