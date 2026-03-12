@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { store } from '../services/store';
 import { CalendarException, Holiday, TimesheetEntry, TimesheetPeriod, TimesheetPeriodEvent, User, UserGamificationProfile, UserLoginActivity } from '../types';
-import { Trophy, Flame, ScrollText, ShieldCheck, Loader2, Medal, Crown } from 'lucide-react';
+import { Trophy, Flame, ScrollText, ShieldCheck, Loader2, Medal, Crown, ChevronDown, ChevronUp } from 'lucide-react';
 import { buildGamificationProfiles } from '../utils/gamification';
 
 export const AchievementsHub: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [profiles, setProfiles] = useState<UserGamificationProfile[]>([]);
   const [currentUserProfile, setCurrentUserProfile] = useState<UserGamificationProfile | null>(null);
+  const [showAchievementsStock, setShowAchievementsStock] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -107,43 +108,60 @@ export const AchievementsHub: React.FC = () => {
 
       {currentUserProfile && (
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-          <div className="p-5 border-b border-slate-100">
-            <h2 className="text-lg font-bold text-slate-800">Suas conquistas</h2>
-            <p className="text-sm text-slate-500 mt-1">Aqui só aparecem as que você já desbloqueou. O resto continua escondido como easter egg.</p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 p-5">
-            {earnedAchievements.map((achievement) => (
-              <div
-                key={achievement.key}
-                className={`rounded-xl border p-4 ${
-                  achievement.tone === 'negative'
-                    ? 'border-red-200 bg-red-50'
-                    : achievement.tone === 'warning'
-                      ? 'border-amber-200 bg-amber-50'
-                      : 'border-emerald-200 bg-emerald-50'
-                }`}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="font-bold text-slate-800">{achievement.title}</p>
-                    <p className="text-sm text-slate-600 mt-1">{achievement.description}</p>
+          <button
+            type="button"
+            onClick={() => setShowAchievementsStock((current) => !current)}
+            className="w-full p-5 text-left border-b border-slate-100 flex items-center justify-between gap-4 hover:bg-slate-50 transition-colors"
+          >
+            <div>
+              <h2 className="text-lg font-bold text-slate-800">Estoque de conquistas</h2>
+              <p className="text-sm text-slate-500 mt-1">
+                {earnedAchievements.length === 0
+                  ? 'Ainda não caiu nenhuma por aqui. Quando vier a primeira, ela aparece neste estoque.'
+                  : `${earnedAchievements.length} conquista(s) desbloqueadas. Clique para ver os detalhes.`}
+              </p>
+            </div>
+            <div className="flex items-center gap-3 text-slate-500">
+              <span className="text-sm font-semibold">{showAchievementsStock ? 'Minimizar' : 'Expandir'}</span>
+              {showAchievementsStock ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+            </div>
+          </button>
+
+          {showAchievementsStock && (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 p-5">
+              {earnedAchievements.map((achievement) => (
+                <div
+                  key={achievement.key}
+                  className={`rounded-xl border p-4 ${
+                    achievement.tone === 'negative'
+                      ? 'border-red-200 bg-red-50'
+                      : achievement.tone === 'warning'
+                        ? 'border-amber-200 bg-amber-50'
+                        : 'border-emerald-200 bg-emerald-50'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-bold text-slate-800">{achievement.title}</p>
+                      <p className="text-sm text-slate-600 mt-1">{achievement.description}</p>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-xs font-bold uppercase text-slate-500">Conquistada</span>
+                      <p className="text-sm font-bold text-slate-800 mt-2">x{achievement.earnedCount}</p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <span className="text-xs font-bold uppercase text-slate-500">Conquistada</span>
-                    <p className="text-sm font-bold text-slate-800 mt-2">x{achievement.earnedCount}</p>
-                  </div>
+                  {achievement.progressText && (
+                    <p className="text-xs text-slate-500 mt-3">{achievement.progressText}</p>
+                  )}
                 </div>
-                {achievement.progressText && (
-                  <p className="text-xs text-slate-500 mt-3">{achievement.progressText}</p>
-                )}
-              </div>
-            ))}
-            {earnedAchievements.length === 0 && (
-              <div className="md:col-span-2 xl:col-span-3 rounded-xl border border-dashed border-slate-200 bg-slate-50 p-6 text-sm text-slate-500">
-                Ainda não apareceu nenhuma conquista por aqui. Quando a primeira cair, ela já aparece neste painel.
-              </div>
-            )}
-          </div>
+              ))}
+              {earnedAchievements.length === 0 && (
+                <div className="md:col-span-2 xl:col-span-3 rounded-xl border border-dashed border-slate-200 bg-slate-50 p-6 text-sm text-slate-500">
+                  Ainda não apareceu nenhuma conquista por aqui. Quando a primeira cair, ela já aparece neste painel.
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
