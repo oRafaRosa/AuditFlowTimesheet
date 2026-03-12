@@ -3,7 +3,8 @@ import { useLocation, Link, useNavigate } from 'react-router-dom';
 import { store } from '../services/store';
 import { NotificationService } from '../services/notifications';
 import { formatHours, HOURS_PER_DAY } from '../types';
-import { formatDateForDisplay, formatLocalDate } from '../utils/date';
+import { formatDateForDisplay, formatLocalDate, parseDateOnly } from '../utils/date';
+import { buildGamificationProfiles } from '../utils/gamification';
 import { buildCalendarMaps, isExpectedWorkingDay, listPendingDaysForMonth } from '../utils/workCalendar';
 import { 
   LayoutDashboard, 
@@ -25,6 +26,9 @@ import {
   TrendingUp,
   Trophy
 } from 'lucide-react';
+
+const getAchievementSnapshotKey = (userId: string) => `grc_achievement_snapshot_${userId}`;
+const getTopThreeSnapshotKey = (userId: string) => `grc_top_three_snapshot_${userId}`;
 
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const user = store.getCurrentUser();
@@ -285,6 +289,117 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                       }
                     }
                   }
+
+                  // aqui é a parte divertida: quando entrar conquista nova ou mexer no top 3,
+                  // a pessoa recebe um cutucão pra ir ver a página de ranking.
+                  const [users, periods, loginActivities, periodEvents] = await Promise.all([
+                    store.getUsers(),
+                    store.getTimesheetPeriods(),
+                    store.getLoginActivity(),
+                    store.getPeriodEvents()
+                  ]);
+
+                  const allProfiles = buildGamificationProfiles({
+                    users,
+                    entries,
+                    periods,
+                    loginActivities,
+                    periodEvents,
+                    holidays,
+                    exceptions
+                  });
+
+                  const currentProfile = allProfiles.find((profile) => profile.userId === user.id);
+                  if (currentProfile) {
+                    const latestAchievementSnapshot = currentProfile.achievements.reduce<Record<string, number>>((acc, achievement) => {
+                      if (achievement.earnedCount > 0) {
+                        acc[achievement.key] = achievement.earnedCount;
+                      }
+                      return acc;
+                    }, {});
+
+                    const achievementSnapshotKey = getAchievementSnapshotKey(user.id);
+                    const previousAchievementSnapshotRaw = localStorage.getItem(achievementSnapshotKey);
+
+                    if (previousAchievementSnapshotRaw) {
+                      const previousAchievementSnapshot = JSON.parse(previousAchievementSnapshotRaw) as Record<string, number>;
+                      const newAchievements = currentProfile.achievements.filter((achievement) => {
+                        const previousCount = previousAchievementSnapshot[achievement.key] || 0;
+                        return achievement.earnedCount > previousCount;
+                      });
+
+                      if (newAchievements.length > 0) {
+                        const msg = newAchievements.length === 1
+                          ? 'Você acabou de destravar uma conquista nova. Dá uma olhada em Ranking & Conquistas.'
+                          : `Você acabou de destravar ${newAchievements.length} conquistas. Dá uma olhada em Ranking & Conquistas.`;
+                        alerts.push(msg);
+
+                        const achievementEventKey = `last_achievement_event_${user.id}`;
+                        const lastAchievementNotify = localStorage.getItem(achievementEventKey);
+                        const now = Date.now();
+                        if (!lastAchievementNotify || (now - Number(lastAchievementNotify) > 60 * 1000)) {
+                          NotificationService.send('Nova conquista liberada', msg, `achievement_tag_${user.id}`);
+                          localStorage.setItem(achievementEventKey, String(now));
+                        }
+                      }
+                    }
+
+                    localStorage.setItem(achievementSnapshotKey, JSON.stringify(latestAchievementSnapshot));
+                  }
+
+                  const currentRankingYear = today.getFullYear();
+                  const currentRankingMonth = today.getMonth();
+                  const currentMonthProfiles = buildGamificationProfiles({
+                    users,
+                    entries: entries.filter((entry) => {
+                      const date = parseDateOnly(entry.date);
+                      return date.getFullYear() === currentRankingYear && date.getMonth() === currentRankingMonth;
+                    }),
+                    periods: periods.filter((period) => period.year === currentRankingYear && period.month === currentRankingMonth),
+                    loginActivities: loginActivities.filter((activity) => {
+                      const date = parseDateOnly(activity.activityDate);
+                      return date.getFullYear() === currentRankingYear && date.getMonth() === currentRankingMonth;
+                    }),
+                    periodEvents: periodEvents.filter((event) => event.year === currentRankingYear && event.month === currentRankingMonth),
+                    holidays,
+                    exceptions
+                  });
+
+                  const isInCurrentTopThree = currentMonthProfiles.slice(0, 3).some((profile) => profile.userId === user.id);
+                  const topThreeSnapshotKey = getTopThreeSnapshotKey(user.id);
+                  const previousTopThreeStateRaw = localStorage.getItem(topThreeSnapshotKey);
+
+                  if (previousTopThreeStateRaw !== null) {
+                    const previousTopThreeState = previousTopThreeStateRaw === 'true';
+
+                    if (!previousTopThreeState && isInCurrentTopThree) {
+                      const msg = 'Você entrou no top 3 do mês atual. Dá uma olhada em Ranking & Conquistas.';
+                      alerts.push(msg);
+
+                      const topThreeEventKey = `last_top_three_event_${user.id}`;
+                      const lastTopThreeNotify = localStorage.getItem(topThreeEventKey);
+                      const now = Date.now();
+                      if (!lastTopThreeNotify || (now - Number(lastTopThreeNotify) > 60 * 1000)) {
+                        NotificationService.send('Top 3 do mês atual', msg, `top_three_tag_${user.id}`);
+                        localStorage.setItem(topThreeEventKey, String(now));
+                      }
+                    }
+
+                    if (previousTopThreeState && !isInCurrentTopThree) {
+                      const msg = 'Você saiu do top 3 do mês atual. Vale conferir Ranking & Conquistas.';
+                      alerts.push(msg);
+
+                      const topThreeExitEventKey = `last_top_three_exit_event_${user.id}`;
+                      const lastTopThreeExitNotify = localStorage.getItem(topThreeExitEventKey);
+                      const now = Date.now();
+                      if (!lastTopThreeExitNotify || (now - Number(lastTopThreeExitNotify) > 60 * 1000)) {
+                        NotificationService.send('Mudança no top 3', msg, `top_three_exit_tag_${user.id}`);
+                        localStorage.setItem(topThreeExitEventKey, String(now));
+                      }
+                    }
+                  }
+
+                  localStorage.setItem(topThreeSnapshotKey, String(isInCurrentTopThree));
           }
 
           setNotifications(alerts);
