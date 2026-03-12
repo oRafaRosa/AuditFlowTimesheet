@@ -7,6 +7,17 @@ import { Clock, Calendar, CheckCircle, AlertTriangle, Plus, Trash2, Loader2, Loc
 import { MyStatusWidget } from '../components/MyStatusWidget';
 import { formatDateForDisplay, formatLocalDate, parseDateOnly } from '../utils/date';
 
+type DashboardPeriodKey = 'current' | 'previous';
+
+interface DashboardIndicators {
+  label: string;
+  year: number;
+  month: number;
+  totalHours: number;
+  expectedHours: number;
+  pendingHours: number;
+}
+
 export const UserDashboard: React.FC = () => {
   const user = store.getCurrentUser();
   const navigate = useNavigate();
@@ -25,9 +36,11 @@ export const UserDashboard: React.FC = () => {
   const [entryFilterDate, setEntryFilterDate] = useState('');
 
     // estados dos kpis
-  const [currentMonthHours, setCurrentMonthHours] = useState(0);
-  const [expectedHours, setExpectedHours] = useState(0);
-  const [pendingHours, setPendingHours] = useState(0);
+  const [dashboardPeriod, setDashboardPeriod] = useState<DashboardPeriodKey>('current');
+  const [indicators, setIndicators] = useState<Record<DashboardPeriodKey, DashboardIndicators>>({
+    current: { label: '', year: 0, month: 0, totalHours: 0, expectedHours: 0, pendingHours: 0 },
+    previous: { label: '', year: 0, month: 0, totalHours: 0, expectedHours: 0, pendingHours: 0 }
+  });
   const [monthlyData, setMonthlyData] = useState<any[]>([]);
   
     // dados de alertas (calculado local)
@@ -91,19 +104,47 @@ export const UserDashboard: React.FC = () => {
 
     setSelectableProjects(availableProjects);
 
-    // calcula kpis
-    const currentMonthEntries = allEntries.filter(e => {
-        const d = parseDateOnly(e.date);
-        return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
-    });
+    // calcula kpis do mês atual e anterior
+    const previousDate = new Date(currentYear, currentMonth - 1, 1);
+    const previousYear = previousDate.getFullYear();
+    const previousMonth = previousDate.getMonth();
 
-    const totalHours = currentMonthEntries.reduce((acc, curr) => acc + curr.hours, 0);
-    const expected = await store.getExpectedHoursToDate(currentYear, currentMonth);
-    const expectedFullMonth = await store.getExpectedHours(currentYear, currentMonth);
-    
-    setCurrentMonthHours(totalHours);
-    setExpectedHours(expected);
-    setPendingHours(expected - totalHours);
+    const buildIndicators = async (
+      year: number,
+      month: number,
+      expectedLoader: (year: number, month: number) => Promise<number>
+    ): Promise<DashboardIndicators> => {
+      const monthEntries = allEntries.filter(e => {
+        const d = parseDateOnly(e.date);
+        return d.getMonth() === month && d.getFullYear() === year;
+      });
+
+      const totalHours = monthEntries.reduce((acc, curr) => acc + curr.hours, 0);
+      const expectedHours = await expectedLoader(year, month);
+      const monthLabel = new Date(year, month, 1).toLocaleDateString('pt-BR', {
+        month: 'long',
+        year: 'numeric'
+      });
+
+      return {
+        label: monthLabel,
+        year,
+        month,
+        totalHours,
+        expectedHours,
+        pendingHours: expectedHours - totalHours
+      };
+    };
+
+    const [currentIndicators, previousIndicators] = await Promise.all([
+      buildIndicators(currentYear, currentMonth, (year, month) => store.getExpectedHoursToDate(year, month)),
+      buildIndicators(previousYear, previousMonth, (year, month) => store.getExpectedHours(year, month))
+    ]);
+
+    setIndicators({
+      current: currentIndicators,
+      previous: previousIndicators
+    });
 
     // dados do gráfico (últimos 6 meses)
     const chartData = [];
@@ -270,6 +311,14 @@ export const UserDashboard: React.FC = () => {
 
     // check visual do botão "novo lançamento" (mês atual)
   const isCurrentPeriodLocked = periodStatus?.status === 'SUBMITTED' || periodStatus?.status === 'APPROVED';
+  const activeIndicators = indicators[dashboardPeriod];
+  const expectedLabel = dashboardPeriod === 'current' ? 'Horas Esperadas (Hoje)' : 'Horas Esperadas (Mês)';
+  const expectedHelpText = dashboardPeriod === 'current'
+    ? 'Baseado em 8.8h/dia útil até hoje'
+    : 'Baseado no total de dias úteis do mês fechado';
+  const pendingHelpText = dashboardPeriod === 'current'
+    ? 'Divergência acumulada até hoje'
+    : 'Divergência do mês encerrado';
 
     // lógica de filtro das entradas
   const displayEntries = entryFilterDate 
@@ -313,17 +362,40 @@ export const UserDashboard: React.FC = () => {
       </div>
 
     {/* cards de kpi */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-semibold text-slate-800">Indicadores</h2>
+          <p className="text-sm text-slate-500 capitalize">{activeIndicators.label || 'Carregando período...'}</p>
+        </div>
+        <div className="flex bg-white p-1 rounded-xl border border-slate-200 shadow-sm">
+          <button
+            type="button"
+            onClick={() => setDashboardPeriod('current')}
+            className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${dashboardPeriod === 'current' ? 'bg-brand-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}
+          >
+            Mês Atual
+          </button>
+          <button
+            type="button"
+            onClick={() => setDashboardPeriod('previous')}
+            className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${dashboardPeriod === 'previous' ? 'bg-brand-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}
+          >
+            Mês Anterior
+          </button>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
             <div className="flex items-center gap-4">
                 <div className="p-3 bg-brand-100 text-brand-600 rounded-lg"><Clock size={24} /></div>
                 <div>
-                    <p className="text-sm text-slate-500 font-medium">Horas Realizadas (Mês)</p>
-                    <p className="text-2xl font-bold text-slate-900">{formatHours(currentMonthHours)}h</p>
+                    <p className="text-sm text-slate-500 font-medium">Horas Realizadas</p>
+                    <p className="text-2xl font-bold text-slate-900">{formatHours(activeIndicators.totalHours)}h</p>
                 </div>
             </div>
             <div className="mt-4 w-full bg-gray-100 rounded-full h-2">
-                <div className="bg-brand-600 h-2 rounded-full" style={{ width: `${Math.min((currentMonthHours / (expectedHours || 1)) * 100, 100)}%` }}></div>
+                <div className="bg-brand-600 h-2 rounded-full" style={{ width: `${Math.min((activeIndicators.totalHours / (activeIndicators.expectedHours || 1)) * 100, 100)}%` }}></div>
             </div>
         </div>
 
@@ -331,26 +403,26 @@ export const UserDashboard: React.FC = () => {
             <div className="flex items-center gap-4">
                 <div className="p-3 bg-emerald-100 text-emerald-600 rounded-lg"><Calendar size={24} /></div>
                 <div>
-                    <p className="text-sm text-slate-500 font-medium">Horas Esperadas (Hoje)</p>
-                    <p className="text-2xl font-bold text-slate-900">{formatHours(expectedHours)}h</p>
+                    <p className="text-sm text-slate-500 font-medium">{expectedLabel}</p>
+                    <p className="text-2xl font-bold text-slate-900">{formatHours(activeIndicators.expectedHours)}h</p>
                 </div>
             </div>
-            <p className="text-xs text-slate-400 mt-2">Baseado em 8.8h/dia útil</p>
+            <p className="text-xs text-slate-400 mt-2">{expectedHelpText}</p>
         </div>
 
         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
             <div className="flex items-center gap-4">
-                <div className={`p-3 rounded-lg ${pendingHours > 0 ? 'bg-amber-100 text-amber-600' : 'bg-green-100 text-green-600'}`}>
-                    {pendingHours > 0 ? <AlertTriangle size={24} /> : <CheckCircle size={24} />}
+                <div className={`p-3 rounded-lg ${activeIndicators.pendingHours > 0 ? 'bg-amber-100 text-amber-600' : 'bg-green-100 text-green-600'}`}>
+                    {activeIndicators.pendingHours > 0 ? <AlertTriangle size={24} /> : <CheckCircle size={24} />}
                 </div>
                 <div>
                     <p className="text-sm text-slate-500 font-medium">Pendência</p>
-                    <p className={`text-2xl font-bold ${pendingHours > 0 ? 'text-amber-600' : 'text-green-600'}`}>
-                        {pendingHours > 0 ? `${formatHours(pendingHours)}h Faltantes` : 'Em dia'}
+                    <p className={`text-2xl font-bold ${activeIndicators.pendingHours > 0 ? 'text-amber-600' : 'text-green-600'}`}>
+                        {activeIndicators.pendingHours > 0 ? `${formatHours(activeIndicators.pendingHours)}h Faltantes` : 'Em dia'}
                     </p>
                 </div>
             </div>
-            <p className="text-xs text-slate-400 mt-2">Divergência acumulada</p>
+            <p className="text-xs text-slate-400 mt-2">{pendingHelpText}</p>
         </div>
       </div>
 
