@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { store } from '../services/store';
-import { TimesheetEntry, Project, HOURS_PER_DAY, TimesheetPeriod, formatHours } from '../types';
+import { TimesheetEntry, Project, HOURS_PER_DAY, TimesheetPeriod, formatHours, Holiday, CalendarException, FrequentEntryTemplate } from '../types';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { Clock, Calendar, CheckCircle, AlertTriangle, Plus, Trash2, Loader2, Lock, XCircle, Search, Filter, AlertOctagon, Copy, Edit } from 'lucide-react';
+import { Clock, Calendar, CheckCircle, AlertTriangle, Plus, Trash2, Loader2, Lock, XCircle, Search, Filter, AlertOctagon, Copy, Edit, ChevronDown, ChevronUp, Sparkles, Bookmark } from 'lucide-react';
 import { MyStatusWidget } from '../components/MyStatusWidget';
 import { formatDateForDisplay, formatLocalDate, parseDateOnly } from '../utils/date';
+import { buildCalendarMaps, listPendingDaysForMonth, PendingDay } from '../utils/workCalendar';
 
 type DashboardPeriodKey = 'current' | 'previous';
 
@@ -16,6 +17,16 @@ interface DashboardIndicators {
   totalHours: number;
   expectedHours: number;
   pendingHours: number;
+}
+
+interface HolidayMarker {
+  name: string;
+  kind: 'holiday' | 'offday';
+}
+
+interface PendingPeriodSummary {
+  days: PendingDay[];
+  totalMissingHours: number;
 }
 
 export const UserDashboard: React.FC = () => {
@@ -42,6 +53,13 @@ export const UserDashboard: React.FC = () => {
     previous: { label: '', year: 0, month: 0, totalHours: 0, expectedHours: 0, pendingHours: 0 }
   });
   const [monthlyData, setMonthlyData] = useState<any[]>([]);
+  const [holidayMarkers, setHolidayMarkers] = useState<Record<string, HolidayMarker>>({});
+  const [pendingDaysByPeriod, setPendingDaysByPeriod] = useState<Record<DashboardPeriodKey, PendingPeriodSummary>>({
+    current: { days: [], totalMissingHours: 0 },
+    previous: { days: [], totalMissingHours: 0 }
+  });
+  const [showPendingDetails, setShowPendingDetails] = useState(false);
+  const [frequentTemplates, setFrequentTemplates] = useState<FrequentEntryTemplate[]>([]);
   
     // dados de alertas (calculado local)
   const [dailyTotals, setDailyTotals] = useState<Record<string, number>>({});
@@ -72,10 +90,12 @@ export const UserDashboard: React.FC = () => {
     const currentYear = today.getFullYear();
     const currentMonth = today.getMonth();
 
-    const [allEntries, allProjects, status] = await Promise.all([
+    const [allEntries, allProjects, status, holidays, exceptions] = await Promise.all([
         store.getEntries(user.id),
         store.getProjects(),
-        store.getPeriodStatus(user.id, currentYear, currentMonth)
+        store.getPeriodStatus(user.id, currentYear, currentMonth),
+        store.getHolidays(),
+        store.getExceptions()
     ]);
 
     setPeriodStatus(status);
@@ -103,6 +123,18 @@ export const UserDashboard: React.FC = () => {
     });
 
     setSelectableProjects(availableProjects);
+
+    const markers: Record<string, HolidayMarker> = {};
+    holidays.forEach((holiday: Holiday) => {
+      markers[holiday.date] = { name: holiday.name, kind: 'holiday' };
+    });
+    exceptions
+      .filter((exception: CalendarException) => exception.type === 'OFFDAY')
+      .forEach((exception: CalendarException) => {
+        markers[exception.date] = { name: exception.name || 'Folga/Ponte', kind: 'offday' };
+      });
+    setHolidayMarkers(markers);
+    setFrequentTemplates(store.getFrequentEntryTemplates(user.id).slice(0, 6));
 
     // calcula kpis do mês atual e anterior
     const previousDate = new Date(currentYear, currentMonth - 1, 1);
@@ -144,6 +176,33 @@ export const UserDashboard: React.FC = () => {
     setIndicators({
       current: currentIndicators,
       previous: previousIndicators
+    });
+
+    const calendarMaps = buildCalendarMaps(holidays, exceptions);
+    const todayStr = formatLocalDate(today);
+    const currentPendingDays = listPendingDaysForMonth({
+      entries: allEntries,
+      year: currentYear,
+      month: currentMonth,
+      maps: calendarMaps,
+      maxDate: todayStr
+    });
+    const previousPendingDays = listPendingDaysForMonth({
+      entries: allEntries,
+      year: previousYear,
+      month: previousMonth,
+      maps: calendarMaps
+    });
+
+    setPendingDaysByPeriod({
+      current: {
+        days: currentPendingDays,
+        totalMissingHours: Math.round(currentPendingDays.reduce((acc, day) => acc + day.missingHours, 0) * 100) / 100
+      },
+      previous: {
+        days: previousPendingDays,
+        totalMissingHours: Math.round(previousPendingDays.reduce((acc, day) => acc + day.missingHours, 0) * 100) / 100
+      }
     });
 
     // dados do gráfico (últimos 6 meses)
@@ -214,7 +273,39 @@ export const UserDashboard: React.FC = () => {
   const handleSubmitEntry = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
-    
+
+    const getHolidaySummary = (): string[] => {
+      if (formMode === 'single' || editingId) {
+        const marker = holidayMarkers[formData.date];
+        return marker ? [`${formData.date} (${marker.name})`] : [];
+      }
+
+      const matchedDates: string[] = [];
+      const start = parseDateOnly(formData.date);
+      const end = parseDateOnly(formData.endDate);
+
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        const dateStr = formatLocalDate(d);
+        const marker = holidayMarkers[dateStr];
+        if (marker) {
+          matchedDates.push(`${dateStr} (${marker.name})`);
+        }
+      }
+
+      return matchedDates;
+    };
+
+    const holidayDates = getHolidaySummary();
+    if (holidayDates.length > 0) {
+      const message = holidayDates.length === 1
+        ? `A data ${holidayDates[0]} está cadastrada como feriado/folga.\n\nDeseja realmente registrar horas nesse dia? O lançamento será tratado como hora extra.`
+        : `Existem ${holidayDates.length} datas cadastradas como feriado/folga neste período:\n- ${holidayDates.join('\n- ')}\n\nDeseja realmente registrar horas nesses dias? Os lançamentos serão tratados como hora extra.`;
+
+      if (!window.confirm(message)) {
+        return;
+      }
+    }
+
     setLoading(true);
 
     if (editingId) {
@@ -264,6 +355,14 @@ export const UserDashboard: React.FC = () => {
             }
         }
     }
+
+    const projectName = getProjectName(formData.projectId);
+    store.recordFrequentEntryTemplate(user.id, {
+      projectId: formData.projectId,
+      hours: Number(formData.hours),
+      description: formData.description,
+      label: `${projectName} • ${formatHours(Number(formData.hours))}h`
+    });
     
     setIsFormOpen(false);
     setEditingId(null);
@@ -312,6 +411,7 @@ export const UserDashboard: React.FC = () => {
     // check visual do botão "novo lançamento" (mês atual)
   const isCurrentPeriodLocked = periodStatus?.status === 'SUBMITTED' || periodStatus?.status === 'APPROVED';
   const activeIndicators = indicators[dashboardPeriod];
+  const activePendingSummary = pendingDaysByPeriod[dashboardPeriod];
   const expectedLabel = dashboardPeriod === 'current' ? 'Horas Esperadas (Hoje)' : 'Horas Esperadas (Mês)';
   const expectedHelpText = dashboardPeriod === 'current'
     ? 'Baseado em 8.8h/dia útil até hoje'
@@ -426,6 +526,58 @@ export const UserDashboard: React.FC = () => {
         </div>
       </div>
 
+      <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setShowPendingDetails(prev => !prev)}
+          className="w-full p-5 flex items-center justify-between gap-4 text-left hover:bg-slate-50 transition-colors"
+        >
+          <div className="flex items-center gap-4">
+            <div className={`p-3 rounded-lg ${activePendingSummary.days.length > 0 ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-600'}`}>
+              {activePendingSummary.days.length > 0 ? <AlertTriangle size={22} /> : <CheckCircle size={22} />}
+            </div>
+            <div>
+              <p className="text-sm text-slate-500 font-medium">Dias com pendência</p>
+              <p className="text-lg font-bold text-slate-900">
+                {activePendingSummary.days.length > 0
+                  ? `${activePendingSummary.days.length} dia(s) • ${formatHours(activePendingSummary.totalMissingHours)}h faltando`
+                  : 'Nenhuma pendência no período'}
+              </p>
+              <p className="text-xs text-slate-400 mt-1">
+                {dashboardPeriod === 'current'
+                  ? 'Agrupei tudo aqui pra não virar uma lista gigante logo de cara. Se quiser, é só expandir.'
+                  : 'Pra mês fechado isso ajuda bastante a revisar onde ficou buraco de lançamento.'}
+              </p>
+            </div>
+          </div>
+          <div className="text-slate-400">
+            {showPendingDetails ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+          </div>
+        </button>
+
+        {showPendingDetails && (
+          <div className="border-t border-slate-100 px-5 py-4">
+            {activePendingSummary.days.length > 0 ? (
+              <div className="space-y-2">
+                {activePendingSummary.days.map((day) => (
+                  <div key={day.date} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 rounded-lg border border-amber-100 bg-amber-50/70 px-4 py-3">
+                    <div>
+                      <p className="font-medium text-slate-800">{formatDateForDisplay(day.date)}</p>
+                      <p className="text-xs text-slate-500">Lançado: {formatHours(day.loggedHours)}h</p>
+                    </div>
+                    <div className="text-sm font-semibold text-amber-700">
+                      Faltam {formatHours(day.missingHours)}h
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-slate-500">Nada pendente por aqui. Esse período já está redondo.</p>
+            )}
+          </div>
+        )}
+      </div>
+
     {/* grid principal */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
@@ -489,12 +641,28 @@ export const UserDashboard: React.FC = () => {
                                 const dailyTotal = dailyTotals[entry.date] || 0;
                                 const isOverLimit = dailyTotal > 8.8;
                                 const isDup = isDuplicate(entry);
+                                const holidayMarker = holidayMarkers[entry.date];
+                                const isHolidayEntry = Boolean(holidayMarker);
                                 const hasAlert = isOverLimit || isDup;
 
                                 return (
-                                    <tr key={entry.id} className={`transition-colors ${hasAlert ? 'bg-yellow-50 hover:bg-yellow-100' : 'hover:bg-gray-50'}`}>
+                                    <tr key={entry.id} className={`transition-colors ${
+                                      isHolidayEntry
+                                        ? 'bg-rose-50 hover:bg-rose-100'
+                                        : hasAlert
+                                          ? 'bg-yellow-50 hover:bg-yellow-100'
+                                          : 'hover:bg-gray-50'
+                                    }`}>
                                         <td className="px-6 py-3 whitespace-nowrap flex items-center gap-2">
                                             {formatDateForDisplay(entry.date)}
+                                            {isHolidayEntry && (
+                                                <div className="group relative">
+                                                    <Calendar size={16} className="text-rose-500 cursor-help" />
+                                                    <span className="hidden group-hover:block absolute left-6 top-0 bg-slate-800 text-white text-xs p-1 rounded z-50 w-40">
+                                                        {holidayMarker?.kind === 'holiday' ? 'Feriado' : 'Folga/Ponte'}: {holidayMarker?.name}
+                                                    </span>
+                                                </div>
+                                            )}
                                             {isOverLimit && (
                                                 <div className="group relative">
                                                     <AlertOctagon size={16} className="text-amber-500 cursor-help" />
@@ -578,6 +746,54 @@ export const UserDashboard: React.FC = () => {
                             >
                                 Lote (Férias/Período)
                             </button>
+                        </div>
+                    )}
+
+                    {frequentTemplates.length > 0 && (
+                        <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                            <div className="flex items-center gap-2">
+                                <Sparkles size={16} className="text-brand-600" />
+                                <h3 className="text-sm font-semibold text-slate-800">Combinações frequentes</h3>
+                            </div>
+                            <p className="text-xs text-slate-500">
+                                Vou guardando o que você mais usa. Clicou em uma combinação, eu completo o resto pra você.
+                            </p>
+                            <div className="grid grid-cols-1 gap-2">
+                                {frequentTemplates.map((template) => (
+                                    <div key={template.id} className="flex items-center gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => setFormData({
+                                                ...formData,
+                                                projectId: template.projectId,
+                                                hours: template.hours,
+                                                description: template.description
+                                            })}
+                                            className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-left hover:border-brand-300 hover:bg-brand-50/40 transition-colors"
+                                        >
+                                            <div className="flex items-center gap-2 text-sm font-medium text-slate-800">
+                                                <Bookmark size={14} className="text-brand-600" />
+                                                <span>{template.label}</span>
+                                            </div>
+                                            <p className="mt-1 truncate text-xs text-slate-500" title={template.description}>
+                                                {template.description}
+                                            </p>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                if (!user) return;
+                                                store.deleteFrequentEntryTemplate(user.id, template.id);
+                                                setFrequentTemplates(store.getFrequentEntryTemplates(user.id).slice(0, 6));
+                                            }}
+                                            className="rounded-lg p-2 text-slate-400 hover:bg-white hover:text-red-500 transition-colors"
+                                            title="Remover combinação"
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     )}
 

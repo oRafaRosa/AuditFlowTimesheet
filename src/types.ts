@@ -69,6 +69,17 @@ export interface CalendarException {
   name: string;
 }
 
+export interface FrequentEntryTemplate {
+  id: string;
+  userId: string;
+  projectId: string;
+  hours: number;
+  description: string;
+  label: string;
+  usageCount: number;
+  lastUsedAt: string;
+}
+
 export const HOURS_PER_DAY = 8.8; // 8h48m = 8.8 horas
 
 // interfaces de mock

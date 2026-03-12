@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, Link, useNavigate } from 'react-router-dom'; 
 import { store } from '../services/store';
 import { NotificationService } from '../services/notifications';
-import { formatHours } from '../types';
+import { formatHours, HOURS_PER_DAY } from '../types';
 import { formatDateForDisplay, formatLocalDate } from '../utils/date';
+import { buildCalendarMaps, isExpectedWorkingDay, listPendingDaysForMonth } from '../utils/workCalendar';
 import { 
   LayoutDashboard, 
   Users, 
@@ -82,6 +83,11 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           const alerts: string[] = [];
           const today = new Date();
           let entriesCache: any[] | null = null;
+          const [holidays, exceptions] = await Promise.all([
+            store.getHolidays(),
+            store.getExceptions()
+          ]);
+          const calendarMaps = buildCalendarMaps(holidays, exceptions);
           
           // a. gestor: aprovações pendentes
           if (user.role === 'MANAGER' || user.role === 'ADMIN') {
@@ -182,6 +188,28 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                   }
               }
 
+                  // aqui é o aviso "ontem ficou pra trás", que costuma pegar bem no dia seguinte cedo
+                  const yesterday = new Date(today);
+                  yesterday.setDate(today.getDate() - 1);
+                  const yesterdayStr = formatLocalDate(yesterday);
+                  if (today.getHours() >= 9 && isExpectedWorkingDay(yesterdayStr, calendarMaps)) {
+                    const yesterdayHours = entries
+                      .filter(e => e.date === yesterdayStr)
+                      .reduce((acc, curr) => acc + curr.hours, 0);
+
+                    if (yesterdayHours < HOURS_PER_DAY) {
+                      const msg = `Ontem (${formatDateForDisplay(yesterdayStr)}) ficou com ${formatHours(yesterdayHours)}h lançadas. Vale fechar esse dia antes que a pendência cresça.`;
+                      alerts.push(msg);
+
+                      const lastYesterdayNotify = localStorage.getItem('last_yesterday_gap_reminder');
+                      const now = Date.now();
+                      if (!lastYesterdayNotify || (now - Number(lastYesterdayNotify) > 8 * 60 * 60 * 1000)) {
+                        NotificationService.send('Dia Útil Incompleto', msg, 'yesterday_gap_tag');
+                        localStorage.setItem('last_yesterday_gap_reminder', String(now));
+                      }
+                    }
+                  }
+
                   const monthStr = String(currentMonth + 1).padStart(2, '0');
                   const monthPrefix = `${currentYear}-${monthStr}-`;
                   const monthHours = entries
@@ -189,6 +217,13 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                   .reduce((acc, curr) => acc + curr.hours, 0);
                   const expectedToDate = await store.getExpectedHoursToDate(currentYear, currentMonth);
                   const pendingHours = expectedToDate - monthHours;
+                  const currentPendingDays = listPendingDaysForMonth({
+                    entries,
+                    year: currentYear,
+                    month: currentMonth,
+                    maps: calendarMaps,
+                    maxDate: formatLocalDate(today)
+                  });
 
                   if (pendingHours > 20) {
                     const msg = `Você está com ${formatHours(pendingHours)}h pendentes no mês. Regularize seus lançamentos.`;
@@ -200,6 +235,47 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                     if (!lastPendingHoursNotify || (now - Number(lastPendingHoursNotify) > 60 * 60 * 1000)) {
                       NotificationService.send('Pendência Alta de Horas', msg, 'pending_hours_tag');
                       localStorage.setItem('last_pending_hours_reminder', String(now));
+                    }
+                  }
+
+                  if (currentPendingDays.length >= 3 && today.getHours() >= 11) {
+                    const msg = `Você já acumula ${currentPendingDays.length} dia(s) úteis com horas faltando neste mês.`;
+                    alerts.push(msg);
+
+                    const lastPendingDaysNotify = localStorage.getItem('last_pending_days_reminder');
+                    const now = Date.now();
+                    if (!lastPendingDaysNotify || (now - Number(lastPendingDaysNotify) > 6 * 60 * 60 * 1000)) {
+                      NotificationService.send('Dias Pendentes no Mês', msg, 'pending_days_tag');
+                      localStorage.setItem('last_pending_days_reminder', String(now));
+                    }
+                  }
+
+                  if (today.getDate() <= 7) {
+                    const previousDate = new Date(currentYear, currentMonth - 1, 1);
+                    const previousYear = previousDate.getFullYear();
+                    const previousMonth = previousDate.getMonth();
+                    const previousPeriodStatus = await store.getPeriodStatus(user.id, previousYear, previousMonth);
+                    const previousPendingDays = listPendingDaysForMonth({
+                      entries,
+                      year: previousYear,
+                      month: previousMonth,
+                      maps: calendarMaps
+                    });
+
+                    if (
+                      previousPendingDays.length > 0 &&
+                      (previousPeriodStatus.status === 'OPEN' || previousPeriodStatus.status === 'REJECTED')
+                    ) {
+                      const missingHours = previousPendingDays.reduce((acc, day) => acc + day.missingHours, 0);
+                      const msg = `O mês anterior ainda está com ${previousPendingDays.length} dia(s) pendentes e ${formatHours(missingHours)}h faltando.`;
+                      alerts.push(msg);
+
+                      const lastCarryOverNotify = localStorage.getItem('last_previous_month_reminder');
+                      const now = Date.now();
+                      if (!lastCarryOverNotify || (now - Number(lastCarryOverNotify) > 8 * 60 * 60 * 1000)) {
+                        NotificationService.send('Pendência do Mês Anterior', msg, 'previous_month_tag');
+                        localStorage.setItem('last_previous_month_reminder', String(now));
+                      }
                     }
                   }
           }

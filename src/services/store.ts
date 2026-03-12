@@ -1,5 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { User, Project, TimesheetEntry, Holiday, CalendarException, HOURS_PER_DAY, TimesheetPeriod, PeriodStatus } from '../types';
+import { User, Project, TimesheetEntry, Holiday, CalendarException, HOURS_PER_DAY, TimesheetPeriod, PeriodStatus, FrequentEntryTemplate } from '../types';
 import { formatLocalDate, normalizeDateValue } from '../utils/date';
 
 // --- CONFIGURAÇÃO DO SUPABASE ---
@@ -14,6 +14,7 @@ export const supabase: SupabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY)
 const KEYS = {
   CURRENT_USER: 'grc_current_user',
   HOLIDAYS: 'grc_holidays', // fallback se não tiver no banco
+  FREQUENT_TEMPLATES: 'grc_frequent_templates',
 };
 
 // hash sha-256 de 'AuditFlow@2025'
@@ -634,6 +635,84 @@ class StoreService {
 
   async deleteException(id: string) {
     await supabase.from('calendar_exceptions').delete().eq('id', id);
+  }
+
+  async getHolidays(): Promise<Holiday[]> {
+    const { data, error } = await supabase.from('holidays').select('*');
+    if (error) return [];
+    return data;
+  }
+
+  // deixei as combinações frequentes no localStorage pra não depender de migration no banco
+  // se depois fizer sentido levar pro Supabase, dá pra reaproveitar a interface sem dor
+  getFrequentEntryTemplates(userId: string): FrequentEntryTemplate[] {
+    const raw = localStorage.getItem(KEYS.FREQUENT_TEMPLATES);
+    if (!raw) return [];
+
+    try {
+      const parsed: FrequentEntryTemplate[] = JSON.parse(raw);
+      return parsed
+        .filter((template) => template.userId === userId)
+        .sort((a, b) => {
+          if (b.usageCount !== a.usageCount) return b.usageCount - a.usageCount;
+          return new Date(b.lastUsedAt).getTime() - new Date(a.lastUsedAt).getTime();
+        });
+    } catch {
+      return [];
+    }
+  }
+
+  private saveAllFrequentEntryTemplates(templates: FrequentEntryTemplate[]) {
+    localStorage.setItem(KEYS.FREQUENT_TEMPLATES, JSON.stringify(templates));
+  }
+
+  recordFrequentEntryTemplate(
+    userId: string,
+    template: Pick<FrequentEntryTemplate, 'projectId' | 'hours' | 'description' | 'label'>
+  ) {
+    const raw = localStorage.getItem(KEYS.FREQUENT_TEMPLATES);
+    const allTemplates: FrequentEntryTemplate[] = raw ? JSON.parse(raw) : [];
+    const normalizedDescription = template.description.trim();
+
+    const existing = allTemplates.find((item) =>
+      item.userId === userId &&
+      item.projectId === template.projectId &&
+      item.hours === template.hours &&
+      item.description.trim().toLowerCase() === normalizedDescription.toLowerCase()
+    );
+
+    if (existing) {
+      existing.usageCount += 1;
+      existing.label = template.label;
+      existing.lastUsedAt = new Date().toISOString();
+      this.saveAllFrequentEntryTemplates(allTemplates);
+      return existing;
+    }
+
+    const newTemplate: FrequentEntryTemplate = {
+      id: crypto.randomUUID(),
+      userId,
+      projectId: template.projectId,
+      hours: template.hours,
+      description: normalizedDescription,
+      label: template.label,
+      usageCount: 1,
+      lastUsedAt: new Date().toISOString()
+    };
+
+    allTemplates.push(newTemplate);
+    this.saveAllFrequentEntryTemplates(allTemplates);
+    return newTemplate;
+  }
+
+  deleteFrequentEntryTemplate(userId: string, templateId: string) {
+    const raw = localStorage.getItem(KEYS.FREQUENT_TEMPLATES);
+    if (!raw) return;
+
+    const allTemplates: FrequentEntryTemplate[] = JSON.parse(raw);
+    this.saveAllFrequentEntryTemplates(
+      allTemplates.filter((template) => !(template.userId === userId && template.id === templateId))
+    );
   }
 
   // --- helpers de analytics ---
