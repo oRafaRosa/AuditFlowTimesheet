@@ -105,6 +105,17 @@ export const HelpCenter: React.FC = () => {
                         </div>
                     </div>
                 </section>
+
+                <hr className="border-gray-100" />
+
+                <section className="bg-brand-50 border border-brand-100 rounded-lg p-4">
+                    <h3 className="font-bold text-brand-900 mb-2">Conquistas e ranking</h3>
+                    <p className="text-sm text-brand-800 leading-relaxed">
+                        O app acompanha alguns hábitos de uso e libera conquistas ao longo do tempo. A ideia é deixar a rotina
+                        um pouco mais leve, valorizar boas práticas e esconder alguns easter eggs pelo caminho. Se quiser acompanhar
+                        sua evolução, é só abrir a página <strong>Ranking &amp; Conquistas</strong> no menu lateral.
+                    </p>
+                </section>
             </div>
         )}
 
@@ -338,6 +349,14 @@ export const HelpCenter: React.FC = () => {
                                 Banco de Dados: Supabase (PostgreSQL Enterprise)<br/>
                                 Hospedagem Frontend: GitHub Pages<br/>
                                 Versão Atual: 1.2.0 (Fev/2025)
+                            </p>
+                        </div>
+
+                        <div className="bg-gray-50 p-5 rounded-xl border border-gray-200">
+                            <h4 className="font-bold text-slate-700 mb-2">Evolução contínua</h4>
+                            <p className="text-sm text-slate-600">
+                                O AuditFlow segue recebendo melhorias frequentes, inclusive recursos de ranking, conquistas e pequenos
+                                detalhes de experiência para deixar o uso mais claro, rápido e menos burocrático no dia a dia.
                             </p>
                         </div>
                     </section>
