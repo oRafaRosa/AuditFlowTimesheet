@@ -8,9 +8,13 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, Cell
 import { Download, AlertCircle, Loader2, CheckCircle, XCircle, ArrowRight, Search, Clock, Calendar, Briefcase, FileText, TrendingUp, Info, X } from 'lucide-react';
 import { MyStatusWidget } from '../components/MyStatusWidget';
 import { ManagerProjectBudget } from './ManagerProjectBudget';
-import { formatDateForDisplay, parseDateOnly } from '../utils/date';
+import { formatDateForDisplay, formatLocalDate, parseDateOnly } from '../utils/date';
 
 type TabType = 'overview' | 'budget' | 'reports';
+
+interface TeamPeriodBacklogItem extends TimesheetPeriod {
+  userName: string;
+}
 
 export const ManagerDashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -22,6 +26,7 @@ export const ManagerDashboard: React.FC = () => {
   const [teamStats, setTeamStats] = useState<any[]>([]);
   const [projectBudgets, setProjectBudgets] = useState<any[]>([]);
   const [pendingApprovals, setPendingApprovals] = useState<TimesheetPeriod[]>([]);
+  const [teamPeriodBacklog, setTeamPeriodBacklog] = useState<TeamPeriodBacklogItem[]>([]);
   const [loading, setLoading] = useState(true);
 
     // --- estado do modal de revisão ---
@@ -116,6 +121,35 @@ export const ManagerDashboard: React.FC = () => {
         : allProjects.filter(p => !p.allowedManagerIds?.length || p.allowedManagerIds.includes(freshUserData.id));
         
     setProjects(relevantProjects);
+
+    const today = new Date();
+    const currentPeriodKey = `${today.getFullYear()}-${today.getMonth()}`;
+    const backlogData = (
+      await Promise.all(
+        uniqueTeam
+          .filter(member => member.id !== freshUserData.id)
+          .map(async (member) => {
+            const periods = await store.getLastPeriods(member.id);
+            return periods
+              .filter(period => `${period.year}-${period.month}` !== currentPeriodKey)
+              .filter(period => period.status === 'OPEN' || period.status === 'SUBMITTED' || period.status === 'REJECTED')
+              .map((period) => ({
+                ...period,
+                userName: member.name
+              }));
+          })
+      )
+    ).flat().sort((a, b) => {
+      if (a.status !== b.status) {
+        const order = { SUBMITTED: 0, REJECTED: 1, OPEN: 2 } as Record<string, number>;
+        return order[a.status] - order[b.status];
+      }
+
+      if (a.year !== b.year) return b.year - a.year;
+      return b.month - a.month;
+    });
+
+    setTeamPeriodBacklog(backlogData);
 
     await calculateStats(uniqueTeam, filteredEntries, relevantProjects, delegatedMemberIdSet);
     setLoading(false);
@@ -281,6 +315,12 @@ export const ManagerDashboard: React.FC = () => {
     document.body.removeChild(link);
   };
 
+  const openPeriodDetails = (period: TeamPeriodBacklogItem) => {
+    const startDate = formatLocalDate(new Date(period.year, period.month, 1));
+    const endDate = formatLocalDate(new Date(period.year, period.month + 1, 0));
+    navigate(`/manager/reports?userId=${period.userId}&startDate=${startDate}&endDate=${endDate}`);
+  };
+
   if (loading) {
       return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin text-brand-600" size={48} /></div>;
   }
@@ -292,6 +332,10 @@ export const ManagerDashboard: React.FC = () => {
     }
 
     // visão geral padrão
+    const previousMonthOpen = teamPeriodBacklog.filter(period => period.status === 'OPEN');
+    const previousMonthSubmitted = teamPeriodBacklog.filter(period => period.status === 'SUBMITTED');
+    const previousMonthRejected = teamPeriodBacklog.filter(period => period.status === 'REJECTED');
+
     return (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-8">
@@ -398,6 +442,92 @@ export const ManagerDashboard: React.FC = () => {
                     <p className="text-slate-500">Você não possui timesheets pendentes de aprovação.</p>
                 </div>
             )}
+
+            <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+                <div className="p-5 border-b border-slate-100 bg-slate-50">
+                    <h3 className="font-bold text-slate-800">Pendências de Meses Anteriores</h3>
+                    <p className="text-sm text-slate-500 mt-1">
+                        Aqui fica tudo que já deveria estar resolvido: mês não enviado, devolvido ou ainda parado em aprovação.
+                    </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-5 border-b border-slate-100">
+                    <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+                        <p className="text-xs font-bold uppercase text-amber-700">Não Enviados</p>
+                        <p className="text-2xl font-bold text-amber-900 mt-1">{previousMonthOpen.length}</p>
+                        <p className="text-xs text-amber-700 mt-1">Mês anterior fechado, mas ainda sem submissão</p>
+                    </div>
+                    <div className="rounded-xl border border-brand-200 bg-brand-50 p-4">
+                        <p className="text-xs font-bold uppercase text-brand-700">Aguardando Aprovação</p>
+                        <p className="text-2xl font-bold text-brand-900 mt-1">{previousMonthSubmitted.length}</p>
+                        <p className="text-xs text-brand-700 mt-1">Já chegaram no gestor, mas ainda não foram aprovados</p>
+                    </div>
+                    <div className="rounded-xl border border-red-200 bg-red-50 p-4">
+                        <p className="text-xs font-bold uppercase text-red-700">Devolvidos</p>
+                        <p className="text-2xl font-bold text-red-900 mt-1">{previousMonthRejected.length}</p>
+                        <p className="text-xs text-red-700 mt-1">Períodos que voltaram para ajuste e seguem pendentes</p>
+                    </div>
+                </div>
+
+                {teamPeriodBacklog.length > 0 ? (
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left text-sm">
+                            <thead className="bg-white text-slate-500 font-semibold border-b border-gray-100">
+                                <tr>
+                                    <th className="px-6 py-3">Colaborador</th>
+                                    <th className="px-6 py-3">Período</th>
+                                    <th className="px-6 py-3">Status</th>
+                                    <th className="px-6 py-3 text-right">Ação</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                                {teamPeriodBacklog.map((period) => (
+                                    <tr key={`${period.userId}-${period.year}-${period.month}-${period.status}`} className="hover:bg-slate-50">
+                                        <td className="px-6 py-4">
+                                            <div className="font-medium text-slate-800">{period.userName}</div>
+                                        </td>
+                                        <td className="px-6 py-4 font-medium text-slate-600">
+                                            {new Date(period.year, period.month, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }).toUpperCase()}
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span className={`px-2 py-1 rounded text-xs font-bold ${
+                                              period.status === 'SUBMITTED'
+                                                ? 'bg-brand-100 text-brand-700'
+                                                : period.status === 'REJECTED'
+                                                  ? 'bg-red-100 text-red-700'
+                                                  : 'bg-amber-100 text-amber-700'
+                                            }`}>
+                                                {period.status === 'SUBMITTED' ? 'AGUARDANDO APROVAÇÃO' : period.status === 'REJECTED' ? 'DEVOLVIDO' : 'NÃO ENVIADO'}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 text-right">
+                                            {period.status === 'SUBMITTED' ? (
+                                                <button
+                                                    onClick={() => openReviewModal(period)}
+                                                    className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-brand-700"
+                                                >
+                                                    Analisar
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    onClick={() => openPeriodDetails(period)}
+                                                    className="border border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm font-bold hover:bg-slate-50"
+                                                >
+                                                    Ver Detalhes
+                                                </button>
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                ) : (
+                    <div className="p-8 text-center text-slate-500">
+                        Nenhum mês anterior pendente. O backlog da equipe está limpo.
+                    </div>
+                )}
+            </div>
 
             {/* alertas de divergência */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
