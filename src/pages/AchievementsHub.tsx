@@ -177,7 +177,7 @@ export const AchievementsHub: React.FC = () => {
                     <td className="px-6 py-4">{profile.bestLoginStreak} dias</td>
                     <td className="px-6 py-4">{profile.bestLoggingStreak} dias</td>
                     <td className="px-6 py-4">
-                      {profile.achievements.filter((achievement) => achievement.earned && achievement.tone !== 'negative').length} boas / {profile.negativeAchievements} engraçadas
+                      {profile.achievements.filter((achievement) => achievement.earned).length} desbloqueadas
                     </td>
                   </tr>
                 ))}
