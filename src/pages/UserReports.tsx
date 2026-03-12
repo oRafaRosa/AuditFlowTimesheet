@@ -3,15 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { store } from '../services/store';
 import { Project, TimesheetEntry, HOURS_PER_DAY, formatHours } from '../types';
 import { Filter, Loader2, Download, Edit, Trash2 } from 'lucide-react';
-
-// helper pra arrumar o rolê do fuso (utc vs local)
-const getLocalDateString = (date = new Date()) => {
-  const offset = date.getTimezoneOffset() * 60000;
-  const localTime = new Date(date.getTime() - offset);
-  return localTime.toISOString().split('T')[0];
-};
-
-const parseLocalDate = (dateStr: string) => new Date(`${dateStr}T00:00:00`);
+import { formatDateForDisplay, formatLocalDate, parseDateOnly } from '../utils/date';
 
 export const UserReports: React.FC = () => {
   const location = useLocation();
@@ -34,7 +26,7 @@ export const UserReports: React.FC = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
       projectId: '',
-      date: getLocalDateString(),
+      date: formatLocalDate(),
       hours: HOURS_PER_DAY,
       description: ''
   });
@@ -72,7 +64,7 @@ export const UserReports: React.FC = () => {
     setPeriodStatuses(statusMap);
 
     // ordena por data desc
-    allEntries.sort((a,b) => parseLocalDate(b.date).getTime() - parseLocalDate(a.date).getTime());
+    allEntries.sort((a,b) => parseDateOnly(b.date).getTime() - parseDateOnly(a.date).getTime());
     setEntries(allEntries);
     
     setProjects(allProjects);
@@ -111,7 +103,7 @@ export const UserReports: React.FC = () => {
   };
 
   const isEntryLocked = (entry: TimesheetEntry) => {
-    const d = parseLocalDate(entry.date);
+    const d = parseDateOnly(entry.date);
       const key = `${d.getFullYear()}-${d.getMonth()}`;
       const status = periodStatuses[key];
     // se tem status e é submitted/approved, tá travado
@@ -170,7 +162,7 @@ export const UserReports: React.FC = () => {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `meu_relatorio_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute("download", `meu_relatorio_${formatLocalDate()}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -232,7 +224,7 @@ export const UserReports: React.FC = () => {
                             const locked = isEntryLocked(e);
                             return (
                                 <tr key={e.id} className="hover:bg-slate-50">
-                                    <td className="px-6 py-3 whitespace-nowrap">{parseLocalDate(e.date).toLocaleDateString('pt-BR')}</td>
+                                    <td className="px-6 py-3 whitespace-nowrap">{formatDateForDisplay(e.date)}</td>
                                     <td className="px-6 py-3 font-medium text-slate-700">{getProjectName(e.projectId)}</td>
                                     <td className="px-6 py-3 text-slate-500 truncate max-w-lg" title={e.description}>{e.description}</td>
                                     <td className="px-6 py-3 text-right font-bold text-slate-600">{formatHours(e.hours)}</td>

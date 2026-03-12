@@ -5,17 +5,7 @@ import { TimesheetEntry, Project, HOURS_PER_DAY, TimesheetPeriod, formatHours } 
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { Clock, Calendar, CheckCircle, AlertTriangle, Plus, Trash2, Loader2, Lock, XCircle, Search, Filter, AlertOctagon, Copy, Edit } from 'lucide-react';
 import { MyStatusWidget } from '../components/MyStatusWidget';
-
-// helper pra arrumar o rolê do fuso (utc vs local), vrau
-// devolve yyyy-mm-dd no horário local do navegador, não no utc. funcionou caralho
-// r² solutions group vibes: https://orafarosa.github.io/R2-Solutions-Group/
-const getLocalDateString = (date = new Date()) => {
-  const offset = date.getTimezoneOffset() * 60000;
-  const localTime = new Date(date.getTime() - offset);
-  return localTime.toISOString().split('T')[0];
-};
-
-const parseLocalDate = (dateStr: string) => new Date(`${dateStr}T00:00:00`);
+import { formatDateForDisplay, formatLocalDate, parseDateOnly } from '../utils/date';
 
 export const UserDashboard: React.FC = () => {
   const user = store.getCurrentUser();
@@ -49,8 +39,8 @@ export const UserDashboard: React.FC = () => {
     const [editingId, setEditingId] = useState<string | null>(null); // pra saber qual linha tá sendo editada
   const [formData, setFormData] = useState({
     projectId: '',
-    date: getLocalDateString(), // já nasce com data local certinha
-    endDate: getLocalDateString(), 
+    date: formatLocalDate(),
+    endDate: formatLocalDate(),
     hours: HOURS_PER_DAY,
     description: ''
   });
@@ -76,7 +66,7 @@ export const UserDashboard: React.FC = () => {
     ]);
 
     setPeriodStatus(status);
-    setEntries(allEntries.sort((a, b) => parseLocalDate(b.date).getTime() - parseLocalDate(a.date).getTime()));
+    setEntries(allEntries.sort((a, b) => parseDateOnly(b.date).getTime() - parseDateOnly(a.date).getTime()));
     
     // soma do dia pra regra de alerta
     const totals: Record<string, number> = {};
@@ -103,7 +93,7 @@ export const UserDashboard: React.FC = () => {
 
     // calcula kpis
     const currentMonthEntries = allEntries.filter(e => {
-        const d = parseLocalDate(e.date);
+        const d = parseDateOnly(e.date);
         return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
     });
 
@@ -121,7 +111,7 @@ export const UserDashboard: React.FC = () => {
         const d = new Date(currentYear, currentMonth - i, 1);
         const monthName = d.toLocaleDateString('pt-BR', { month: 'short' });
         const monthEntries = allEntries.filter(e => {
-            const entD = parseLocalDate(e.date);
+            const entD = parseDateOnly(e.date);
             return entD.getMonth() === d.getMonth() && entD.getFullYear() === d.getFullYear();
         });
         const mTotal = monthEntries.reduce((acc, curr) => acc + curr.hours, 0);
@@ -143,7 +133,7 @@ export const UserDashboard: React.FC = () => {
 
   const checkPeriodLocked = async (dateStr: string) => {
     if (!user) return true;
-    const date = parseLocalDate(dateStr);
+    const date = parseDateOnly(dateStr);
     const status = await store.getPeriodStatus(user.id, date.getFullYear(), date.getMonth());
     return status.status === 'SUBMITTED' || status.status === 'APPROVED';
   };
@@ -198,7 +188,7 @@ export const UserDashboard: React.FC = () => {
         // modo create
         // checa status do mês (na raça) antes de criar
         // o ideal era validar pelo formData.date, mas por ora a ui segura
-        const d = new Date(formData.date);
+        const d = parseDateOnly(formData.date);
         const status = await store.getPeriodStatus(user.id, d.getFullYear(), d.getMonth());
         if (status.status === 'SUBMITTED' || status.status === 'APPROVED') {
              alert(`O mês de ${d.getMonth()+1}/${d.getFullYear()} já foi fechado. Não é possível adicionar lançamentos.`);
@@ -215,13 +205,13 @@ export const UserDashboard: React.FC = () => {
                 description: formData.description
             });
         } else {
-            const start = new Date(formData.date);
-            const end = new Date(formData.endDate);
+            const start = parseDateOnly(formData.date);
+            const end = parseDateOnly(formData.endDate);
             
             for(let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-                const dayOfWeek = d.getUTCDay();
+                const dayOfWeek = d.getDay();
                 if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-                    const dateStr = d.toISOString().split('T')[0];
+                    const dateStr = formatLocalDate(d);
                     await store.addEntry({
                         userId: user.id,
                         projectId: formData.projectId,
@@ -261,8 +251,8 @@ export const UserDashboard: React.FC = () => {
           const startDate = new Date(year, month, 1);
           const endDate = new Date(year, month + 1, 0);
           
-          const sStr = getLocalDateString(startDate);
-          const eStr = getLocalDateString(endDate);
+          const sStr = formatLocalDate(startDate);
+          const eStr = formatLocalDate(endDate);
 
           navigate(`/reports?startDate=${sStr}&endDate=${eStr}`);
       }
@@ -302,8 +292,8 @@ export const UserDashboard: React.FC = () => {
                         setFormMode('single');
                         setFormData({
                             projectId: '',
-                            date: getLocalDateString(),
-                            endDate: getLocalDateString(),
+                            date: formatLocalDate(),
+                            endDate: formatLocalDate(),
                             hours: HOURS_PER_DAY,
                             description: ''
                         });
@@ -432,7 +422,7 @@ export const UserDashboard: React.FC = () => {
                                 return (
                                     <tr key={entry.id} className={`transition-colors ${hasAlert ? 'bg-yellow-50 hover:bg-yellow-100' : 'hover:bg-gray-50'}`}>
                                         <td className="px-6 py-3 whitespace-nowrap flex items-center gap-2">
-                                            {parseLocalDate(entry.date).toLocaleDateString('pt-BR')}
+                                            {formatDateForDisplay(entry.date)}
                                             {isOverLimit && (
                                                 <div className="group relative">
                                                     <AlertOctagon size={16} className="text-amber-500 cursor-help" />

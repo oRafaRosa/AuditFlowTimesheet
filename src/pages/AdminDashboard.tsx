@@ -5,8 +5,7 @@ import { store, SUPABASE_SCHEMA_SQL } from '../services/store';
 import { User, Project, TimesheetEntry, CalendarException, formatHours } from '../types';
 import { Plus, Database, Edit, Search, Filter, Calendar, Trash2, Loader2 } from 'lucide-react';
 import { MyStatusWidget } from '../components/MyStatusWidget';
-
-const parseLocalDate = (dateStr: string) => new Date(`${dateStr}T00:00:00`);
+import { formatDateForDisplay } from '../utils/date';
 
 export const AdminDashboard: React.FC = () => {
   const location = useLocation();
@@ -488,7 +487,7 @@ export const AdminDashboard: React.FC = () => {
                           <tbody className="divide-y divide-gray-100">
                               {filteredEntries.map(e => (
                                   <tr key={e.id} className="hover:bg-slate-50">
-                                      <td className="px-6 py-3 whitespace-nowrap">{parseLocalDate(e.date).toLocaleDateString('pt-BR')}</td>
+                                      <td className="px-6 py-3 whitespace-nowrap">{formatDateForDisplay(e.date)}</td>
                                       <td className="px-6 py-3">{getUserName(e.userId)}</td>
                                       <td className="px-6 py-3">{getProjectName(e.projectId)}</td>
                                       <td className="px-6 py-3 text-slate-500 truncate max-w-xs">{e.description}</td>
@@ -531,7 +530,7 @@ export const AdminDashboard: React.FC = () => {
                                   {exceptions.map(ex => (
                                       <tr key={ex.id} className="hover:bg-slate-50">
                                           <td className="px-6 py-3 whitespace-nowrap font-medium text-slate-700">
-                                              {new Date(ex.date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
+                                              {formatDateForDisplay(ex.date)}
                                           </td>
                                           <td className="px-6 py-3">
                                               {ex.type === 'OFFDAY' 

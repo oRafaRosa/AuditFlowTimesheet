@@ -3,6 +3,7 @@ import { useLocation, Link, useNavigate } from 'react-router-dom';
 import { store } from '../services/store';
 import { NotificationService } from '../services/notifications';
 import { formatHours } from '../types';
+import { formatDateForDisplay, formatLocalDate } from '../utils/date';
 import { 
   LayoutDashboard, 
   Users, 
@@ -122,8 +123,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           if (!isWeekend && today.getHours() >= 16) {
               const entries = entriesCache ?? await store.getEntries(user.id);
               entriesCache = entries;
-              // usa data utc pra bater com o jeito que salva no banco
-              const todayStr = today.toISOString().split('T')[0];
+              const todayStr = formatLocalDate(today);
               
               const todayHours = entries
                 .filter(e => e.date === todayStr)
@@ -155,7 +155,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               for (let i = 0; i < 5; i++) { // de segunda a sexta
                   const date = new Date(currentWeekStart);
                   date.setDate(currentWeekStart.getDate() + i);
-                  weekDates.push(date.toISOString().split('T')[0]);
+                  weekDates.push(formatLocalDate(date));
               }
               
               const missingDays: string[] = [];
@@ -163,8 +163,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                   const dayEntries = entries.filter(e => e.date === dateStr);
                   const totalHours = dayEntries.reduce((acc, curr) => acc + curr.hours, 0);
                   if (totalHours === 0) {
-                      const date = new Date(dateStr + 'T00:00:00');
-                      const dayName = date.toLocaleDateString('pt-BR', { weekday: 'long' });
+                      const dayName = formatDateForDisplay(dateStr, 'pt-BR', { weekday: 'long' });
                       missingDays.push(dayName);
                   }
               });

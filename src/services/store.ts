@@ -1,5 +1,6 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { User, Project, TimesheetEntry, Holiday, CalendarException, HOURS_PER_DAY, TimesheetPeriod, PeriodStatus } from '../types';
+import { formatLocalDate, normalizeDateValue } from '../utils/date';
 
 // --- CONFIGURAÇÃO DO SUPABASE ---
 // pegando do .env se existir, senão usa fallback pra build funcionar
@@ -365,18 +366,8 @@ class StoreService {
     }
 
     const result = allData.map((e: any) => {
-      const normalizeDate = (value: any) => {
-        if (!value) return null;
-        if (value instanceof Date) return value.toISOString().split('T')[0];
-        if (typeof value === 'string') {
-          const match = value.match(/\d{4}-\d{2}-\d{2}/);
-          return match ? match[0] : value.split('T')[0];
-        }
-        return null;
-      };
-
       // usa work_date se tiver, senão cai no date
-      const displayDate = normalizeDate(e.work_date) || normalizeDate(e.date) || '';
+      const displayDate = normalizeDateValue(e.work_date) || normalizeDateValue(e.date) || '';
 
       return {
         id: e.id,
@@ -648,7 +639,7 @@ class StoreService {
   // --- helpers de analytics ---
   
   private isWorkingDay(d: Date, holidays: Holiday[], exceptions: CalendarException[]): boolean {
-      const dateString = d.toISOString().split('T')[0];
+      const dateString = formatLocalDate(d);
       const dayOfWeek = d.getDay();
       
       const exception = exceptions.find(e => e.date === dateString);

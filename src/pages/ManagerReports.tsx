@@ -5,8 +5,7 @@ import { useLocation } from 'react-router-dom';
 import { store } from '../services/store';
 import { User, Project, TimesheetEntry, formatHours } from '../types';
 import { Filter, Loader2, Download } from 'lucide-react';
-
-const parseLocalDate = (dateStr: string) => new Date(`${dateStr}T00:00:00`);
+import { formatDateForDisplay, formatLocalDate } from '../utils/date';
 
 export const ManagerReports: React.FC = () => {
   const location = useLocation();
@@ -147,7 +146,7 @@ export const ManagerReports: React.FC = () => {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `report_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute("download", `report_${formatLocalDate()}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -215,7 +214,7 @@ export const ManagerReports: React.FC = () => {
                     <tbody className="divide-y divide-gray-100">
                         {filteredEntries.map(e => (
                             <tr key={e.id} className="hover:bg-slate-50">
-                                <td className="px-6 py-3 whitespace-nowrap">{parseLocalDate(e.date).toLocaleDateString('pt-BR')}</td>
+                                <td className="px-6 py-3 whitespace-nowrap">{formatDateForDisplay(e.date)}</td>
                                 <td className="px-6 py-3">{getUserName(e.userId)}</td>
                                 <td className="px-6 py-3">{getProjectName(e.projectId)}</td>
                                 <td className="px-6 py-3 text-slate-500 truncate max-w-xs">{e.description}</td>
