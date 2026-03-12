@@ -1140,7 +1140,7 @@ create table if not exists timesheet_period_events (
 create table if not exists user_activity_events (
   id uuid default gen_random_uuid() primary key,
   user_id uuid references profiles(id) not null,
-  activity_type text check (activity_type in ('REPORT_VIEW')) not null,
+  activity_type text check (activity_type in ('REPORT_VIEW', 'DASHBOARD_VIEW')) not null,
   activity_date date not null,
   created_at timestamp with time zone default timezone('utc'::text, now()),
   unique(user_id, activity_type, activity_date)

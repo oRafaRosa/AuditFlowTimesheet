@@ -73,6 +73,10 @@ export const ManagerDashboard: React.FC = () => {
 
   useEffect(() => {
     loadData();
+    const currentUser = store.getCurrentUser();
+    if (currentUser) {
+      store.recordUserActivityEvent(currentUser.id, 'DASHBOARD_VIEW');
+    }
   }, []);
 
   const loadData = async () => {

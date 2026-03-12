@@ -87,7 +87,7 @@ export interface UserLoginActivity {
   createdAt: string;
 }
 
-export type UserActivityType = 'REPORT_VIEW';
+export type UserActivityType = 'REPORT_VIEW' | 'DASHBOARD_VIEW';
 
 export interface UserActivityEvent {
   userId: string;
@@ -137,7 +137,17 @@ export interface UserGamificationProfile {
   detailedDescriptions: number;
   perfectMonths: number;
   specialWorkDays: number;
+  saturdayWorkDays: number;
+  sundayWorkDays: number;
+  specialWorkStreak: number;
   reportViewDays: number;
+  dashboardViewDays: number;
+  reportDashboardComboDays: number;
+  sniperClosures: number;
+  almostPerfectMonths: number;
+  managerReviewApprovals: number;
+  reportNoNeedDays: number;
+  controlAbsoluteStreak: number;
   timelySubmissions: number;
   quickRecoveries: number;
   timelyApprovals: number;

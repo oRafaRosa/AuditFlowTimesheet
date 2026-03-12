@@ -80,6 +80,7 @@ export const UserDashboard: React.FC = () => {
   useEffect(() => {
     if (user?.id) {
         loadData();
+        store.recordUserActivityEvent(user.id, 'DASHBOARD_VIEW');
     }
   }, [user?.id]);
 

@@ -26,9 +26,19 @@ const ACHIEVEMENTS: AchievementDefinition[] = [
   { key: 'detailed_60', title: 'Ata Notarial', description: 'Passou de 60 lançamentos bem escritos, daqueles que ninguém precisa adivinhar.', tone: 'positive', icon: 'notebook-text' },
   { key: 'perfect_month', title: 'Mês Perfeito', description: 'Fechou um mês aprovado, sem buracos e sem gambiarra de descrição.', tone: 'positive', icon: 'sparkles' },
   { key: 'workaholic', title: 'Workaholic', description: 'Viciado em trabalho: lançou horas em fim de semana, feriado ou folga.', tone: 'negative', icon: 'briefcase-business' },
+  { key: 'sextou_nada', title: 'Sextou Nada', description: 'Arrumou trabalho até no sábado.', tone: 'negative', icon: 'calendar-x-2' },
+  { key: 'domingou_tambem', title: 'Domingou Também', description: 'Nem o domingo escapou dos lançamentos.', tone: 'negative', icon: 'sun' },
   { key: 'plantao', title: 'Plantão Extraoficial', description: 'Transformou vários descansos em dia útil improvisado.', tone: 'negative', icon: 'sirene' },
   { key: 'report_5', title: 'De Olho em Tudo', description: 'Abriu relatórios em vários dias para acompanhar seus registros.', tone: 'positive', icon: 'search-check' },
   { key: 'report_15', title: 'Raio-X dos Registros', description: 'Virou freguês dos relatórios e acompanha tudo de perto.', tone: 'positive', icon: 'scan-search' },
+  { key: 'auditor_de_si', title: 'Auditor de Si Mesmo', description: 'Abriu dashboard e relatórios no mesmo dia várias vezes para conferir tudo.', tone: 'positive', icon: 'badge-check' },
+  { key: 'sniper_fechamento', title: 'Sniper do Fechamento', description: 'Fechou o mês redondo logo no primeiro dia útil.', tone: 'positive', icon: 'crosshair' },
+  { key: 'quase_perfeito', title: 'Quase Perfeito', description: 'Por muito pouco não virou um mês perfeito.', tone: 'positive', icon: 'sparkle' },
+  { key: 'detetive_registros', title: 'Detetive dos Registros', description: 'Virou figura conhecida dos relatórios e filtros do AuditFlow.', tone: 'positive', icon: 'search' },
+  { key: 'sem_descansar', title: 'Sem Descansar', description: 'Engatou uma sequência de dias especiais com lançamento.', tone: 'negative', icon: 'battery-warning' },
+  { key: 'modo_revisao', title: 'Modo Revisão', description: 'Abriu relatório antes de aprovar e mostrou que revisa de verdade.', tone: 'positive', icon: 'file-search' },
+  { key: 'voltei_so_pra_ver', title: 'Voltei Só pra Ver', description: 'Abriu relatório mesmo com tudo sob controle, só para conferir.', tone: 'positive', icon: 'binoculars' },
+  { key: 'controle_absoluto', title: 'Controle Absoluto', description: 'Empilhou meses seguidos muito bem preenchidos e sem atraso.', tone: 'positive', icon: 'shield-check' },
   { key: 'timely_submitter', title: 'Virou o Mês, Enviou', description: 'Enviou o timesheet cedo no mês seguinte, sem deixar virar novela.', tone: 'positive', icon: 'send' },
   { key: 'quick_recovery', title: 'Volta por Cima', description: 'Recebeu devolução, ajustou rápido e reenviou sem drama.', tone: 'positive', icon: 'undo-2' },
   { key: 'timely_manager', title: 'Gestor Relâmpago', description: 'Aprovou pelo menos 3 timesheets em até 2 dias.', tone: 'positive', icon: 'zap' },
@@ -241,13 +251,15 @@ const countQuickRecoveries = (events: TimesheetPeriodEvent[]) => {
 const countBackfilledEntries = (entries: TimesheetEntry[]) =>
   entries.filter((entry) => getCreatedDate(entry) > entry.date).length;
 
-const countSpecialWorkDays = (
+const countSpecialWorkSummary = (
   entries: TimesheetEntry[],
   holidayMap: Record<string, string>,
   offdayMap: Record<string, string>,
   workdayMap: Record<string, string>
 ) => {
   const specialDates = new Set<string>();
+  const saturdayDates = new Set<string>();
+  const sundayDates = new Set<string>();
 
   entries.forEach((entry) => {
     const date = parseDateOnly(entry.date);
@@ -258,10 +270,45 @@ const countSpecialWorkDays = (
 
     if (isHoliday || isOffday || (isWeekend && !isExplicitWorkday)) {
       specialDates.add(entry.date);
+
+      if (date.getDay() === 6 && !isExplicitWorkday) {
+        saturdayDates.add(entry.date);
+      }
+
+      if (date.getDay() === 0 && !isExplicitWorkday) {
+        sundayDates.add(entry.date);
+      }
     }
   });
 
-  return specialDates.size;
+  const sortedSpecialDates = Array.from(specialDates).sort();
+  let bestStreak = 0;
+  let running = 0;
+  let previousDate: string | null = null;
+
+  sortedSpecialDates.forEach((dateStr) => {
+    if (!previousDate) {
+      running = 1;
+      bestStreak = 1;
+      previousDate = dateStr;
+      return;
+    }
+
+    const previousCursor = parseDateOnly(previousDate);
+    previousCursor.setDate(previousCursor.getDate() + 1);
+    const expectedNext = formatLocalDate(previousCursor);
+
+    running = expectedNext === dateStr ? running + 1 : 1;
+    bestStreak = Math.max(bestStreak, running);
+    previousDate = dateStr;
+  });
+
+  return {
+    specialWorkDays: specialDates.size,
+    saturdayWorkDays: saturdayDates.size,
+    sundayWorkDays: sundayDates.size,
+    specialWorkStreak: bestStreak
+  };
 };
 
 const countReportViewDays = (events: UserActivityEvent[]) =>
@@ -270,6 +317,251 @@ const countReportViewDays = (events: UserActivityEvent[]) =>
       .filter((event) => event.activityType === 'REPORT_VIEW')
       .map((event) => event.activityDate)
   ).size;
+
+const countDashboardViewDays = (events: UserActivityEvent[]) =>
+  new Set(
+    events
+      .filter((event) => event.activityType === 'DASHBOARD_VIEW')
+      .map((event) => event.activityDate)
+  ).size;
+
+const countReportDashboardComboDays = (events: UserActivityEvent[]) => {
+  const reportDays = new Set(
+    events
+      .filter((event) => event.activityType === 'REPORT_VIEW')
+      .map((event) => event.activityDate)
+  );
+
+  const dashboardDays = new Set(
+    events
+      .filter((event) => event.activityType === 'DASHBOARD_VIEW')
+      .map((event) => event.activityDate)
+  );
+
+  return Array.from(reportDays).filter((date) => dashboardDays.has(date)).length;
+};
+
+const getFirstExpectedWorkingDayOfNextMonth = (
+  year: number,
+  month: number,
+  holidayMap: Record<string, string>,
+  offdayMap: Record<string, string>,
+  workdayMap: Record<string, string>
+) => {
+  const cursor = new Date(year, month + 1, 1, 12);
+  while (!isExpectedWorkingDay(formatLocalDate(cursor), { holidayMap, offdayMap, workdayMap })) {
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  return formatLocalDate(cursor);
+};
+
+const countSniperClosures = (
+  periods: TimesheetPeriod[],
+  entries: TimesheetEntry[],
+  events: TimesheetPeriodEvent[],
+  holidayMap: Record<string, string>,
+  offdayMap: Record<string, string>,
+  workdayMap: Record<string, string>
+) => {
+  let sniperClosures = 0;
+
+  periods.forEach((period) => {
+    const submission = events.find((event) =>
+      event.periodId === period.id && event.eventType === 'SUBMITTED'
+    );
+    if (!submission) return;
+
+    const expectedDate = getFirstExpectedWorkingDayOfNextMonth(period.year, period.month, holidayMap, offdayMap, workdayMap);
+    const submittedDate = normalizeDateValue(submission.occurredAt);
+    if (submittedDate !== expectedDate) return;
+
+    const periodEntries = entries.filter((entry) => {
+      const date = parseDateOnly(entry.date);
+      return date.getFullYear() === period.year && date.getMonth() === period.month;
+    });
+
+    const pendingDays = listPendingDaysForMonth({
+      entries: periodEntries,
+      year: period.year,
+      month: period.month,
+      maps: { holidayMap, offdayMap, workdayMap }
+    });
+
+    if (pendingDays.length === 0) {
+      sniperClosures += 1;
+    }
+  });
+
+  return sniperClosures;
+};
+
+const countAlmostPerfectMonths = (
+  periods: TimesheetPeriod[],
+  entries: TimesheetEntry[],
+  holidayMap: Record<string, string>,
+  offdayMap: Record<string, string>,
+  workdayMap: Record<string, string>
+) => {
+  let almostPerfect = 0;
+
+  periods.forEach((period) => {
+    const periodEntries = entries.filter((entry) => {
+      const date = parseDateOnly(entry.date);
+      return date.getFullYear() === period.year && date.getMonth() === period.month;
+    });
+    if (periodEntries.length === 0) return;
+
+    const pendingDays = listPendingDaysForMonth({
+      entries: periodEntries,
+      year: period.year,
+      month: period.month,
+      maps: { holidayMap, offdayMap, workdayMap }
+    });
+
+    const missingHours = pendingDays.reduce((acc, day) => acc + day.missingHours, 0);
+    if (pendingDays.length <= 1 && missingHours > 0 && missingHours <= 2) {
+      almostPerfect += 1;
+    }
+  });
+
+  return almostPerfect;
+};
+
+const countManagerReviewApprovals = (events: TimesheetPeriodEvent[], activityEvents: UserActivityEvent[]) => {
+  const reportDays = new Set(
+    activityEvents
+      .filter((event) => event.activityType === 'REPORT_VIEW')
+      .map((event) => event.activityDate)
+  );
+
+  return events.filter((event) => {
+    if (event.eventType !== 'APPROVED') return false;
+    const approvalDate = normalizeDateValue(event.occurredAt);
+    if (!approvalDate) return false;
+    if (reportDays.has(approvalDate)) return true;
+
+    const previousDay = parseDateOnly(approvalDate);
+    previousDay.setDate(previousDay.getDate() - 1);
+    return reportDays.has(formatLocalDate(previousDay));
+  }).length;
+};
+
+const countReportNoNeedDays = (
+  activityEvents: UserActivityEvent[],
+  periods: TimesheetPeriod[],
+  entries: TimesheetEntry[],
+  holidayMap: Record<string, string>,
+  offdayMap: Record<string, string>,
+  workdayMap: Record<string, string>
+) => {
+  const reportDays = Array.from(new Set(
+    activityEvents
+      .filter((event) => event.activityType === 'REPORT_VIEW')
+      .map((event) => event.activityDate)
+  ));
+
+  let count = 0;
+
+  reportDays.forEach((reportDate) => {
+    const reportCursor = parseDateOnly(reportDate);
+    const year = reportCursor.getFullYear();
+    const month = reportCursor.getMonth();
+    const previousMonthCursor = new Date(year, month - 1, 1, 12);
+
+    const relevantPeriods = periods.filter((period) =>
+      (period.year === year && period.month === month) ||
+      (period.year === previousMonthCursor.getFullYear() && period.month === previousMonthCursor.getMonth())
+    );
+
+    const hasPending = relevantPeriods.some((period) => {
+      const periodEntries = entries.filter((entry) => {
+        const date = parseDateOnly(entry.date);
+        return date.getFullYear() === period.year && date.getMonth() === period.month && entry.date <= reportDate;
+      });
+
+      const maxDate = period.year === year && period.month === month ? reportDate : undefined;
+      const pendingDays = listPendingDaysForMonth({
+        entries: periodEntries,
+        year: period.year,
+        month: period.month,
+        maps: { holidayMap, offdayMap, workdayMap },
+        maxDate
+      });
+
+      return pendingDays.length > 0;
+    });
+
+    if (!hasPending) {
+      count += 1;
+    }
+  });
+
+  return count;
+};
+
+const countControlAbsoluteStreak = (
+  periods: TimesheetPeriod[],
+  entries: TimesheetEntry[],
+  holidayMap: Record<string, string>,
+  offdayMap: Record<string, string>,
+  workdayMap: Record<string, string>
+) => {
+  const sortedPeriods = [...periods].sort((a, b) => (a.year - b.year) || (a.month - b.month));
+  let running = 0;
+  let best = 0;
+  let previousYearMonth: string | null = null;
+
+  sortedPeriods.forEach((period) => {
+    const periodEntries = entries.filter((entry) => {
+      const date = parseDateOnly(entry.date);
+      return date.getFullYear() === period.year && date.getMonth() === period.month;
+    });
+
+    if (periodEntries.length === 0) return;
+
+    const pendingDays = listPendingDaysForMonth({
+      entries: periodEntries,
+      year: period.year,
+      month: period.month,
+      maps: { holidayMap, offdayMap, workdayMap }
+    });
+
+    const rushedMonths = detectLazyBatchMonths(periodEntries);
+    const descriptionCounts = periodEntries.reduce<Record<string, number>>((acc, entry) => {
+      const key = normalizeDescription(entry.description);
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {});
+
+    const hasRepeatedDescriptions = periodEntries.some((entry) => {
+      const normalized = normalizeDescription(entry.description);
+      return descriptionCounts[normalized] > 1;
+    });
+
+    const monthKey = `${period.year}-${period.month}`;
+    const isControlled = pendingDays.length === 0 && rushedMonths === 0 && !hasRepeatedDescriptions;
+
+    if (!isControlled) {
+      running = 0;
+      previousYearMonth = monthKey;
+      return;
+    }
+
+    if (!previousYearMonth) {
+      running = 1;
+    } else {
+      const [previousYear, previousMonth] = previousYearMonth.split('-').map(Number);
+      const expectedNext = new Date(previousYear, previousMonth + 1, 1, 12);
+      running = (expectedNext.getFullYear() === period.year && expectedNext.getMonth() === period.month) ? running + 1 : 1;
+    }
+
+    best = Math.max(best, running);
+    previousYearMonth = monthKey;
+  });
+
+  return best;
+};
 
 const countPerfectMonths = (
   periods: TimesheetPeriod[],
@@ -374,6 +666,14 @@ const buildAchievements = (
         earnedCount = profile.specialWorkDays >= 1 ? 1 : 0;
         progressText = `${profile.specialWorkDays} dia(s) fora do expediente normal`;
         break;
+      case 'sextou_nada':
+        earnedCount = profile.saturdayWorkDays;
+        progressText = `${profile.saturdayWorkDays} sábado(s) com lançamento`;
+        break;
+      case 'domingou_tambem':
+        earnedCount = profile.sundayWorkDays;
+        progressText = `${profile.sundayWorkDays} domingo(s) com lançamento`;
+        break;
       case 'plantao':
         earnedCount = Math.floor(profile.specialWorkDays / 4);
         progressText = `${profile.specialWorkDays} dia(s) fora do expediente normal`;
@@ -385,6 +685,38 @@ const buildAchievements = (
       case 'report_15':
         earnedCount = Math.floor(profile.reportViewDays / 15);
         progressText = `${profile.reportViewDays}/15 dia(s) acompanhando relatórios`;
+        break;
+      case 'auditor_de_si':
+        earnedCount = Math.floor(profile.reportDashboardComboDays / 3);
+        progressText = `${profile.reportDashboardComboDays} dia(s) com dashboard + relatório`;
+        break;
+      case 'sniper_fechamento':
+        earnedCount = profile.sniperClosures;
+        progressText = `${profile.sniperClosures} fechamento(s) no primeiro dia útil`;
+        break;
+      case 'quase_perfeito':
+        earnedCount = profile.almostPerfectMonths;
+        progressText = `${profile.almostPerfectMonths} mês(es) no quase`;
+        break;
+      case 'detetive_registros':
+        earnedCount = Math.floor(profile.reportViewDays / 30);
+        progressText = `${profile.reportViewDays}/30 dia(s) de investigação`;
+        break;
+      case 'sem_descansar':
+        earnedCount = Math.floor(profile.specialWorkStreak / 3);
+        progressText = `${profile.specialWorkStreak} dia(s) seguidos fora do expediente`;
+        break;
+      case 'modo_revisao':
+        earnedCount = Math.floor(profile.managerReviewApprovals / 3);
+        progressText = `${profile.managerReviewApprovals} aprovação(ões) com revisão`;
+        break;
+      case 'voltei_so_pra_ver':
+        earnedCount = Math.floor(profile.reportNoNeedDays / 3);
+        progressText = `${profile.reportNoNeedDays} visita(s) sem pendência`;
+        break;
+      case 'controle_absoluto':
+        earnedCount = Math.floor(profile.controlAbsoluteStreak / 2);
+        progressText = `${profile.controlAbsoluteStreak} mês(es) seguidos sob controle`;
         break;
       case 'timely_submitter':
         earnedCount = profile.timelySubmissions;
@@ -501,8 +833,23 @@ export const buildGamificationProfiles = ({
       const loggingStreakStats = calculateStreaks(sameDayLoggedDates, maps.holidayMap, maps.offdayMap, maps.workdayMap);
 
       const perfectMonths = countPerfectMonths(userPeriods, userEntries, maps.holidayMap, maps.offdayMap, maps.workdayMap);
-      const specialWorkDays = countSpecialWorkDays(userEntries, maps.holidayMap, maps.offdayMap, maps.workdayMap);
+      const {
+        specialWorkDays,
+        saturdayWorkDays,
+        sundayWorkDays,
+        specialWorkStreak
+      } = countSpecialWorkSummary(userEntries, maps.holidayMap, maps.offdayMap, maps.workdayMap);
       const reportViewDays = countReportViewDays(userActivityLog);
+      const dashboardViewDays = countDashboardViewDays(userActivityLog);
+      const reportDashboardComboDays = countReportDashboardComboDays(userActivityLog);
+      const sniperClosures = countSniperClosures(userPeriods, userEntries, userEvents, maps.holidayMap, maps.offdayMap, maps.workdayMap);
+      const almostPerfectMonths = countAlmostPerfectMonths(userPeriods, userEntries, maps.holidayMap, maps.offdayMap, maps.workdayMap);
+      const managerReviewApprovals = countManagerReviewApprovals(
+        userEvents.filter((event) => event.managerId === user.id || event.actorUserId === user.id),
+        userActivityLog
+      );
+      const reportNoNeedDays = countReportNoNeedDays(userActivityLog, userPeriods, userEntries, maps.holidayMap, maps.offdayMap, maps.workdayMap);
+      const controlAbsoluteStreak = countControlAbsoluteStreak(userPeriods, userEntries, maps.holidayMap, maps.offdayMap, maps.workdayMap);
       const lazyBatchMonths = detectLazyBatchMonths(userEntries);
       const lateSubmissions = countLateSubmissions(userEvents.filter((event) => event.userId === user.id));
       const timelySubmissions = countTimelySubmissions(userEvents.filter((event) => event.userId === user.id));
@@ -523,7 +870,17 @@ export const buildGamificationProfiles = ({
         detailedDescriptions,
         perfectMonths,
         specialWorkDays,
+        saturdayWorkDays,
+        sundayWorkDays,
+        specialWorkStreak,
         reportViewDays,
+        dashboardViewDays,
+        reportDashboardComboDays,
+        sniperClosures,
+        almostPerfectMonths,
+        managerReviewApprovals,
+        reportNoNeedDays,
+        controlAbsoluteStreak,
         timelySubmissions,
         quickRecoveries,
         timelyApprovals,
@@ -538,7 +895,14 @@ export const buildGamificationProfiles = ({
         + baseProfile.bestLoggingStreak
         + (baseProfile.detailedDescriptions * 2)
         + (baseProfile.perfectMonths * 25)
+        + (baseProfile.sniperClosures * 10)
+        + (baseProfile.almostPerfectMonths * 6)
         + (baseProfile.reportViewDays * 2)
+        + (baseProfile.reportDashboardComboDays * 3)
+        + (baseProfile.dashboardViewDays)
+        + (baseProfile.managerReviewApprovals * 4)
+        + (baseProfile.reportNoNeedDays * 2)
+        + (baseProfile.controlAbsoluteStreak * 5)
         + (baseProfile.timelySubmissions * 3)
         + (baseProfile.quickRecoveries * 4)
         + (baseProfile.timelyApprovals * 4)
