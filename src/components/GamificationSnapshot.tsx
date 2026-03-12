@@ -83,7 +83,7 @@ export const GamificationSnapshot: React.FC<{ userId: string }> = ({ userId }) =
       <div className="flex items-center justify-between gap-3">
         <div>
           <h3 className="font-bold text-slate-800">Conquistas & Ranking</h3>
-          <p className="text-sm text-slate-500 mt-1">Seu app agora também tem boas fases, recordes pessoais e pódio mensal.</p>
+          <p className="text-sm text-slate-500 mt-1">O AuditFlow agora também tem boas fases, recordes pessoais e pódio mensal.</p>
         </div>
         <Trophy className="text-amber-500" size={22} />
       </div>
