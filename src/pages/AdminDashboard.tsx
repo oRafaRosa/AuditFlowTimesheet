@@ -111,9 +111,12 @@ export const AdminDashboard: React.FC = () => {
     submittedPeriods.forEach((period) => {
       const employee = userMap.get(period.userId);
       const officialManager = employee?.managerId ? userMap.get(employee.managerId) : null;
+      const delegatedApprover = officialManager?.delegatedManagerId
+        ? userMap.get(officialManager.delegatedManagerId)
+        : null;
       const currentApprover = period.managerId ? userMap.get(period.managerId) : null;
 
-      const manager = currentApprover || officialManager;
+      const manager = delegatedApprover || currentApprover || officialManager;
 
       if (!manager || !employee) return;
       if (manager.role !== 'MANAGER' && manager.role !== 'ADMIN') return;
