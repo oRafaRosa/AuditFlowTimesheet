@@ -10,7 +10,7 @@ import { formatDateForDisplay } from '../utils/date';
 interface ManagerApprovalBacklogGroup {
   managerId: string;
   managerName: string;
-  delegatedManagerName?: string;
+  officialManagerName?: string;
   pendingCount: number;
   teamMembersCount: number;
   oldestUpdatedAt: string;
@@ -113,19 +113,20 @@ export const AdminDashboard: React.FC = () => {
       const officialManager = employee?.managerId ? userMap.get(employee.managerId) : null;
       const currentApprover = period.managerId ? userMap.get(period.managerId) : null;
 
-      const manager = officialManager || currentApprover;
+      const manager = currentApprover || officialManager;
 
       if (!manager || !employee) return;
       if (manager.role !== 'MANAGER' && manager.role !== 'ADMIN') return;
 
-      const delegatedManagerName = manager.delegatedManagerId
-        ? userMap.get(manager.delegatedManagerId)?.name
-        : undefined;
+      const officialManagerName =
+        officialManager && officialManager.id !== manager.id
+          ? officialManager.name
+          : undefined;
 
       const currentGroup = groupedBacklog.get(manager.id) || {
         managerId: manager.id,
         managerName: manager.name,
-        delegatedManagerName,
+        officialManagerName,
         pendingCount: 0,
         teamMembersCount: 0,
         oldestUpdatedAt: period.updatedAt,
@@ -281,6 +282,12 @@ export const AdminDashboard: React.FC = () => {
   const totalPendingManagerApprovals = managerApprovalBacklog.reduce((acc, group) => acc + group.pendingCount, 0);
   const formatPeriodLabel = (year: number, month: number) =>
     new Date(year, month, 1).toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' });
+  const formatTimestamp = (value: string) =>
+    new Date(value).toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
 
   if (loading && users.length === 0) return <div className="flex items-center justify-center h-screen"><Loader2 className="animate-spin text-brand-600" /></div>;
 
@@ -324,7 +331,7 @@ export const AdminDashboard: React.FC = () => {
                           <div>
                               <h3 className="font-semibold text-slate-700">Pendências de Aprovação por Gestor</h3>
                               <p className="text-sm text-slate-500 mt-1">
-                                  Usuários que já enviaram o timesheet, mas ainda aguardam a aprovação do gestor responsável.
+                                  Usuários que já enviaram o timesheet e ainda aguardam a aprovação do responsável atual.
                               </p>
                           </div>
                           <div className="flex gap-3">
@@ -357,9 +364,9 @@ export const AdminDashboard: React.FC = () => {
                                       <tr key={group.managerId} className="hover:bg-slate-50 align-top">
                                           <td className="px-6 py-4">
                                               <p className="font-medium text-slate-800">{group.managerName}</p>
-                                              {group.delegatedManagerName && (
+                                              {group.officialManagerName && (
                                                   <p className="mt-1 text-xs text-slate-500">
-                                                      Gestor delegado: {group.delegatedManagerName}
+                                                      Gestão delegada por {group.officialManagerName}
                                                   </p>
                                               )}
                                           </td>
@@ -369,7 +376,7 @@ export const AdminDashboard: React.FC = () => {
                                               </span>
                                           </td>
                                           <td className="px-6 py-4 text-slate-600">{group.teamMembersCount}</td>
-                                          <td className="px-6 py-4 text-slate-600">{formatDateForDisplay(group.oldestUpdatedAt)}</td>
+                                          <td className="px-6 py-4 text-slate-600">{formatTimestamp(group.oldestUpdatedAt)}</td>
                                           <td className="px-6 py-4">
                                               <div className="space-y-2">
                                                   {group.periods.slice(0, 3).map((period) => (
