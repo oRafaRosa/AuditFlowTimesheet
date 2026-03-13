@@ -393,6 +393,36 @@ class StoreService {
     await supabase.from('profiles').update(dbUpdate).eq('id', id);
   }
 
+  // centraliza a regra do gestor efetivo pra envio e aprovação durante delegação
+  private async resolveEffectiveManagerId(userId: string): Promise<string | null> {
+    const { data: userProfile, error: profileError } = await supabase
+      .from('profiles')
+      .select('manager_id')
+      .eq('id', userId)
+      .single();
+
+    if (profileError) {
+      console.error('Erro ao buscar gestor do usuário:', profileError);
+      throw new Error('Falha ao identificar o gestor responsável. Tente novamente.');
+    }
+
+    const directManagerId = userProfile?.manager_id || null;
+    if (!directManagerId) return null;
+
+    const { data: managerProfile, error: managerError } = await supabase
+      .from('profiles')
+      .select('delegated_manager_id')
+      .eq('id', directManagerId)
+      .single();
+
+    if (managerError) {
+      console.error('Erro ao buscar delegação do gestor:', managerError);
+      throw new Error('Falha ao identificar o gestor responsável. Tente novamente.');
+    }
+
+    return managerProfile?.delegated_manager_id || directManagerId;
+  }
+
   // --- delegação de equipe ---
 
   async delegateTeamManagement(managerId: string, delegatedManagerId: string): Promise<boolean> {
@@ -402,6 +432,18 @@ class StoreService {
         .eq('id', managerId);
     
     if (delegError) return false;
+
+    // quando troca o gestor responsável, as pendências abertas também precisam seguir junto
+    const { error: periodTransferError } = await supabase
+        .from('timesheet_periods')
+        .update({ manager_id: delegatedManagerId, updated_at: new Date().toISOString() })
+        .eq('manager_id', managerId)
+        .eq('status', 'SUBMITTED');
+
+    if (periodTransferError) {
+      console.error('Erro ao transferir pendências para o gestor delegado:', periodTransferError);
+      return false;
+    }
 
     // cria notificação pro gestor delegado
     const currentUser = this.getCurrentUser();
@@ -437,6 +479,20 @@ class StoreService {
         .select('delegated_manager_id')
         .eq('id', managerId)
         .single();
+
+    if (manager?.delegated_manager_id) {
+      // quando a delegação termina, as pendências abertas voltam pro gestor titular
+      const { error: periodReturnError } = await supabase
+        .from('timesheet_periods')
+        .update({ manager_id: managerId, updated_at: new Date().toISOString() })
+        .eq('manager_id', manager.delegated_manager_id)
+        .eq('status', 'SUBMITTED');
+
+      if (periodReturnError) {
+        console.error('Erro ao devolver pendências ao gestor titular:', periodReturnError);
+        return false;
+      }
+    }
 
     const { error } = await supabase
         .from('profiles')
@@ -729,22 +785,9 @@ class StoreService {
   }
 
   async submitPeriod(userId: string, year: number, month: number) {
-      // atualizado: busca user fresco pra pegar manager_id e delegated_manager_id do db
-      // se o gestor delegou, usa delegated_manager_id pra aprovação
-      
-      const { data: userProfile, error: profileError } = await supabase
-          .from('profiles')
-          .select('manager_id, delegated_manager_id')
-          .eq('id', userId)
-          .single();
-
-      if (profileError) {
-          console.error("Erro ao buscar gestor para submissão:", profileError);
-          throw new Error("Falha ao identificar seu gestor. Tente novamente.");
-      }
-
-      // se o gestor do user tem delegado, usa o delegado; senão usa o original
-      let currentManagerId = userProfile?.delegated_manager_id || userProfile?.manager_id;
+      // ajuste da regra: agora o envio olha o gestor do colaborador e,
+      // se esse gestor tiver delegado a equipe, grava o substituto como responsável.
+      const currentManagerId = await this.resolveEffectiveManagerId(userId);
       
       // se o user tem gestor (ou delegado), envia. se não, aprova direto
       const newStatus: PeriodStatus = currentManagerId ? 'SUBMITTED' : 'APPROVED';
@@ -758,7 +801,7 @@ class StoreService {
                 year: year,
                 month: month,
                 status: newStatus,
-                manager_id: currentManagerId, // salva o gestor (ou delegado) no envio
+                manager_id: currentManagerId ?? null, // salva o gestor (ou delegado) no envio
                 updated_at: new Date().toISOString(),
                 rejection_reason: null
             }, {
@@ -772,7 +815,7 @@ class StoreService {
           this.recordPeriodEvent({
             periodId: data.id,
             userId,
-            managerId: currentManagerId,
+            managerId: currentManagerId || undefined,
             actorUserId: userId,
             year,
             month,
