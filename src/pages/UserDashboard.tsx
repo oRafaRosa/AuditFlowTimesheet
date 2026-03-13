@@ -547,7 +547,7 @@ export const UserDashboard: React.FC = () => {
               </p>
               <p className="text-xs text-slate-400 mt-1">
                 {dashboardPeriod === 'current'
-                  ? 'Agrupei tudo aqui pra não virar uma lista gigante logo de cara. Se quiser, é só expandir.'
+                  ? 'Agrupei tudo aqui para manter a visualização mais organizada. Se quiser, é só expandir.'
                   : 'Pra mês fechado isso ajuda bastante a revisar onde ficou buraco de lançamento.'}
               </p>
             </div>
@@ -574,7 +574,7 @@ export const UserDashboard: React.FC = () => {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-slate-500">Nada pendente por aqui. Esse período já está redondo.</p>
+              <p className="text-sm text-slate-500">Nada pendente por aqui. Este período está em dia.</p>
             )}
           </div>
         )}
