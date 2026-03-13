@@ -10,6 +10,7 @@ import { formatDateForDisplay } from '../utils/date';
 interface ManagerApprovalBacklogGroup {
   managerId: string;
   managerName: string;
+  delegatedManagerName?: string;
   pendingCount: number;
   teamMembersCount: number;
   oldestUpdatedAt: string;
@@ -108,15 +109,23 @@ export const AdminDashboard: React.FC = () => {
     const groupedBacklog = new Map<string, ManagerApprovalBacklogGroup>();
 
     submittedPeriods.forEach((period) => {
-      const manager = period.managerId ? userMap.get(period.managerId) : null;
       const employee = userMap.get(period.userId);
+      const officialManager = employee?.managerId ? userMap.get(employee.managerId) : null;
+      const currentApprover = period.managerId ? userMap.get(period.managerId) : null;
+
+      const manager = officialManager || currentApprover;
 
       if (!manager || !employee) return;
       if (manager.role !== 'MANAGER' && manager.role !== 'ADMIN') return;
 
+      const delegatedManagerName = manager.delegatedManagerId
+        ? userMap.get(manager.delegatedManagerId)?.name
+        : undefined;
+
       const currentGroup = groupedBacklog.get(manager.id) || {
         managerId: manager.id,
         managerName: manager.name,
+        delegatedManagerName,
         pendingCount: 0,
         teamMembersCount: 0,
         oldestUpdatedAt: period.updatedAt,
@@ -348,6 +357,11 @@ export const AdminDashboard: React.FC = () => {
                                       <tr key={group.managerId} className="hover:bg-slate-50 align-top">
                                           <td className="px-6 py-4">
                                               <p className="font-medium text-slate-800">{group.managerName}</p>
+                                              {group.delegatedManagerName && (
+                                                  <p className="mt-1 text-xs text-slate-500">
+                                                      Gestor delegado: {group.delegatedManagerName}
+                                                  </p>
+                                              )}
                                           </td>
                                           <td className="px-6 py-4">
                                               <span className="inline-flex rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-800">
