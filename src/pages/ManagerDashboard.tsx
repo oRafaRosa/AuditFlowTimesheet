@@ -490,8 +490,8 @@ export const ManagerDashboard: React.FC = () => {
                     <div className="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-3">
                         <CheckCircle size={24} />
                     </div>
-                    <h3 className="text-lg font-medium text-slate-800">Tudo em dia!</h3>
-                    <p className="text-slate-500">Você não possui timesheets pendentes de aprovação.</p>
+                    <h3 className="text-lg font-medium text-slate-800">Tudo em dia</h3>
+                    <p className="text-slate-500">Não há timesheets pendentes de aprovação no momento.</p>
                 </div>
             )}
 
@@ -585,7 +585,7 @@ export const ManagerDashboard: React.FC = () => {
                         </div>
                     ) : (
                         <div className="border-t border-slate-100 p-8 text-center text-slate-500">
-                            Nenhum mês anterior pendente. O backlog da equipe está limpo.
+                            Não há pendências de meses anteriores. O backlog da equipe está em dia.
                         </div>
                     )
                 )}

@@ -118,9 +118,9 @@ export const HelpCenter: React.FC = () => {
                 <section className="bg-brand-50 border border-brand-100 rounded-lg p-4">
                     <h3 className="font-bold text-brand-900 mb-2">Conquistas e ranking</h3>
                     <p className="text-sm text-brand-800 leading-relaxed">
-                        O app acompanha alguns hábitos de uso e libera conquistas ao longo do tempo. A ideia é deixar a rotina
-                        um pouco mais leve, valorizar boas práticas e esconder alguns easter eggs pelo caminho. Se quiser acompanhar
-                        sua evolução, é só abrir a página <strong>Ranking &amp; Conquistas</strong> no menu lateral.
+                        O app acompanha alguns hábitos de uso e libera conquistas ao longo do tempo. A proposta é reconhecer
+                        boas práticas, destacar consistência nos registros e trazer uma visualização complementar de desempenho.
+                        Para acompanhar sua evolução, basta acessar a página <strong>Ranking &amp; Conquistas</strong> no menu lateral.
                     </p>
                 </section>
             </div>

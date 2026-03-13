@@ -548,7 +548,7 @@ export const UserDashboard: React.FC = () => {
               <p className="text-xs text-slate-400 mt-1">
                 {dashboardPeriod === 'current'
                   ? 'Agrupei tudo aqui para manter a visualização mais organizada. Se quiser, é só expandir.'
-                  : 'Pra mês fechado isso ajuda bastante a revisar onde ficou buraco de lançamento.'}
+                  : 'Em meses já encerrados, essa visão facilita a revisão das pendências de lançamento.'}
               </p>
             </div>
           </div>
@@ -574,7 +574,7 @@ export const UserDashboard: React.FC = () => {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-slate-500">Nada pendente por aqui. Este período está em dia.</p>
+              <p className="text-sm text-slate-500">Não há pendências neste período. Tudo está em dia.</p>
             )}
           </div>
         )}
@@ -759,7 +759,7 @@ export const UserDashboard: React.FC = () => {
                                 <h3 className="text-sm font-semibold text-slate-800">Combinações frequentes</h3>
                             </div>
                             <p className="text-xs text-slate-500">
-                                Vou guardando o que você mais usa. Clicou em uma combinação, eu completo o resto pra você.
+                                As combinações mais usadas ficam salvas aqui para agilizar novos lançamentos.
                             </p>
                             <div className="grid grid-cols-1 gap-2">
                                 {frequentTemplates.map((template) => (

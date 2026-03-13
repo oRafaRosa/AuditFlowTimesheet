@@ -71,7 +71,7 @@ export const AchievementsHub: React.FC = () => {
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Ranking & Conquistas</h1>
-          <p className="text-slate-500">Uma vitrine leve do que está redondo, consistente e bem feito nos registros.</p>
+          <p className="text-slate-500">Uma visão consolidada de consistência, recorrência e boas práticas nos registros.</p>
         </div>
         {currentUserProfile && (
           <div className="rounded-2xl border border-brand-100 bg-brand-50 px-5 py-4">
@@ -130,7 +130,7 @@ export const AchievementsHub: React.FC = () => {
               <h2 className="text-lg font-bold text-slate-800">Estoque de conquistas</h2>
               <p className="text-sm text-slate-500 mt-1">
                 {earnedAchievements.length === 0
-                  ? 'Ainda não caiu nenhuma por aqui. Quando vier a primeira, ela aparece neste estoque.'
+                  ? 'Nenhuma conquista foi registrada até o momento. Quando a primeira for liberada, ela aparecerá aqui.'
                   : `${earnedAchievements.length} conquista(s) desbloqueadas. Clique para ver os detalhes.`}
               </p>
             </div>
@@ -170,7 +170,7 @@ export const AchievementsHub: React.FC = () => {
               ))}
               {earnedAchievements.length === 0 && (
                 <div className="md:col-span-2 xl:col-span-3 rounded-xl border border-dashed border-slate-200 bg-slate-50 p-6 text-sm text-slate-500">
-                  Ainda não apareceu nenhuma conquista por aqui. Quando a primeira cair, ela já aparece neste painel.
+                  Nenhuma conquista foi registrada até o momento. Quando a primeira for liberada, ela aparecerá neste painel.
                 </div>
               )}
             </div>

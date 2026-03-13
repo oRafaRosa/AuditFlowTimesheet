@@ -214,7 +214,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                       .reduce((acc, curr) => acc + curr.hours, 0);
 
                     if (yesterdayHours < HOURS_PER_DAY) {
-                      const msg = `Ontem (${formatDateForDisplay(yesterdayStr)}) ficou com ${formatHours(yesterdayHours)}h lançadas. Vale fechar esse dia antes que a pendência cresça.`;
+                      const msg = `Ontem (${formatDateForDisplay(yesterdayStr)}) ficou com ${formatHours(yesterdayHours)}h lançadas. Vale concluir esse dia para evitar acúmulo de pendências.`;
                       alerts.push(msg);
 
                       const lastYesterdayNotify = localStorage.getItem('last_yesterday_gap_reminder');
@@ -754,7 +754,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               <p className="text-xs font-bold uppercase tracking-[0.22em] text-brand-100">Conquista desbloqueada</p>
               <h2 className="text-2xl font-bold mt-2">{achievementCelebration.achievement.title}</h2>
               <p className="text-sm text-brand-100 mt-2">
-                O AuditFlow achou justo parar tudo para registrar esse momento.
+                O AuditFlow registrou essa nova conquista no seu histórico.
               </p>
             </div>
 
@@ -773,7 +773,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
               {achievementCelebration.extraCount > 0 && (
                 <p className="text-sm text-slate-500">
-                  Veio combo: mais {achievementCelebration.extraCount} conquista(s) também entraram nessa rodada.
+                  Além desta, mais {achievementCelebration.extraCount} conquista(s) também foram liberadas nesta atualização.
                 </p>
               )}
 
