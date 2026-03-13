@@ -241,6 +241,11 @@ export const UserDashboard: React.FC = () => {
   };
 
   const handleEditClick = async (entry: TimesheetEntry) => {
+      if (isUserInactive) {
+          alert("Seu usuário está inativo. Novos lançamentos e edições estão bloqueados.");
+          return;
+      }
+
       const isLocked = await checkPeriodLocked(entry.date);
       if (isLocked) {
           alert("Este lançamento pertence a um mês já enviado para aprovação ou aprovado. Não é possível editar.");
@@ -260,6 +265,11 @@ export const UserDashboard: React.FC = () => {
   };
 
   const handleDelete = async (id: string, entryDate: string) => {
+    if (isUserInactive) {
+        alert("Seu usuário está inativo. Novos lançamentos e edições estão bloqueados.");
+        return;
+    }
+
     const isLocked = await checkPeriodLocked(entryDate);
     if (isLocked) {
         alert("Este lançamento pertence a um mês já enviado para aprovação ou aprovado. Não é possível excluir.");
@@ -275,6 +285,10 @@ export const UserDashboard: React.FC = () => {
   const handleSubmitEntry = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
+    if (isUserInactive) {
+      alert("Seu usuário está inativo. Novos lançamentos estão bloqueados.");
+      return;
+    }
 
     const getHolidaySummary = (): string[] => {
       if (formMode === 'single' || editingId) {
@@ -421,6 +435,7 @@ export const UserDashboard: React.FC = () => {
   const pendingHelpText = dashboardPeriod === 'current'
     ? 'Divergência acumulada até hoje'
     : 'Divergência do mês encerrado';
+  const isUserInactive = user?.isActive === false;
 
     // lógica de filtro das entradas
   const displayEntries = entryFilterDate 
@@ -436,7 +451,12 @@ export const UserDashboard: React.FC = () => {
       <div className="flex justify-between items-center flex-wrap gap-4">
         <h1 className="text-2xl font-bold text-slate-800">Meu Dashboard</h1>
         <div className="flex gap-3">
-             {periodStatus?.status === 'OPEN' || periodStatus?.status === 'REJECTED' ? (
+             {isUserInactive ? (
+                <div className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-slate-500 rounded-lg font-medium border border-gray-200">
+                    <Lock size={18} />
+                    Usuário inativo
+                </div>
+             ) : periodStatus?.status === 'OPEN' || periodStatus?.status === 'REJECTED' ? (
                  <button 
                     onClick={() => {
                         setEditingId(null);
@@ -462,6 +482,12 @@ export const UserDashboard: React.FC = () => {
              )}
         </div>
       </div>
+
+      {isUserInactive && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-900">
+          Seu usuário está inativo. Os lançamentos anteriores continuam visíveis, mas novas inclusões e edições estão bloqueadas.
+        </div>
+      )}
 
     {/* cards de kpi */}
       <div className="flex flex-wrap items-center justify-between gap-3">

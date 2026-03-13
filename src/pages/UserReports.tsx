@@ -7,6 +7,7 @@ import { formatDateForDisplay, formatLocalDate, parseDateOnly } from '../utils/d
 
 export const UserReports: React.FC = () => {
   const location = useLocation();
+  const currentUser = store.getCurrentUser();
   const [entries, setEntries] = useState<TimesheetEntry[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectableProjects, setSelectableProjects] = useState<Project[]>([]);
@@ -31,6 +32,7 @@ export const UserReports: React.FC = () => {
       description: ''
   });
   const [formLoading, setFormLoading] = useState(false);
+  const isUserInactive = currentUser?.isActive === false;
 
   useEffect(() => {
     // parse dos params da url pra deep link (do gráfico do dashboard)
@@ -54,7 +56,6 @@ export const UserReports: React.FC = () => {
 
   const loadData = async () => {
     setLoading(true);
-    const currentUser = store.getCurrentUser();
     if (!currentUser) return;
 
     const [allEntries, allProjects, periods] = await Promise.all([
@@ -119,6 +120,7 @@ export const UserReports: React.FC = () => {
   };
 
   const handleEditClick = (entry: TimesheetEntry) => {
+      if (isUserInactive) return;
       if (isEntryLocked(entry)) return;
       
       setEditingId(entry.id);
@@ -132,6 +134,7 @@ export const UserReports: React.FC = () => {
   };
 
   const handleDeleteClick = async (id: string, entry: TimesheetEntry) => {
+      if (isUserInactive) return;
       if (isEntryLocked(entry)) return;
 
       if(window.confirm('Tem certeza que deseja excluir este lançamento?')) {
@@ -182,6 +185,12 @@ export const UserReports: React.FC = () => {
   return (
     <div className="space-y-6">
         <h1 className="text-2xl font-bold text-slate-800">Meus Relatórios Detalhados</h1>
+
+        {isUserInactive && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-900">
+                Seu usuário está inativo. O histórico permanece disponível para consulta, mas alterações estão bloqueadas.
+            </div>
+        )}
         
         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
@@ -239,17 +248,17 @@ export const UserReports: React.FC = () => {
                                         <div className="flex items-center justify-end gap-2">
                                             <button 
                                                 onClick={() => handleEditClick(e)} 
-                                                disabled={locked}
-                                                className={`transition-colors p-1 rounded ${locked ? 'text-gray-300 cursor-not-allowed' : 'text-brand-600 hover:text-brand-800 hover:bg-brand-50'}`} 
-                                                title={locked ? "Mês fechado" : "Editar"}
+                                                disabled={locked || isUserInactive}
+                                                className={`transition-colors p-1 rounded ${locked || isUserInactive ? 'text-gray-300 cursor-not-allowed' : 'text-brand-600 hover:text-brand-800 hover:bg-brand-50'}`} 
+                                                title={isUserInactive ? "Usuário inativo" : locked ? "Mês fechado" : "Editar"}
                                             >
                                                 <Edit size={16} />
                                             </button>
                                             <button 
                                                 onClick={() => handleDeleteClick(e.id, e)} 
-                                                disabled={locked}
-                                                className={`transition-colors p-1 rounded ${locked ? 'text-gray-300 cursor-not-allowed' : 'text-red-400 hover:text-red-600 hover:bg-red-50'}`}
-                                                title={locked ? "Mês fechado" : "Excluir"}
+                                                disabled={locked || isUserInactive}
+                                                className={`transition-colors p-1 rounded ${locked || isUserInactive ? 'text-gray-300 cursor-not-allowed' : 'text-red-400 hover:text-red-600 hover:bg-red-50'}`}
+                                                title={isUserInactive ? "Usuário inativo" : locked ? "Mês fechado" : "Excluir"}
                                             >
                                                 <Trash2 size={16} />
                                             </button>

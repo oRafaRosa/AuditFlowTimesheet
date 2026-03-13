@@ -47,7 +47,7 @@ export const ManagerReports: React.FC = () => {
     const currentUser = store.getCurrentUser();
     if (!currentUser) return;
 
-    const allUsers = (await store.getUsers()).filter(u => u.isActive !== false);
+    const allUsers = await store.getUsers();
     
     // filtra usuários pra mostrar só minha equipe (inclui subgestores e times deles)
     let myTeam = [];
@@ -182,7 +182,7 @@ export const ManagerReports: React.FC = () => {
                     <label className="block text-xs font-bold text-slate-500 mb-1">Colaborador</label>
                     <select className="w-full border border-gray-300 p-2 rounded-lg text-sm" value={filterData.userId} onChange={e => setFilterData({...filterData, userId: e.target.value})}>
                         <option value="">Todos da Equipe</option>
-                        {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                        {users.map(u => <option key={u.id} value={u.id}>{u.isActive === false ? `${u.name} (Inativo)` : u.name}</option>)}
                     </select>
                 </div>
                 <div>

@@ -18,6 +18,7 @@ export const MyStatusWidget: React.FC<MyStatusWidgetProps> = ({ userId, onUpdate
   const [periodHistory, setPeriodHistory] = useState<TimesheetPeriod[]>([]);
   const [delegatedManagerName, setDelegatedManagerName] = useState<string | null>(null);
   const user = store.getCurrentUser();
+  const isUserInactive = user?.isActive === false;
 
   const loadStatus = async () => {
     setLoading(true);
@@ -52,6 +53,11 @@ export const MyStatusWidget: React.FC<MyStatusWidgetProps> = ({ userId, onUpdate
   }, [userId]);
 
   const validateAndSubmit = async (year: number, month: number) => {
+      if (isUserInactive) {
+        alert("Seu usuário está inativo. O envio para aprovação está bloqueado.");
+        return;
+      }
+
       setProcessing(true);
       const dateName = new Date(year, month, 1).toLocaleDateString('pt-BR', {month: 'long', year: 'numeric'});
 
@@ -172,9 +178,9 @@ export const MyStatusWidget: React.FC<MyStatusWidgetProps> = ({ userId, onUpdate
                 {(periodStatus?.status === 'OPEN' || periodStatus?.status === 'REJECTED') && (
                     <button 
                         onClick={() => periodStatus && validateAndSubmit(periodStatus.year, periodStatus.month)}
-                        disabled={processing}
+                        disabled={processing || isUserInactive}
                         className="bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors disabled:opacity-50"
-                        title="Enviar Mês Atual"
+                        title={isUserInactive ? "Usuário inativo" : "Enviar Mês Atual"}
                     >
                         {processing ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />} 
                         Enviar
@@ -235,9 +241,9 @@ export const MyStatusWidget: React.FC<MyStatusWidgetProps> = ({ userId, onUpdate
                                 {(ph.status === 'OPEN' || ph.status === 'REJECTED') && (
                                     <button 
                                         onClick={() => validateAndSubmit(ph.year, ph.month)}
-                                        disabled={processing}
+                                        disabled={processing || isUserInactive}
                                         className="text-xs bg-white border border-slate-200 hover:border-brand-500 hover:text-brand-600 text-slate-500 px-3 py-1.5 rounded transition-colors disabled:opacity-50"
-                                        title="Encerrar Mês"
+                                        title={isUserInactive ? "Usuário inativo" : "Encerrar Mês"}
                                     >
                                         Enviar
                                     </button>
