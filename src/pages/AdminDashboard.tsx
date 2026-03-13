@@ -3,9 +3,25 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { store, SUPABASE_SCHEMA_SQL } from '../services/store';
 import { User, Project, TimesheetEntry, CalendarException, formatHours } from '../types';
-import { Plus, Database, Edit, Search, Filter, Calendar, Trash2, Loader2 } from 'lucide-react';
+import { Database, Edit, Filter, Calendar, Trash2, Loader2 } from 'lucide-react';
 import { MyStatusWidget } from '../components/MyStatusWidget';
 import { formatDateForDisplay } from '../utils/date';
+
+interface ManagerApprovalBacklogGroup {
+  managerId: string;
+  managerName: string;
+  pendingCount: number;
+  teamMembersCount: number;
+  oldestUpdatedAt: string;
+  periods: Array<{
+    id: string;
+    userId: string;
+    userName: string;
+    year: number;
+    month: number;
+    updatedAt: string;
+  }>;
+}
 
 export const AdminDashboard: React.FC = () => {
   const location = useLocation();
@@ -16,6 +32,7 @@ export const AdminDashboard: React.FC = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [entries, setEntries] = useState<TimesheetEntry[]>([]);
   const [exceptions, setExceptions] = useState<CalendarException[]>([]);
+  const [managerApprovalBacklog, setManagerApprovalBacklog] = useState<ManagerApprovalBacklogGroup[]>([]);
   const [showSqlModal, setShowSqlModal] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -73,16 +90,69 @@ export const AdminDashboard: React.FC = () => {
     const user = store.getCurrentUser();
     setCurrentUser(user);
 
-    const [u, p, e, ex] = await Promise.all([
+    const [u, p, e, ex, periods] = await Promise.all([
         store.getUsers(),
         store.getProjects(),
         store.getEntries(),
-        store.getExceptions()
+        store.getExceptions(),
+        store.getTimesheetPeriods()
     ]);
     setUsers(u);
     setProjects(p);
     setEntries(e);
     setExceptions(ex);
+
+    const activeUsers = u.filter((item) => item.isActive !== false);
+    const userMap = new Map(activeUsers.map((item) => [item.id, item]));
+    const submittedPeriods = periods.filter((period) => period.status === 'SUBMITTED' && period.managerId);
+    const groupedBacklog = new Map<string, ManagerApprovalBacklogGroup>();
+
+    submittedPeriods.forEach((period) => {
+      const manager = period.managerId ? userMap.get(period.managerId) : null;
+      const employee = userMap.get(period.userId);
+
+      if (!manager || !employee) return;
+      if (manager.role !== 'MANAGER' && manager.role !== 'ADMIN') return;
+
+      const currentGroup = groupedBacklog.get(manager.id) || {
+        managerId: manager.id,
+        managerName: manager.name,
+        pendingCount: 0,
+        teamMembersCount: 0,
+        oldestUpdatedAt: period.updatedAt,
+        periods: []
+      };
+
+      currentGroup.pendingCount += 1;
+      currentGroup.periods.push({
+        id: period.id,
+        userId: employee.id,
+        userName: employee.name,
+        year: period.year,
+        month: period.month,
+        updatedAt: period.updatedAt
+      });
+
+      if (new Date(period.updatedAt).getTime() < new Date(currentGroup.oldestUpdatedAt).getTime()) {
+        currentGroup.oldestUpdatedAt = period.updatedAt;
+      }
+
+      currentGroup.teamMembersCount = new Set(currentGroup.periods.map((item) => item.userId)).size;
+      groupedBacklog.set(manager.id, currentGroup);
+    });
+
+    setManagerApprovalBacklog(
+      [...groupedBacklog.values()]
+        .map((group) => ({
+          ...group,
+          periods: [...group.periods].sort((a, b) => new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime())
+        }))
+        .sort((a, b) => {
+          if (b.pendingCount !== a.pendingCount) return b.pendingCount - a.pendingCount;
+          return new Date(a.oldestUpdatedAt).getTime() - new Date(b.oldestUpdatedAt).getTime();
+        })
+    );
+
     setLoading(false);
   };
 
@@ -199,6 +269,9 @@ export const AdminDashboard: React.FC = () => {
   const getManagerName = (id?: string) => users.find(u => u.id === id)?.name || '-';
   const getUserName = (id: string) => users.find(u => u.id === id)?.name || 'Desconhecido';
   const getProjectName = (id: string) => projects.find(p => p.id === id)?.name || 'Desconhecido';
+  const totalPendingManagerApprovals = managerApprovalBacklog.reduce((acc, group) => acc + group.pendingCount, 0);
+  const formatPeriodLabel = (year: number, month: number) =>
+    new Date(year, month, 1).toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' });
 
   if (loading && users.length === 0) return <div className="flex items-center justify-center h-screen"><Loader2 className="animate-spin text-brand-600" /></div>;
 
@@ -235,7 +308,83 @@ export const AdminDashboard: React.FC = () => {
         </div>
 
         {activeTab === 'users' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="space-y-6">
+              <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+                  <div className="p-5 border-b border-slate-100 bg-slate-50">
+                      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                          <div>
+                              <h3 className="font-semibold text-slate-700">Pendências de Aprovação por Gestor</h3>
+                              <p className="text-sm text-slate-500 mt-1">
+                                  Usuários que já enviaram o timesheet, mas ainda aguardam a aprovação do gestor responsável.
+                              </p>
+                          </div>
+                          <div className="flex gap-3">
+                              <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 min-w-[120px]">
+                                  <p className="text-[11px] font-bold uppercase text-amber-700">Pendências</p>
+                                  <p className="text-2xl font-bold text-amber-900 mt-1">{totalPendingManagerApprovals}</p>
+                              </div>
+                              <div className="rounded-lg border border-slate-200 bg-white px-4 py-3 min-w-[120px]">
+                                  <p className="text-[11px] font-bold uppercase text-slate-500">Gestores</p>
+                                  <p className="text-2xl font-bold text-slate-900 mt-1">{managerApprovalBacklog.length}</p>
+                              </div>
+                          </div>
+                      </div>
+                  </div>
+
+                  {managerApprovalBacklog.length > 0 ? (
+                      <div className="overflow-x-auto">
+                          <table className="w-full text-left text-sm">
+                              <thead className="bg-white font-semibold text-slate-500 border-b border-gray-200">
+                                  <tr>
+                                      <th className="px-6 py-3">Gestor</th>
+                                      <th className="px-6 py-3">Pendências</th>
+                                      <th className="px-6 py-3">Colaboradores</th>
+                                      <th className="px-6 py-3">Mais antiga</th>
+                                      <th className="px-6 py-3">Detalhes</th>
+                                  </tr>
+                              </thead>
+                              <tbody className="divide-y divide-gray-100">
+                                  {managerApprovalBacklog.map((group) => (
+                                      <tr key={group.managerId} className="hover:bg-slate-50 align-top">
+                                          <td className="px-6 py-4">
+                                              <p className="font-medium text-slate-800">{group.managerName}</p>
+                                          </td>
+                                          <td className="px-6 py-4">
+                                              <span className="inline-flex rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-800">
+                                                  {group.pendingCount} aguardando aprovação
+                                              </span>
+                                          </td>
+                                          <td className="px-6 py-4 text-slate-600">{group.teamMembersCount}</td>
+                                          <td className="px-6 py-4 text-slate-600">{formatDateForDisplay(group.oldestUpdatedAt)}</td>
+                                          <td className="px-6 py-4">
+                                              <div className="space-y-2">
+                                                  {group.periods.slice(0, 3).map((period) => (
+                                                      <div key={period.id} className="text-xs text-slate-600">
+                                                          <span className="font-medium text-slate-700">{period.userName}</span>
+                                                          {' • '}
+                                                          <span>{formatPeriodLabel(period.year, period.month)}</span>
+                                                      </div>
+                                                  ))}
+                                                  {group.periods.length > 3 && (
+                                                      <p className="text-xs text-slate-400">
+                                                          +{group.periods.length - 3} pendência(s) adicional(is)
+                                                      </p>
+                                                  )}
+                                              </div>
+                                          </td>
+                                      </tr>
+                                  ))}
+                              </tbody>
+                          </table>
+                      </div>
+                  ) : (
+                      <div className="p-8 text-center text-slate-500">
+                          Não há gestores com timesheets aguardando aprovação no momento.
+                      </div>
+                  )}
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
                   <div className="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
                       <h3 className="font-semibold text-slate-600">Base de Usuários</h3>
@@ -332,6 +481,7 @@ export const AdminDashboard: React.FC = () => {
                       </div>
                   </form>
               </div>
+          </div>
           </div>
         )}
 
