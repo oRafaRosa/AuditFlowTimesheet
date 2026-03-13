@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { store } from '../services/store';
-import { CalendarException, Holiday, TimesheetEntry, TimesheetPeriod, TimesheetPeriodEvent, User, UserGamificationProfile, UserLoginActivity } from '../types';
+import { UserGamificationProfile } from '../types';
 import { Trophy, Flame, ScrollText, ShieldCheck, Loader2, Medal, Crown, ChevronDown, ChevronUp } from 'lucide-react';
 import { buildGamificationProfiles } from '../utils/gamification';
+import { GAMIFICATION_ENABLED } from '../config/features';
+import { FeatureLockedView } from '../components/FeatureLockedView';
 
 export const AchievementsHub: React.FC = () => {
   const [loading, setLoading] = useState(true);
@@ -11,6 +13,11 @@ export const AchievementsHub: React.FC = () => {
   const [showAchievementsStock, setShowAchievementsStock] = useState(false);
 
   useEffect(() => {
+    if (!GAMIFICATION_ENABLED) {
+      setLoading(false);
+      return;
+    }
+
     const loadData = async () => {
       setLoading(true);
       const currentUser = store.getCurrentUser();
@@ -48,6 +55,10 @@ export const AchievementsHub: React.FC = () => {
 
   if (loading) {
     return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin text-brand-600" size={48} /></div>;
+  }
+
+  if (!GAMIFICATION_ENABLED) {
+    return <FeatureLockedView />;
   }
 
   const loginLeaders = [...profiles].sort((a, b) => b.bestLoginStreak - a.bestLoginStreak).slice(0, 5);

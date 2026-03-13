@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { store } from '../services/store';
-import { CalendarException, Holiday, TimesheetEntry, TimesheetPeriod, TimesheetPeriodEvent, User, UserGamificationProfile, UserLoginActivity } from '../types';
+import { UserGamificationProfile } from '../types';
 import { Flame, Medal, Trophy, Loader2, Crown } from 'lucide-react';
 import { buildGamificationProfiles } from '../utils/gamification';
 import { parseDateOnly } from '../utils/date';
+import { GAMIFICATION_ENABLED } from '../config/features';
+import { FeatureLockedView } from './FeatureLockedView';
 
 export const GamificationSnapshot: React.FC<{ userId: string }> = ({ userId }) => {
   const [loading, setLoading] = useState(true);
@@ -13,6 +15,11 @@ export const GamificationSnapshot: React.FC<{ userId: string }> = ({ userId }) =
   const [previousMonthLabel, setPreviousMonthLabel] = useState('');
 
   useEffect(() => {
+    if (!GAMIFICATION_ENABLED) {
+      setLoading(false);
+      return;
+    }
+
     const loadData = async () => {
       setLoading(true);
 
@@ -78,6 +85,10 @@ export const GamificationSnapshot: React.FC<{ userId: string }> = ({ userId }) =
         <Loader2 className="animate-spin text-brand-600" size={20} />
       </div>
     );
+  }
+
+  if (!GAMIFICATION_ENABLED) {
+    return <FeatureLockedView compact />;
   }
 
   if (!profile) return null;
