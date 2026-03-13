@@ -505,7 +505,7 @@ export const ManagerDashboard: React.FC = () => {
                         <div>
                             <h3 className="font-bold text-slate-800">Backlog de Meses Anteriores</h3>
                             <p className="text-sm text-slate-500 mt-1">
-                                Resumo do que ficou para trás sem despejar uma lista gigante logo na sua cara.
+                                Resumo do que ficou pendente em períodos anteriores, de forma mais objetiva.
                             </p>
                         </div>
                         <div className="text-slate-400 mt-1">
@@ -601,7 +601,7 @@ export const ManagerDashboard: React.FC = () => {
                         <div>
                             <h3 className="font-bold text-slate-800">Alertas da Equipe</h3>
                             <p className="text-sm text-slate-500 mt-1">
-                                Pendência e excesso do mês atual agrupados em um resumo só.
+                                Visão consolidada das pendências e excessos do mês atual.
                             </p>
                         </div>
                         <div className="text-slate-400 mt-1">
