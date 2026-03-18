@@ -784,9 +784,6 @@ export const UserDashboard: React.FC = () => {
                                 <Sparkles size={16} className="text-brand-600" />
                                 <h3 className="text-sm font-semibold text-slate-800">Combinações frequentes</h3>
                             </div>
-                            <p className="text-xs text-slate-500">
-                                As combinações mais usadas ficam salvas aqui para agilizar novos lançamentos.
-                            </p>
                             <div className="grid grid-cols-1 gap-2">
                                 {frequentTemplates.map((template) => (
                                   <div key={template.id} className="flex items-start gap-2">
@@ -839,7 +836,6 @@ export const UserDashboard: React.FC = () => {
                                 <option key={p.id} value={p.id}>{p.code} - {p.name}</option>
                             ))}
                         </select>
-                        <p className="text-xs text-slate-400 mt-1">Exibindo projetos disponíveis para sua equipe.</p>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
