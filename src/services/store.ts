@@ -969,7 +969,7 @@ class StoreService {
     try {
       const parsed: FrequentEntryTemplate[] = JSON.parse(raw);
       return parsed
-        .filter((template) => template.userId === userId)
+        .filter((template) => template.userId === userId && template.usageCount >= 2)
         .sort((a, b) => {
           if (b.usageCount !== a.usageCount) return b.usageCount - a.usageCount;
           return new Date(b.lastUsedAt).getTime() - new Date(a.lastUsedAt).getTime();

@@ -751,12 +751,12 @@ export const UserDashboard: React.FC = () => {
     {/* modal do form (criar / editar) */}
       {isFormOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
                 <div className="p-6 border-b border-gray-100 flex justify-between items-center">
                     <h2 className="text-xl font-bold text-slate-800">{editingId ? 'Editar Lançamento' : 'Novo Lançamento'}</h2>
                     <button onClick={handleCloseForm} className="text-slate-400 hover:text-slate-600">✕</button>
                 </div>
-                <form onSubmit={handleSubmitEntry} className="p-6 space-y-4">
+            <form onSubmit={handleSubmitEntry} className="p-6 space-y-4 overflow-y-auto">
                     
                     {/* troca de modo (só pra criar) */}
                     {!editingId && (
@@ -789,7 +789,7 @@ export const UserDashboard: React.FC = () => {
                             </p>
                             <div className="grid grid-cols-1 gap-2">
                                 {frequentTemplates.map((template) => (
-                                    <div key={template.id} className="flex items-center gap-2">
+                                  <div key={template.id} className="flex items-start gap-2">
                                         <button
                                             type="button"
                                             onClick={() => setFormData({
@@ -798,13 +798,13 @@ export const UserDashboard: React.FC = () => {
                                                 hours: template.hours,
                                                 description: template.description
                                             })}
-                                            className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-left hover:border-brand-300 hover:bg-brand-50/40 transition-colors"
+                                      className="flex-1 min-w-0 rounded-lg border border-slate-200 bg-white px-3 py-2 text-left hover:border-brand-300 hover:bg-brand-50/40 transition-colors"
                                         >
                                             <div className="flex items-center gap-2 text-sm font-medium text-slate-800">
                                                 <Bookmark size={14} className="text-brand-600" />
-                                                <span>{template.label}</span>
+                                        <span className="truncate">{template.label}</span>
                                             </div>
-                                            <p className="mt-1 truncate text-xs text-slate-500" title={template.description}>
+                                      <p className="mt-1 truncate text-xs text-slate-500" title={template.description}>
                                                 {template.description}
                                             </p>
                                         </button>
@@ -815,7 +815,7 @@ export const UserDashboard: React.FC = () => {
                                                 store.deleteFrequentEntryTemplate(user.id, template.id);
                                                 setFrequentTemplates(store.getFrequentEntryTemplates(user.id).slice(0, 6));
                                             }}
-                                            className="rounded-lg p-2 text-slate-400 hover:bg-white hover:text-red-500 transition-colors"
+                                            className="shrink-0 rounded-lg p-2 text-slate-400 hover:bg-white hover:text-red-500 transition-colors"
                                             title="Remover combinação"
                                         >
                                             <Trash2 size={16} />
