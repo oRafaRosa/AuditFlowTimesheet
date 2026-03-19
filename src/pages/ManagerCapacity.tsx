@@ -48,7 +48,7 @@ type CapacitySortColumn =
   | 'consumedToDateHours'
   | 'utilizationPct';
 
-type AreaFilterValue = UserArea | '' | 'SEM_AREA';
+type AreaFilterValue = UserArea | '';
 
 const NO_MANAGER_FILTER = 'SEM_GESTOR';
 
@@ -110,6 +110,8 @@ const countWorkingDays = (start: Date, end: Date, holidays: Holiday[], exception
 };
 
 export const ManagerCapacity: React.FC = () => {
+  const currentYear = new Date().getFullYear();
+
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState<User[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -117,7 +119,7 @@ export const ManagerCapacity: React.FC = () => {
   const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [exceptions, setExceptions] = useState<CalendarException[]>([]);
 
-  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  const [selectedYear, setSelectedYear] = useState<number>(currentYear);
   const [selectedManagerId, setSelectedManagerId] = useState('');
   const [selectedArea, setSelectedArea] = useState<AreaFilterValue>('');
   const [nameFilter, setNameFilter] = useState('');
@@ -201,7 +203,6 @@ export const ManagerCapacity: React.FC = () => {
       })
       .filter((project) => {
         if (!selectedArea) return true;
-        if (selectedArea === 'SEM_AREA') return !project.area;
         return project.area === selectedArea;
       });
   }, [visibleProjects, selectedManagerId, selectedArea]);
@@ -237,7 +238,6 @@ export const ManagerCapacity: React.FC = () => {
       })
       .filter((u) => {
         if (!selectedArea) return true;
-        if (selectedArea === 'SEM_AREA') return !u.area;
         return u.area === selectedArea;
       })
       .filter((u) => !nameFilter.trim() || u.name.toLowerCase().includes(nameFilter.toLowerCase().trim()))
@@ -297,7 +297,7 @@ export const ManagerCapacity: React.FC = () => {
           userName: u.name,
           requiresTimesheet: u.requiresTimesheet,
           area,
-          areaLabel: area ? AREA_LABEL[area] : 'Sem área',
+          areaLabel: area ? AREA_LABEL[area] : '-',
           managerId,
           managerName,
           admissionDate,
@@ -349,6 +349,15 @@ export const ManagerCapacity: React.FC = () => {
     setSelectedManagerId(managerId);
     setSelectedArea(area);
     if (clearName) setNameFilter('');
+  };
+
+  const clearAllFilters = () => {
+    setSelectedYear(currentYear);
+    setSelectedManagerId('');
+    setSelectedArea('');
+    setNameFilter('');
+    setIncludeWithoutTimesheet(false);
+    setShowTimesheetGapDetails(false);
   };
 
   const handleSort = (column: CapacitySortColumn) => {
@@ -435,7 +444,9 @@ export const ManagerCapacity: React.FC = () => {
     const grouped = new Map<string, { area: string; areaFilter: AreaFilterValue; consumed: number; available: number; budgeted: number }>();
 
     rows.forEach((row) => {
-      const key = row.area || 'SEM_AREA';
+      if (!row.area) return;
+
+      const key = row.area;
       const current = grouped.get(key) || { area: row.areaLabel, areaFilter: key as AreaFilterValue, consumed: 0, available: 0, budgeted: 0 };
       current.consumed += row.consumedToDateHours;
       current.available += row.availableYearHours;
@@ -443,9 +454,11 @@ export const ManagerCapacity: React.FC = () => {
     });
 
     scopedProjects.forEach((project) => {
-      const key = project.area || 'SEM_AREA';
+      if (!project.area) return;
+
+      const key = project.area;
       const current = grouped.get(key) || {
-        area: project.area ? AREA_LABEL[project.area] : 'Sem área',
+        area: AREA_LABEL[project.area],
         areaFilter: key as AreaFilterValue,
         consumed: 0,
         available: 0,
@@ -538,9 +551,19 @@ export const ManagerCapacity: React.FC = () => {
       </section>
 
       <section className="bg-white p-5 rounded-xl border border-slate-100 shadow-sm">
-        <div className="flex items-center gap-2 mb-4 text-slate-700 font-semibold">
-          <Filter size={16} />
-          Filtros Analíticos
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2 text-slate-700">
+          <div className="flex items-center gap-2 font-semibold">
+            <Filter size={16} />
+            Filtros Analíticos
+          </div>
+          <button
+            type="button"
+            onClick={clearAllFilters}
+            className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:border-slate-400 hover:bg-slate-50"
+            title="Limpa todos os filtros aplicados e volta para o padrão."
+          >
+            Limpar todos os filtros
+          </button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-3">
@@ -579,7 +602,6 @@ export const ManagerCapacity: React.FC = () => {
               onChange={(e) => setSelectedArea((e.target.value || '') as AreaFilterValue)}
             >
               <option value="">Todas</option>
-              <option value="SEM_AREA">Sem área</option>
               {Object.entries(AREA_LABEL).map(([value, label]) => (
                 <option key={value} value={value}>{label}</option>
               ))}
@@ -735,7 +757,11 @@ export const ManagerCapacity: React.FC = () => {
                     {formatPercentage(item.utilization)}%
                   </span>
                 </div>
-                <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                <div className="mt-4 grid grid-cols-1 gap-3 text-sm md:grid-cols-3">
+                  <div className="rounded-lg bg-slate-50 px-3 py-2">
+                    <p className="text-[11px] font-bold uppercase text-slate-500">Capacity</p>
+                    <p className="mt-1 font-semibold text-slate-900">{formatHours(item.available)}h</p>
+                  </div>
                   <div className="rounded-lg bg-slate-50 px-3 py-2">
                     <p className="text-[11px] font-bold uppercase text-slate-500">Consumido</p>
                     <p className="mt-1 font-semibold text-slate-900">{formatHours(item.consumed)}h</p>
@@ -910,7 +936,7 @@ export const ManagerCapacity: React.FC = () => {
                   type="button"
                   onClick={() => {
                     setSelectedManagerId(row.managerId || NO_MANAGER_FILTER);
-                    setSelectedArea((row.area || 'SEM_AREA') as AreaFilterValue);
+                    setSelectedArea((row.area || '') as AreaFilterValue);
                     setNameFilter(row.userName);
                   }}
                   className="rounded-lg border border-red-200 bg-red-50 p-3 text-left transition-colors hover:border-red-300 hover:bg-red-100"

@@ -8,7 +8,7 @@ interface ProjectBudgetData {
   id: string;
   name: string;
   code: string;
-  area: UserArea | 'SEM_AREA';
+  area: UserArea;
   areaLabel: string;
   budgeted: number;
   consumed: number;
@@ -37,7 +37,7 @@ export const ManagerProjectBudget: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<'all' | 'safe' | 'warning' | 'danger'>('all');
   const [selectedProjectIds, setSelectedProjectIds] = useState<Set<string>>(new Set());
   const [teamFilter, setTeamFilter] = useState('');
-  const [areaFilter, setAreaFilter] = useState<UserArea | 'SEM_AREA' | ''>('');
+  const [areaFilter, setAreaFilter] = useState<UserArea | ''>('');
   const [codePrefixFilter, setCodePrefixFilter] = useState('');
   const [sortColumn, setSortColumn] = useState<'name' | 'budgeted' | 'consumed' | 'percentage'>('percentage');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
@@ -47,7 +47,9 @@ export const ManagerProjectBudget: React.FC = () => {
   }, []);
 
   const buildProjectData = (projectsList: Project[], entriesList: TimesheetEntry[]): ProjectBudgetData[] => {
-    return projectsList.map((p): ProjectBudgetData => {
+    return projectsList
+      .filter((p) => !!p.area)
+      .map((p): ProjectBudgetData => {
       const consumed = entriesList
         .filter(e => e.projectId === p.id)
         .reduce((acc, curr) => acc + curr.hours, 0);
@@ -58,14 +60,14 @@ export const ManagerProjectBudget: React.FC = () => {
       if (percentage > 100) status = 'danger';
       else if (percentage >= 85) status = 'warning';
 
-      const area: UserArea | 'SEM_AREA' = p.area ?? 'SEM_AREA';
+      const area = p.area as UserArea;
 
       return {
         id: p.id,
         name: p.name,
         code: p.code,
         area,
-        areaLabel: area === 'SEM_AREA' ? 'Sem area' : AREA_LABEL[area],
+        areaLabel: AREA_LABEL[area],
         budgeted: p.budgetedHours,
         consumed: consumed,
         percentage: percentage,
@@ -302,11 +304,10 @@ export const ManagerProjectBudget: React.FC = () => {
               <label className="block text-xs font-bold text-slate-500 mb-2">Área</label>
               <select
                 value={areaFilter}
-                onChange={(e) => setAreaFilter((e.target.value || '') as UserArea | 'SEM_AREA' | '')}
+                onChange={(e) => setAreaFilter((e.target.value || '') as UserArea | '')}
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none"
               >
                 <option value="">Todas</option>
-                <option value="SEM_AREA">Sem area</option>
                 {Object.entries(AREA_LABEL).map(([value, label]) => (
                   <option key={value} value={value}>{label}</option>
                 ))}
