@@ -28,7 +28,10 @@ interface CapacityRow {
   terminationDate?: string;
   availableYearHours: number;
   remainingYearHours: number;
+  elapsedToDateHours: number;
   consumedToDateHours: number;
+  missingTimesheetHours: number;
+  overLoggedHours: number;
   utilizationPct: number;
   activeInYear: boolean;
 }
@@ -118,6 +121,7 @@ export const ManagerCapacity: React.FC = () => {
   const [selectedArea, setSelectedArea] = useState<AreaFilterValue>('');
   const [nameFilter, setNameFilter] = useState('');
   const [includeWithoutTimesheet, setIncludeWithoutTimesheet] = useState(false);
+  const [showTimesheetGapDetails, setShowTimesheetGapDetails] = useState(false);
   const [sortColumn, setSortColumn] = useState<CapacitySortColumn>('utilizationPct');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
@@ -216,7 +220,8 @@ export const ManagerCapacity: React.FC = () => {
     const filteredRows = scopedUsers
       .filter((u) => {
         const isLeadershipWithoutTimesheet = (u.role === 'MANAGER' || u.role === 'ADMIN') && u.requiresTimesheet === false;
-        return !isLeadershipWithoutTimesheet;
+        if (isLeadershipWithoutTimesheet && !includeWithoutTimesheet) return false;
+        return true;
       })
       .filter((u) => {
         if (u.isActive !== false) return true;
@@ -224,7 +229,6 @@ export const ManagerCapacity: React.FC = () => {
 
         return parseDateOnly(u.terminationDate).getFullYear() === selectedYear;
       })
-      .filter((u) => includeWithoutTimesheet || u.requiresTimesheet !== false)
       .filter((u) => {
         if (!selectedManagerId) return true;
         if (selectedManagerId === NO_MANAGER_FILTER) return !u.managerId;
@@ -273,6 +277,13 @@ export const ManagerCapacity: React.FC = () => {
 
         const remainingYearHours = remainingWorkingDays * HOURS_PER_DAY;
 
+        const elapsedToDateHours = activeInYear
+          ? Math.max(availableYearHours - remainingYearHours, 0)
+          : 0;
+
+        const missingTimesheetHours = Math.max(elapsedToDateHours - consumedToDateHours, 0);
+        const overLoggedHours = Math.max(consumedToDateHours - elapsedToDateHours, 0);
+
         const managerId = u.managerId || undefined;
         const managerName = managerId ? managerMap.get(managerId)?.name || 'Sem Gestor' : 'Sem Gestor';
 
@@ -291,7 +302,10 @@ export const ManagerCapacity: React.FC = () => {
           terminationDate,
           availableYearHours,
           remainingYearHours,
+          elapsedToDateHours,
           consumedToDateHours,
+          missingTimesheetHours,
+          overLoggedHours,
           utilizationPct,
           activeInYear
         } as CapacityRow;
@@ -357,6 +371,8 @@ export const ManagerCapacity: React.FC = () => {
     const totalRemainingYear = rows.reduce((sum, row) => sum + row.remainingYearHours, 0);
     const totalConsumedToDate = rows.reduce((sum, row) => sum + row.consumedToDateHours, 0);
     const totalElapsedYear = Math.max(totalAvailableYear - totalRemainingYear, 0);
+    const totalMissingTimesheetHours = rows.reduce((sum, row) => sum + row.missingTimesheetHours, 0);
+    const totalOverLoggedHours = rows.reduce((sum, row) => sum + row.overLoggedHours, 0);
 
     const utilization = totalAvailableYear > 0
       ? (totalConsumedToDate / totalAvailableYear) * 100
@@ -367,6 +383,8 @@ export const ManagerCapacity: React.FC = () => {
       totalRemainingYear,
       totalConsumedToDate,
       totalElapsedYear,
+      totalMissingTimesheetHours,
+      totalOverLoggedHours,
       utilization
     };
   }, [rows]);
@@ -448,6 +466,34 @@ export const ManagerCapacity: React.FC = () => {
       .filter((row) => row.utilizationPct >= 85)
       .slice(0, 8);
   }, [rows]);
+
+  const timesheetGapHighlights = useMemo(() => {
+    return rows
+      .filter((row) => row.missingTimesheetHours > 0.1)
+      .sort((a, b) => b.missingTimesheetHours - a.missingTimesheetHours)
+      .slice(0, 12);
+  }, [rows]);
+
+  const allocationByArea = useMemo(() => {
+    return byAreaChart.map((item) => {
+      const allocatable = item.available - item.budgeted;
+      return {
+        ...item,
+        allocatable,
+        budgetPressurePct: item.available > 0 ? (item.budgeted / item.available) * 100 : 0
+      };
+    });
+  }, [byAreaChart]);
+
+  const allocationSummary = useMemo(() => {
+    const totalAllocatableHours = summary.totalAvailableYear - budgetSummary.totalBudgetedHours;
+    const overAllocatedAreas = allocationByArea.filter((item) => item.allocatable < 0).length;
+
+    return {
+      totalAllocatableHours,
+      overAllocatedAreas
+    };
+  }, [summary.totalAvailableYear, budgetSummary.totalBudgetedHours, allocationByArea]);
 
   if (loading) {
     return (
@@ -558,12 +604,20 @@ export const ManagerCapacity: React.FC = () => {
           <p className="text-xs text-slate-500 mt-1">Disponibilidade restante do ano</p>
         </div>
 
-        <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
+        <button
+          type="button"
+          onClick={() => setShowTimesheetGapDetails((prev) => !prev)}
+          className="bg-white rounded-xl border border-slate-100 shadow-sm p-5 text-left transition-colors hover:border-brand-200 hover:bg-brand-50/30"
+          title="Clique para ver quem pode estar sem apontamento correto de timesheet."
+        >
           <p className="text-xs text-slate-500 font-bold uppercase">Horas consumidas ate hoje</p>
           <p className="mt-2 text-2xl font-bold text-brand-700">{formatHours(summary.totalConsumedToDate)}</p>
           <p className="text-xs text-slate-500 mt-1">Com base nas horas apontadas no timesheet</p>
           <p className="text-[11px] text-slate-400 mt-2">{formatHours(summary.totalElapsedYear)}h uteis ja decorridas ate hoje no ano</p>
-        </div>
+          <p className="text-[11px] text-amber-700 mt-2 font-semibold">
+            Gap estimado de apontamento: {formatHours(summary.totalMissingTimesheetHours)}h
+          </p>
+        </button>
 
         <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
           <p className="text-xs text-slate-500 font-bold uppercase">Taxa de consumo</p>
@@ -577,6 +631,63 @@ export const ManagerCapacity: React.FC = () => {
           <p className="text-xs text-slate-500 mt-1">{formatPercentage(budgetSummary.budgetVsCapacityPct)}% do capacity visível no recorte</p>
         </div>
       </section>
+
+      {showTimesheetGapDetails && (
+        <section className="bg-white rounded-xl border border-slate-100 shadow-sm p-5 space-y-4">
+          <div className="flex flex-col gap-1">
+            <h2 className="font-semibold text-slate-800">Diferencas de Timesheet (Decorrido vs Consumido)</h2>
+            <p className="text-sm text-slate-500">
+              Esta analise compara horas uteis ja decorridas no ano com horas registradas no timesheet para identificar provavel falta de apontamento.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-3">
+              <p className="text-[11px] font-bold uppercase text-amber-700">Gap total sem apontamento</p>
+              <p className="mt-1 text-lg font-bold text-amber-700">{formatHours(summary.totalMissingTimesheetHours)}h</p>
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3">
+              <p className="text-[11px] font-bold uppercase text-slate-600">Horas decorridas no recorte</p>
+              <p className="mt-1 text-lg font-bold text-slate-800">{formatHours(summary.totalElapsedYear)}h</p>
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3">
+              <p className="text-[11px] font-bold uppercase text-slate-600">Apontamento acima do decorrido</p>
+              <p className="mt-1 text-lg font-bold text-slate-800">{formatHours(summary.totalOverLoggedHours)}h</p>
+            </div>
+          </div>
+
+          {timesheetGapHighlights.length === 0 ? (
+            <p className="text-sm text-slate-500">Nao foram encontrados gaps relevantes de apontamento para os filtros atuais.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="border-b border-slate-200 text-slate-500">
+                  <tr>
+                    <th className="py-2 pr-3">Colaborador</th>
+                    <th className="py-2 pr-3">Area</th>
+                    <th className="py-2 pr-3">Equipe</th>
+                    <th className="py-2 pr-3 text-right">Decorrido</th>
+                    <th className="py-2 pr-3 text-right">Consumido</th>
+                    <th className="py-2 pr-0 text-right">Gap sem apontar</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {timesheetGapHighlights.map((row) => (
+                    <tr key={row.userId} className="hover:bg-slate-50">
+                      <td className="py-2 pr-3 font-medium text-slate-800">{row.userName}</td>
+                      <td className="py-2 pr-3 text-slate-600">{row.areaLabel}</td>
+                      <td className="py-2 pr-3 text-slate-600">{row.managerName}</td>
+                      <td className="py-2 pr-3 text-right text-slate-600">{formatHours(row.elapsedToDateHours)}h</td>
+                      <td className="py-2 pr-3 text-right text-slate-600">{formatHours(row.consumedToDateHours)}h</td>
+                      <td className="py-2 pr-0 text-right font-semibold text-amber-700">{formatHours(row.missingTimesheetHours)}h</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      )}
 
       <section className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         <div className="xl:col-span-2 bg-white rounded-xl border border-slate-100 shadow-sm p-5">
@@ -668,6 +779,72 @@ export const ManagerCapacity: React.FC = () => {
               </div>
             </div>
           </div>
+        </div>
+      </section>
+
+      <section className="bg-white rounded-xl border border-slate-100 shadow-sm p-5 space-y-4">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <h2 className="font-semibold text-slate-800">Disponibilidade para Alocacao em Projetos</h2>
+            <p className="text-sm text-slate-500">Comparativo entre capacidade anual disponivel e horas orcadas em projetos no recorte atual.</p>
+          </div>
+          <div className="text-right">
+            <p className="text-xs font-bold uppercase text-slate-500">Saldo total para alocar</p>
+            <p className={`text-2xl font-bold ${allocationSummary.totalAllocatableHours >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
+              {formatHours(allocationSummary.totalAllocatableHours)}h
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3">
+            <p className="text-[11px] font-bold uppercase text-slate-500">Capacity anual visivel</p>
+            <p className="mt-1 text-lg font-bold text-slate-800">{formatHours(summary.totalAvailableYear)}h</p>
+          </div>
+          <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3">
+            <p className="text-[11px] font-bold uppercase text-slate-500">Horas orcadas em projeto</p>
+            <p className="mt-1 text-lg font-bold text-slate-800">{formatHours(budgetSummary.totalBudgetedHours)}h</p>
+          </div>
+          <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3">
+            <p className="text-[11px] font-bold uppercase text-slate-500">Orcado / Capacity</p>
+            <p className="mt-1 text-lg font-bold text-slate-800">{formatPercentage(budgetSummary.budgetVsCapacityPct)}%</p>
+          </div>
+          <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3">
+            <p className="text-[11px] font-bold uppercase text-slate-500">Areas com deficit</p>
+            <p className="mt-1 text-lg font-bold text-slate-800">{allocationSummary.overAllocatedAreas}</p>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="border-b border-slate-200 text-slate-500">
+              <tr>
+                <th className="py-2 pr-3">Area</th>
+                <th className="py-2 pr-3 text-right">Capacity</th>
+                <th className="py-2 pr-3 text-right">Orcado</th>
+                <th className="py-2 pr-3 text-right">Saldo alocavel</th>
+                <th className="py-2 pr-0 text-right">Pressao do orcado</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {allocationByArea.map((row) => (
+                <tr key={row.area} className="hover:bg-slate-50">
+                  <td className="py-2 pr-3 font-medium text-slate-800">{row.area}</td>
+                  <td className="py-2 pr-3 text-right text-slate-600">{formatHours(row.available)}h</td>
+                  <td className="py-2 pr-3 text-right text-slate-600">{formatHours(row.budgeted)}h</td>
+                  <td className={`py-2 pr-3 text-right font-semibold ${row.allocatable >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
+                    {formatHours(row.allocatable)}h
+                  </td>
+                  <td className="py-2 pr-0 text-right text-slate-600">{formatPercentage(row.budgetPressurePct)}%</td>
+                </tr>
+              ))}
+              {allocationByArea.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="py-8 text-center text-slate-400">Sem dados de area para o recorte atual.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </section>
 
