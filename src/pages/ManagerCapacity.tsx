@@ -20,6 +20,7 @@ import { formatDateForDisplay, formatLocalDate, parseDateOnly } from '../utils/d
 interface CapacityRow {
   userId: string;
   userName: string;
+  requiresTimesheet?: boolean;
   area?: UserArea;
   areaLabel: string;
   managerId?: string;
@@ -294,6 +295,7 @@ export const ManagerCapacity: React.FC = () => {
         return {
           userId: u.id,
           userName: u.name,
+          requiresTimesheet: u.requiresTimesheet,
           area,
           areaLabel: area ? AREA_LABEL[area] : 'Sem area',
           managerId,
@@ -469,9 +471,26 @@ export const ManagerCapacity: React.FC = () => {
 
   const timesheetGapHighlights = useMemo(() => {
     return rows
+      .filter((row) => row.requiresTimesheet !== false)
       .filter((row) => row.missingTimesheetHours > 0.1)
       .sort((a, b) => b.missingTimesheetHours - a.missingTimesheetHours)
       .slice(0, 12);
+  }, [rows]);
+
+  const timesheetGapSummary = useMemo(() => {
+    const eligibleRows = rows.filter((row) => row.requiresTimesheet !== false);
+
+    const elapsedHours = eligibleRows.reduce((sum, row) => sum + row.elapsedToDateHours, 0);
+    const consumedHours = eligibleRows.reduce((sum, row) => sum + row.consumedToDateHours, 0);
+    const missingHours = eligibleRows.reduce((sum, row) => sum + row.missingTimesheetHours, 0);
+    const overLoggedHours = eligibleRows.reduce((sum, row) => sum + row.overLoggedHours, 0);
+
+    return {
+      elapsedHours,
+      consumedHours,
+      missingHours,
+      overLoggedHours
+    };
   }, [rows]);
 
   const allocationByArea = useMemo(() => {
@@ -613,9 +632,9 @@ export const ManagerCapacity: React.FC = () => {
           <p className="text-xs text-slate-500 font-bold uppercase">Horas consumidas ate hoje</p>
           <p className="mt-2 text-2xl font-bold text-brand-700">{formatHours(summary.totalConsumedToDate)}</p>
           <p className="text-xs text-slate-500 mt-1">Com base nas horas apontadas no timesheet</p>
-          <p className="text-[11px] text-slate-400 mt-2">{formatHours(summary.totalElapsedYear)}h uteis ja decorridas ate hoje no ano</p>
+          <p className="text-[11px] text-slate-400 mt-2">{formatHours(timesheetGapSummary.elapsedHours)}h uteis ja decorridas ate hoje no ano (somente quem exige timesheet)</p>
           <p className="text-[11px] text-amber-700 mt-2 font-semibold">
-            Gap estimado de apontamento: {formatHours(summary.totalMissingTimesheetHours)}h
+            Gap estimado de apontamento: {formatHours(timesheetGapSummary.missingHours)}h
           </p>
         </button>
 
@@ -644,15 +663,15 @@ export const ManagerCapacity: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-3">
               <p className="text-[11px] font-bold uppercase text-amber-700">Gap total sem apontamento</p>
-              <p className="mt-1 text-lg font-bold text-amber-700">{formatHours(summary.totalMissingTimesheetHours)}h</p>
+              <p className="mt-1 text-lg font-bold text-amber-700">{formatHours(timesheetGapSummary.missingHours)}h</p>
             </div>
             <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3">
               <p className="text-[11px] font-bold uppercase text-slate-600">Horas decorridas no recorte</p>
-              <p className="mt-1 text-lg font-bold text-slate-800">{formatHours(summary.totalElapsedYear)}h</p>
+              <p className="mt-1 text-lg font-bold text-slate-800">{formatHours(timesheetGapSummary.elapsedHours)}h</p>
             </div>
             <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3">
               <p className="text-[11px] font-bold uppercase text-slate-600">Apontamento acima do decorrido</p>
-              <p className="mt-1 text-lg font-bold text-slate-800">{formatHours(summary.totalOverLoggedHours)}h</p>
+              <p className="mt-1 text-lg font-bold text-slate-800">{formatHours(timesheetGapSummary.overLoggedHours)}h</p>
             </div>
           </div>
 
