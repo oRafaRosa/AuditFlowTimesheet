@@ -123,7 +123,7 @@ class StoreService {
             name: data.full_name,
             email: data.email,
             role: data.role,
-          area: data.area || 'AUDITORIA_INTERNA',
+          area: data.area || undefined,
           admissionDate: data.admission_date || '2020-01-01',
           terminationDate: data.termination_date || undefined,
             isActive: data.is_active !== false,
@@ -358,7 +358,7 @@ class StoreService {
           name: d.full_name,
           email: d.email,
           role: d.role,
-          area: d.area || 'AUDITORIA_INTERNA',
+          area: d.area || undefined,
           admissionDate: d.admission_date || '2020-01-01',
           terminationDate: d.termination_date || undefined,
           isActive: d.is_active !== false,
@@ -378,7 +378,7 @@ class StoreService {
           full_name: user.name,
           email: user.email.trim(),
           role: user.role,
-          area: user.area || 'AUDITORIA_INTERNA',
+          area: user.area || null,
           admission_date: user.admissionDate || '2020-01-01',
           termination_date: user.terminationDate || null,
           manager_id: managerIdValue,
@@ -398,7 +398,7 @@ class StoreService {
           name: data.full_name,
           email: data.email,
           role: data.role,
-          area: data.area || 'AUDITORIA_INTERNA',
+          area: data.area || undefined,
           admissionDate: data.admission_date || '2020-01-01',
           terminationDate: data.termination_date || undefined,
           isActive: data.is_active !== false,
@@ -414,7 +414,7 @@ class StoreService {
     if (data.name) dbUpdate.full_name = data.name;
     if (data.email) dbUpdate.email = data.email.trim();
     if (data.role) dbUpdate.role = data.role;
-    if (data.area !== undefined) dbUpdate.area = data.area || 'AUDITORIA_INTERNA';
+    if (data.area !== undefined) dbUpdate.area = data.area || null;
     if (data.admissionDate !== undefined) dbUpdate.admission_date = data.admissionDate || '2020-01-01';
     if (data.terminationDate !== undefined) dbUpdate.termination_date = data.terminationDate || null;
     if (data.isActive !== undefined) dbUpdate.is_active = data.isActive;
@@ -574,7 +574,7 @@ class StoreService {
         name: d.full_name,
         email: d.email,
         role: d.role,
-        area: d.area || 'AUDITORIA_INTERNA',
+      area: d.area || undefined,
         admissionDate: d.admission_date || '2020-01-01',
         terminationDate: d.termination_date || undefined,
         isActive: d.is_active !== false,
@@ -1152,7 +1152,7 @@ create table if not exists profiles (
   id uuid default gen_random_uuid() primary key,
   full_name text not null,
   role text default 'USER' check (role in ('ADMIN', 'MANAGER', 'USER')),
-  area text default 'AUDITORIA_INTERNA',
+  area text,
   admission_date date default '2020-01-01',
   termination_date date,
   is_active boolean default true,
@@ -1164,9 +1164,22 @@ create table if not exists profiles (
 
 -- coluna para ambientes já existentes
 alter table profiles add column if not exists requires_timesheet boolean default true;
-alter table profiles add column if not exists area text default 'AUDITORIA_INTERNA';
+alter table profiles add column if not exists area text;
 alter table profiles add column if not exists admission_date date default '2020-01-01';
 alter table profiles add column if not exists termination_date date;
+alter table profiles drop constraint if exists profiles_area_check;
+alter table profiles
+  add constraint profiles_area_check
+  check (
+    area is null or area in (
+      'AUDITORIA_INTERNA',
+      'CONTROLES_INTERNOS',
+      'COMPLIANCE',
+      'CANAL_DENUNCIAS',
+      'GESTAO_RISCOS_DIGITAIS',
+      'OUTROS'
+    )
+  );
 
 -- 3. Tabela de Projetos
 create table if not exists projects (

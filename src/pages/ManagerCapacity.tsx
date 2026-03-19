@@ -21,7 +21,7 @@ import { formatDateForDisplay, formatLocalDate, parseDateOnly } from '../utils/d
 interface CapacityRow {
   userId: string;
   userName: string;
-  area: UserArea;
+  area?: UserArea;
   areaLabel: string;
   managerId?: string;
   managerName: string;
@@ -41,6 +41,7 @@ const AREA_LABEL: Record<UserArea, string> = {
   CONTROLES_INTERNOS: 'Controles Internos',
   COMPLIANCE: 'Compliance',
   CANAL_DENUNCIAS: 'Canal de Denuncias',
+  GESTAO_RISCOS_DIGITAIS: 'Gestao de Riscos Digitais',
   OUTROS: 'Outros'
 };
 
@@ -152,12 +153,12 @@ export const ManagerCapacity: React.FC = () => {
       .filter((u) => includeInactive || u.isActive !== false)
       .filter((u) => includeWithoutTimesheet || u.requiresTimesheet !== false)
       .filter((u) => !selectedManagerId || u.id === selectedManagerId || u.managerId === selectedManagerId)
-      .filter((u) => !selectedArea || (u.area || 'AUDITORIA_INTERNA') === selectedArea)
+      .filter((u) => !selectedArea || u.area === selectedArea)
       .filter((u) => !nameFilter.trim() || u.name.toLowerCase().includes(nameFilter.toLowerCase().trim()))
       .map((u) => {
         const admissionDate = u.admissionDate || '2020-01-01';
         const terminationDate = u.terminationDate;
-        const area = (u.area || 'AUDITORIA_INTERNA') as UserArea;
+        const area = u.area;
 
         const hireDate = parseDateOnly(admissionDate);
         const endContractDate = terminationDate ? parseDateOnly(terminationDate) : yearEnd;
@@ -202,7 +203,7 @@ export const ManagerCapacity: React.FC = () => {
           userId: u.id,
           userName: u.name,
           area,
-          areaLabel: AREA_LABEL[area],
+          areaLabel: area ? AREA_LABEL[area] : 'Sem area',
           managerId,
           managerName,
           admissionDate,
@@ -274,7 +275,7 @@ export const ManagerCapacity: React.FC = () => {
     const grouped = new Map<string, { area: string; consumed: number; available: number }>();
 
     rows.forEach((row) => {
-      const key = row.area;
+      const key = row.area || 'SEM_AREA';
       const current = grouped.get(key) || { area: row.areaLabel, consumed: 0, available: 0 };
       current.consumed += row.consumedToDateHours;
       current.available += row.availableYearHours;

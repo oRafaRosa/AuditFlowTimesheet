@@ -46,7 +46,7 @@ export const AdminDashboard: React.FC = () => {
         email: '',
         role: 'USER' as any,
         managerId: '',
-        area: 'AUDITORIA_INTERNA' as any,
+        area: '' as any,
         admissionDate: '2020-01-01',
         terminationDate: '',
         isActive: true,
@@ -189,7 +189,7 @@ export const AdminDashboard: React.FC = () => {
         email: u.email, 
         role: u.role, 
         managerId: u.managerId || '', 
-                area: u.area || 'AUDITORIA_INTERNA',
+            area: u.area || '',
                 admissionDate: u.admissionDate || '2020-01-01',
                 terminationDate: u.terminationDate || '',
         isActive: u.isActive !== false,
@@ -204,7 +204,7 @@ export const AdminDashboard: React.FC = () => {
                 email: '',
                 role: 'USER',
                 managerId: '',
-                area: 'AUDITORIA_INTERNA',
+                area: '',
                 admissionDate: '2020-01-01',
                 terminationDate: '',
                 isActive: true,
@@ -228,7 +228,7 @@ export const AdminDashboard: React.FC = () => {
             email: '',
             role: 'USER',
             managerId: '',
-            area: 'AUDITORIA_INTERNA',
+            area: '',
             admissionDate: '2020-01-01',
             terminationDate: '',
             isActive: true,
@@ -543,7 +543,7 @@ export const AdminDashboard: React.FC = () => {
                                               )}
                                           </div>
                                       </td>
-                                      <td className="px-6 py-3 text-xs text-slate-600">{(u.area || 'AUDITORIA_INTERNA').replace(/_/g, ' ')}</td>
+                                      <td className="px-6 py-3 text-xs text-slate-600">{u.area ? u.area.replace(/_/g, ' ') : '-'}</td>
                                       <td className="px-6 py-3 text-xs text-slate-600">{u.admissionDate ? formatDateForDisplay(u.admissionDate) : '-'}</td>
                                       <td className="px-6 py-3 text-xs text-slate-600">{u.terminationDate ? formatDateForDisplay(u.terminationDate) : '-'}</td>
                                       <td className="px-6 py-3 text-right">
@@ -589,10 +589,12 @@ export const AdminDashboard: React.FC = () => {
                       <div>
                           <label className="block text-xs font-bold text-slate-500 mb-1">Área</label>
                           <select className="w-full border border-gray-300 p-2 rounded-lg text-sm" value={userData.area} onChange={e => setUserData({...userData, area: e.target.value as any})}>
+                              <option value="">Selecionar depois</option>
                               <option value="AUDITORIA_INTERNA">Auditoria Interna</option>
                               <option value="CONTROLES_INTERNOS">Controles Internos</option>
                               <option value="COMPLIANCE">Compliance</option>
                               <option value="CANAL_DENUNCIAS">Canal de Denúncias</option>
+                              <option value="GESTAO_RISCOS_DIGITAIS">Gestão de Riscos Digitais</option>
                               <option value="OUTROS">Outros</option>
                           </select>
                       </div>

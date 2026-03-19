@@ -11,7 +11,13 @@ export const formatPercentage = (value: number): string => {
 
 export type Role = 'ADMIN' | 'MANAGER' | 'USER';
 
-export type UserArea = 'AUDITORIA_INTERNA' | 'CONTROLES_INTERNOS' | 'COMPLIANCE' | 'CANAL_DENUNCIAS' | 'OUTROS';
+export type UserArea =
+  | 'AUDITORIA_INTERNA'
+  | 'CONTROLES_INTERNOS'
+  | 'COMPLIANCE'
+  | 'CANAL_DENUNCIAS'
+  | 'GESTAO_RISCOS_DIGITAIS'
+  | 'OUTROS';
 
 export interface User {
   id: string;
