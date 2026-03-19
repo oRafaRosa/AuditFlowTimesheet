@@ -1,16 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
   Tooltip,
-  CartesianGrid,
   PieChart,
   Pie,
-  Cell,
-  Legend
+  Cell
 } from 'recharts';
 import { Filter, Loader2, Users, CalendarClock, Clock3, TrendingUp, AlertTriangle, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { store } from '../services/store';
@@ -58,18 +52,33 @@ const AREA_LABEL: Record<UserArea, string> = {
 
 const BRAND_BLUE = '#0033C6';
 const BRAND_BLUE_DARK = '#00248a';
-const BRAND_RED = '#E71A3B';
-const CHART_COLORS = [BRAND_BLUE, '#3558D4', '#5F7AE1', '#7F95E8', '#AAB8EE', '#CBD4F4'];
+const BRAND_BLUE_SOFT = '#dbe7ff';
 
 const toDateKey = (d: Date) => formatLocalDate(d);
 
-const truncateLabel = (value: string, maxLength: number) => {
-  if (value.length <= maxLength) return value;
-  return `${value.slice(0, Math.max(0, maxLength - 1)).trim()}…`;
-};
-
 const maxDate = (a: Date, b: Date): Date => (a.getTime() >= b.getTime() ? a : b);
 const minDate = (a: Date, b: Date): Date => (a.getTime() <= b.getTime() ? a : b);
+
+const getUtilizationTone = (utilization: number) => {
+  if (utilization >= 85) {
+    return {
+      badge: 'bg-red-100 text-red-700',
+      bar: '#dc2626'
+    };
+  }
+
+  if (utilization >= 70) {
+    return {
+      badge: 'bg-amber-100 text-amber-700',
+      bar: '#d97706'
+    };
+  }
+
+  return {
+    badge: 'bg-brand-50 text-brand-700',
+    bar: BRAND_BLUE
+  };
+};
 
 const countWorkingDays = (start: Date, end: Date, holidays: Holiday[], exceptions: CalendarException[]): number => {
   if (start.getTime() > end.getTime()) return 0;
@@ -334,12 +343,12 @@ export const ManagerCapacity: React.FC = () => {
     });
 
     return [...grouped.values()]
-      .sort((a, b) => b.consumed - a.consumed)
-      .slice(0, 8)
       .map((item) => ({
         ...item,
-        shortTeam: truncateLabel(item.team, 22)
-      }));
+        utilization: item.available > 0 ? (item.consumed / item.available) * 100 : 0
+      }))
+      .sort((a, b) => b.consumed - a.consumed)
+      .slice(0, 6);
   }, [rows]);
 
   const byAreaChart = useMemo(() => {
@@ -359,14 +368,17 @@ export const ManagerCapacity: React.FC = () => {
     }));
   }, [rows]);
 
-  const topPeopleChart = useMemo(() => {
+  const topCollaborators = useMemo(() => {
     return rows
-      .slice(0, 10)
+      .slice(0, 8)
       .map((row) => ({
+        userId: row.userId,
         name: row.userName,
-        shortName: truncateLabel(row.userName, 26),
+        team: row.managerName,
+        area: row.areaLabel,
         consumed: row.consumedToDateHours,
         remaining: row.remainingYearHours,
+        available: row.availableYearHours,
         utilization: row.utilizationPct
       }));
   }, [rows]);
@@ -387,19 +399,16 @@ export const ManagerCapacity: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-2xl overflow-hidden border border-[#d6dcf5] bg-[#F0EFEA] p-5 md:p-6 shadow-sm">
-        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-          <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-[#0033C6] font-bold">Capacity</p>
-            <h1 className="text-2xl md:text-3xl font-bold mt-2 text-slate-900">Capacidade da Equipe - {selectedYear}</h1>
-            <p className="text-sm text-slate-600 mt-2 max-w-3xl">
-              Visao consolidada de horas disponiveis e consumidas para apresentacoes gerenciais e comites,
-              considerando admissao, desligamento, feriados e dias uteis.
-            </p>
-          </div>
-          <div className="rounded-xl border border-[#d6dcf5] bg-white px-4 py-3 text-xs text-slate-600">
-            Atualizado em {new Date().toLocaleDateString('pt-BR')} as {new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-          </div>
+      <section className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800">Capacity da Equipe</h1>
+          <p className="mt-2 max-w-3xl text-slate-500">
+            Visao consolidada de horas disponiveis e consumidas em {selectedYear}, considerando admissao,
+            desligamento, feriados e dias uteis.
+          </p>
+        </div>
+        <div className="inline-flex items-center rounded-full bg-brand-50 px-3 py-1 text-xs font-bold text-brand-700">
+          Atualizado em {new Date().toLocaleDateString('pt-BR')} as {new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
         </div>
       </section>
 
@@ -414,7 +423,7 @@ export const ManagerCapacity: React.FC = () => {
             <label className="block text-xs text-slate-500 font-bold mb-1">Ano</label>
             <input
               type="number"
-              className="w-full border border-gray-300 rounded-lg p-2 text-sm"
+              className="w-full rounded-lg border border-slate-300 p-2 text-sm outline-none focus:ring-2 focus:ring-brand-500"
               value={selectedYear}
               min={2020}
               max={2100}
@@ -425,7 +434,7 @@ export const ManagerCapacity: React.FC = () => {
           <div>
             <label className="block text-xs text-slate-500 font-bold mb-1">Equipe (Gestor)</label>
             <select
-              className="w-full border border-gray-300 rounded-lg p-2 text-sm"
+              className="w-full rounded-lg border border-slate-300 p-2 text-sm outline-none focus:ring-2 focus:ring-brand-500"
               value={selectedManagerId}
               onChange={(e) => setSelectedManagerId(e.target.value)}
             >
@@ -439,7 +448,7 @@ export const ManagerCapacity: React.FC = () => {
           <div>
             <label className="block text-xs text-slate-500 font-bold mb-1">Area</label>
             <select
-              className="w-full border border-gray-300 rounded-lg p-2 text-sm"
+              className="w-full rounded-lg border border-slate-300 p-2 text-sm outline-none focus:ring-2 focus:ring-brand-500"
               value={selectedArea}
               onChange={(e) => setSelectedArea((e.target.value || '') as UserArea | '')}
             >
@@ -451,9 +460,9 @@ export const ManagerCapacity: React.FC = () => {
           </div>
 
           <div className="xl:col-span-2">
-            <label className="block text-xs text-slate-500 font-bold mb-1">Pessoa</label>
+            <label className="block text-xs text-slate-500 font-bold mb-1">Colaborador</label>
             <input
-              className="w-full border border-gray-300 rounded-lg p-2 text-sm"
+              className="w-full rounded-lg border border-slate-300 p-2 text-sm outline-none focus:ring-2 focus:ring-brand-500"
               placeholder="Filtrar por nome"
               value={nameFilter}
               onChange={(e) => setNameFilter(e.target.value)}
@@ -486,25 +495,25 @@ export const ManagerCapacity: React.FC = () => {
       <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
           <p className="text-xs text-slate-500 font-bold uppercase">Horas disponiveis no ano</p>
-          <p className="text-2xl font-bold text-[#0033C6] mt-2">{formatHours(summary.totalAvailableYear)}</p>
+          <p className="mt-2 text-2xl font-bold text-slate-800">{formatHours(summary.totalAvailableYear)}</p>
           <p className="text-xs text-slate-500 mt-1">Base total de capacity anual</p>
         </div>
 
         <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
           <p className="text-xs text-slate-500 font-bold uppercase">Horas de hoje ate 31/12</p>
-          <p className="text-2xl font-bold text-[#0033C6] mt-2">{formatHours(summary.totalRemainingYear)}</p>
+          <p className="mt-2 text-2xl font-bold text-slate-800">{formatHours(summary.totalRemainingYear)}</p>
           <p className="text-xs text-slate-500 mt-1">Disponibilidade restante do ano</p>
         </div>
 
         <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
           <p className="text-xs text-slate-500 font-bold uppercase">Horas consumidas ate hoje</p>
-          <p className="text-2xl font-bold text-[#3558D4] mt-2">{formatHours(summary.totalConsumedToDate)}</p>
+          <p className="mt-2 text-2xl font-bold text-brand-700">{formatHours(summary.totalConsumedToDate)}</p>
           <p className="text-xs text-slate-500 mt-1">Lancamentos acumulados no ano</p>
         </div>
 
         <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
           <p className="text-xs text-slate-500 font-bold uppercase">Taxa de consumo</p>
-          <p className="text-2xl font-bold text-[#3558D4] mt-2">{formatPercentage(summary.utilization)}%</p>
+          <p className="mt-2 text-2xl font-bold text-brand-700">{formatPercentage(summary.utilization)}%</p>
           <p className="text-xs text-slate-500 mt-1">Consumido / disponivel do ano</p>
         </div>
       </section>
@@ -515,18 +524,36 @@ export const ManagerCapacity: React.FC = () => {
             <Users size={18} className="text-brand-600" />
             <h2 className="font-semibold text-slate-800">Capacity por Equipe</h2>
           </div>
-          <div className="h-[340px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={byTeamChart} layout="vertical" margin={{ top: 8, right: 16, left: 24, bottom: 8 }} barCategoryGap={12}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis type="number" />
-                <YAxis type="category" dataKey="shortTeam" width={170} tickLine={false} axisLine={false} />
-                <Tooltip formatter={(value: any) => `${formatHours(Number(value))}h`} />
-                <Legend />
-                <Bar dataKey="consumed" name="Consumido" fill={BRAND_BLUE_DARK} radius={[6, 6, 0, 0]} />
-                <Bar dataKey="remaining" name="Restante" fill={BRAND_BLUE} radius={[6, 6, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {byTeamChart.map((item) => {
+              const tone = getUtilizationTone(item.utilization);
+
+              return (
+              <article key={item.team} className="rounded-xl border border-slate-200 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-semibold text-slate-800">{item.team}</h3>
+                    <p className="mt-1 text-xs text-slate-500">{item.members} colaborador(es) no recorte</p>
+                  </div>
+                  <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${tone.badge}`}>
+                    {formatPercentage(item.utilization)}%
+                  </span>
+                </div>
+                <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                  <div className="rounded-lg bg-slate-50 px-3 py-2">
+                    <p className="text-[11px] font-bold uppercase text-slate-500">Consumido</p>
+                    <p className="mt-1 font-semibold text-slate-900">{formatHours(item.consumed)}h</p>
+                  </div>
+                  <div className="rounded-lg bg-slate-50 px-3 py-2">
+                    <p className="text-[11px] font-bold uppercase text-slate-500">Restante</p>
+                    <p className="mt-1 font-semibold text-slate-900">{formatHours(item.remaining)}h</p>
+                  </div>
+                </div>
+                <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100">
+                  <div className="h-full rounded-full" style={{ width: `${Math.min(item.utilization, 100)}%`, backgroundColor: tone.bar }} />
+                </div>
+              </article>
+            )})}
           </div>
         </div>
 
@@ -539,34 +566,39 @@ export const ManagerCapacity: React.FC = () => {
             <div className="h-[220px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                <Pie
-                  data={[
-                    { name: 'Consumido', value: summary.totalConsumedToDate },
-                    { name: 'Restante', value: summary.totalRemainingYear }
-                  ]}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={54}
-                  outerRadius={78}
-                  paddingAngle={2}
-                  dataKey="value"
-                >
-                  <Cell fill={BRAND_BLUE_DARK} />
-                  <Cell fill="#9FB1F1" />
-                </Pie>
-                <Tooltip formatter={(value: any) => `${formatHours(Number(value))}h`} />
-                <Legend />
+                  <Pie
+                    data={[
+                      { name: 'Consumido', value: summary.totalConsumedToDate },
+                      { name: 'Restante', value: summary.totalRemainingYear }
+                    ]}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={54}
+                    outerRadius={78}
+                    paddingAngle={2}
+                    dataKey="value"
+                  >
+                    <Cell fill={BRAND_BLUE_DARK} />
+                    <Cell fill={BRAND_BLUE_SOFT} />
+                  </Pie>
+                  <Tooltip formatter={(value: any) => `${formatHours(Number(value))}h`} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-lg bg-[#f5f7ff] border border-[#d9e1ff] px-3 py-3">
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3">
                 <p className="text-[11px] font-bold uppercase text-slate-500">Consumido</p>
-                <p className="mt-1 text-lg font-bold text-[#00248a]">{formatHours(summary.totalConsumedToDate)}h</p>
+                <p className="mt-1 text-lg font-bold text-slate-800">{formatHours(summary.totalConsumedToDate)}h</p>
               </div>
-              <div className="rounded-lg bg-[#f5f7ff] border border-[#d9e1ff] px-3 py-3">
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3">
                 <p className="text-[11px] font-bold uppercase text-slate-500">Restante</p>
-                <p className="mt-1 text-lg font-bold text-[#0033C6]">{formatHours(summary.totalRemainingYear)}h</p>
+                <p className="mt-1 text-lg font-bold text-slate-800">{formatHours(summary.totalRemainingYear)}h</p>
+              </div>
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-600">
+              <div className="flex items-center justify-between gap-3">
+                <span>Taxa de consumo atual</span>
+                <strong className="text-slate-900">{formatPercentage(summary.utilization)}%</strong>
               </div>
             </div>
           </div>
@@ -579,18 +611,38 @@ export const ManagerCapacity: React.FC = () => {
             <Clock3 size={18} className="text-brand-600" />
             <h2 className="font-semibold text-slate-800">Top Colaboradores por Consumo</h2>
           </div>
-          <div className="h-[420px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={topPeopleChart} layout="vertical" margin={{ top: 8, right: 16, left: 24, bottom: 8 }} barCategoryGap={10}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis type="number" />
-                <YAxis type="category" dataKey="shortName" width={170} tickLine={false} axisLine={false} />
-                <Tooltip formatter={(value: any) => `${formatHours(Number(value))}h`} />
-                <Legend />
-                <Bar dataKey="consumed" name="Consumido" fill={BRAND_BLUE_DARK} radius={[6, 6, 0, 0]} />
-                <Bar dataKey="remaining" name="Disponivel ate 31/12" fill={BRAND_BLUE} radius={[6, 6, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {topCollaborators.map((item) => {
+              const tone = getUtilizationTone(item.utilization);
+
+              return (
+                <article key={item.userId} className="rounded-xl border border-slate-200 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h3 className="text-sm font-semibold text-slate-800">{item.name}</h3>
+                      <p className="mt-1 text-xs text-slate-500">{item.area} • {item.team}</p>
+                    </div>
+                    <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${tone.badge}`}>
+                      {formatPercentage(item.utilization)}%
+                    </span>
+                  </div>
+                  <div className="mt-4 grid grid-cols-2 gap-3">
+                    <div className="rounded-lg bg-slate-50 px-3 py-2">
+                      <p className="text-[11px] font-bold uppercase text-slate-500">Consumido</p>
+                      <p className="mt-1 font-semibold text-slate-900">{formatHours(item.consumed)}h</p>
+                    </div>
+                    <div className="rounded-lg bg-slate-50 px-3 py-2">
+                      <p className="text-[11px] font-bold uppercase text-slate-500">Restante</p>
+                      <p className="mt-1 font-semibold text-slate-900">{formatHours(item.remaining)}h</p>
+                    </div>
+                  </div>
+                  <p className="mt-3 text-xs text-slate-500">{formatHours(item.consumed)}h de {formatHours(item.available)}h no ano</p>
+                  <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
+                    <div className="h-full rounded-full" style={{ width: `${Math.min(item.utilization, 100)}%`, backgroundColor: tone.bar }} />
+                  </div>
+                </article>
+              );
+            })}
           </div>
         </div>
 
@@ -601,11 +653,14 @@ export const ManagerCapacity: React.FC = () => {
           </div>
           <div className="space-y-3">
             {byAreaChart.length === 0 && <p className="text-sm text-slate-400">Sem dados para o filtro atual.</p>}
-            {byAreaChart.map((item, idx) => (
+            {byAreaChart.map((item) => {
+              const tone = getUtilizationTone(item.utilization);
+
+              return (
               <div key={item.area} className="rounded-lg border border-slate-200 p-3">
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-semibold text-slate-700">{item.area}</p>
-                  <span className="text-xs font-bold" style={{ color: CHART_COLORS[idx % CHART_COLORS.length] }}>
+                  <span className={`rounded-full px-2 py-1 text-xs font-bold ${tone.badge}`}>
                     {formatPercentage(item.utilization)}%
                   </span>
                 </div>
@@ -615,12 +670,12 @@ export const ManagerCapacity: React.FC = () => {
                     className="h-2 rounded-full"
                     style={{
                       width: `${Math.min(item.utilization, 100)}%`,
-                      backgroundColor: CHART_COLORS[idx % CHART_COLORS.length]
+                      backgroundColor: tone.bar
                     }}
                   />
                 </div>
               </div>
-            ))}
+            )})}
           </div>
         </div>
       </section>
@@ -702,13 +757,7 @@ export const ManagerCapacity: React.FC = () => {
                   <td className="px-4 py-3 text-right">{formatHours(row.remainingYearHours)}h</td>
                   <td className="px-4 py-3 text-right">{formatHours(row.consumedToDateHours)}h</td>
                   <td className="px-4 py-3 text-right">
-                    <span className={`px-2 py-1 rounded text-xs font-bold ${
-                      row.utilizationPct >= 85
-                        ? 'bg-red-100 text-red-700'
-                        : row.utilizationPct >= 70
-                        ? 'bg-amber-100 text-amber-700'
-                        : 'bg-emerald-100 text-emerald-700'
-                    }`}>
+                    <span className={`px-2 py-1 rounded text-xs font-bold ${getUtilizationTone(row.utilizationPct).badge}`}>
                       {formatPercentage(row.utilizationPct)}%
                     </span>
                   </td>
