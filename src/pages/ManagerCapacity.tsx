@@ -13,7 +13,7 @@ import {
 } from 'recharts';
 import { Filter, Loader2, Users, CalendarClock, TrendingUp, AlertTriangle, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { store } from '../services/store';
-import { CalendarException, Holiday, TimesheetEntry, User, UserArea, formatHours, formatPercentage } from '../types';
+import { CalendarException, Holiday, Project, TimesheetEntry, User, UserArea, formatHours, formatPercentage } from '../types';
 import { buildCalendarMaps, isExpectedWorkingDay } from '../utils/workCalendar';
 import { formatDateForDisplay, formatLocalDate, parseDateOnly } from '../utils/date';
 
@@ -108,6 +108,7 @@ const countWorkingDays = (start: Date, end: Date, holidays: Holiday[], exception
 export const ManagerCapacity: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState<User[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [entries, setEntries] = useState<TimesheetEntry[]>([]);
   const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [exceptions, setExceptions] = useState<CalendarException[]>([]);
@@ -125,14 +126,16 @@ export const ManagerCapacity: React.FC = () => {
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
-      const [allUsers, allEntries, allHolidays, allExceptions] = await Promise.all([
+      const [allUsers, allProjects, allEntries, allHolidays, allExceptions] = await Promise.all([
         store.getUsers(),
+        store.getProjects(),
         store.getEntries(),
         store.getHolidays(),
         store.getExceptions()
       ]);
 
       setUsers(allUsers);
+      setProjects(allProjects);
       setEntries(allEntries);
       setHolidays(allHolidays);
       setExceptions(allExceptions);
@@ -174,6 +177,29 @@ export const ManagerCapacity: React.FC = () => {
   const managerOptions = useMemo(() => {
     return scopedUsers.filter((u) => u.role === 'MANAGER' || u.role === 'ADMIN');
   }, [scopedUsers]);
+
+  const visibleProjects = useMemo(() => {
+    if (!currentUser) return [] as Project[];
+
+    if (currentUser.role === 'ADMIN') return projects;
+
+    return projects.filter((project) => !project.allowedManagerIds?.length || project.allowedManagerIds.includes(currentUser.id));
+  }, [projects, currentUser]);
+
+  const scopedProjects = useMemo(() => {
+    return visibleProjects
+      .filter((project) => project.active)
+      .filter((project) => {
+        if (!selectedManagerId) return true;
+        if (selectedManagerId === NO_MANAGER_FILTER) return !project.allowedManagerIds?.length;
+        return !project.allowedManagerIds?.length || project.allowedManagerIds.includes(selectedManagerId);
+      })
+      .filter((project) => {
+        if (!selectedArea) return true;
+        if (selectedArea === 'SEM_AREA') return !project.area;
+        return project.area === selectedArea;
+      });
+  }, [visibleProjects, selectedManagerId, selectedArea]);
 
   const rows = useMemo(() => {
     const today = parseDateOnly(formatLocalDate());
@@ -345,6 +371,16 @@ export const ManagerCapacity: React.FC = () => {
     };
   }, [rows]);
 
+  const budgetSummary = useMemo(() => {
+    const totalBudgetedHours = scopedProjects.reduce((sum, project) => sum + project.budgetedHours, 0);
+
+    return {
+      totalBudgetedHours,
+      budgetVsCapacityPct: summary.totalAvailableYear > 0 ? (totalBudgetedHours / summary.totalAvailableYear) * 100 : 0,
+      consumedVsBudgetPct: totalBudgetedHours > 0 ? (summary.totalConsumedToDate / totalBudgetedHours) * 100 : 0
+    };
+  }, [scopedProjects, summary.totalAvailableYear, summary.totalConsumedToDate]);
+
   const byTeamChart = useMemo(() => {
     const grouped = new Map<string, { team: string; managerFilter: string; consumed: number; available: number; remaining: number; members: number }>();
 
@@ -376,13 +412,26 @@ export const ManagerCapacity: React.FC = () => {
   }, [rows]);
 
   const byAreaChart = useMemo(() => {
-    const grouped = new Map<string, { area: string; areaFilter: AreaFilterValue; consumed: number; available: number }>();
+    const grouped = new Map<string, { area: string; areaFilter: AreaFilterValue; consumed: number; available: number; budgeted: number }>();
 
     rows.forEach((row) => {
       const key = row.area || 'SEM_AREA';
-      const current = grouped.get(key) || { area: row.areaLabel, areaFilter: key as AreaFilterValue, consumed: 0, available: 0 };
+      const current = grouped.get(key) || { area: row.areaLabel, areaFilter: key as AreaFilterValue, consumed: 0, available: 0, budgeted: 0 };
       current.consumed += row.consumedToDateHours;
       current.available += row.availableYearHours;
+      grouped.set(key, current);
+    });
+
+    scopedProjects.forEach((project) => {
+      const key = project.area || 'SEM_AREA';
+      const current = grouped.get(key) || {
+        area: project.area ? AREA_LABEL[project.area] : 'Sem area',
+        areaFilter: key as AreaFilterValue,
+        consumed: 0,
+        available: 0,
+        budgeted: 0
+      };
+      current.budgeted += project.budgetedHours;
       grouped.set(key, current);
     });
 
@@ -391,10 +440,10 @@ export const ManagerCapacity: React.FC = () => {
         ...item,
         utilization: item.available > 0 ? (item.consumed / item.available) * 100 : 0
       }))
-      .sort((a, b) => b.available - a.available);
-  }, [rows]);
+      .sort((a, b) => Math.max(b.available, b.budgeted) - Math.max(a.available, a.budgeted));
+  }, [rows, scopedProjects]);
 
-  const committeeHighlights = useMemo(() => {
+  const highConsumptionHighlights = useMemo(() => {
     return rows
       .filter((row) => row.utilizationPct >= 85)
       .slice(0, 8);
@@ -496,7 +545,7 @@ export const ManagerCapacity: React.FC = () => {
         </div>
       </section>
 
-      <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+      <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
         <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
           <p className="text-xs text-slate-500 font-bold uppercase">Horas disponiveis no ano</p>
           <p className="mt-2 text-2xl font-bold text-slate-800">{formatHours(summary.totalAvailableYear)}</p>
@@ -520,6 +569,12 @@ export const ManagerCapacity: React.FC = () => {
           <p className="text-xs text-slate-500 font-bold uppercase">Taxa de consumo</p>
           <p className="mt-2 text-2xl font-bold text-brand-700">{formatPercentage(summary.utilization)}%</p>
           <p className="text-xs text-slate-500 mt-1">Consumido / disponivel do ano</p>
+        </div>
+
+        <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
+          <p className="text-xs text-slate-500 font-bold uppercase">Horas orçadas em projetos</p>
+          <p className="mt-2 text-2xl font-bold text-slate-800">{formatHours(budgetSummary.totalBudgetedHours)}</p>
+          <p className="text-xs text-slate-500 mt-1">{formatPercentage(budgetSummary.budgetVsCapacityPct)}% do capacity visível no recorte</p>
         </div>
       </section>
 
@@ -620,7 +675,7 @@ export const ManagerCapacity: React.FC = () => {
         <div className="xl:col-span-2 bg-white rounded-xl border border-slate-100 shadow-sm p-5">
           <div className="flex items-center gap-2 mb-4">
             <TrendingUp size={18} className="text-brand-600" />
-            <h2 className="font-semibold text-slate-800">Capacity vs Consumo por Area</h2>
+            <h2 className="font-semibold text-slate-800">Capacity vs Consumo vs Orçado por Area</h2>
           </div>
           <div className="h-[380px]">
             <ResponsiveContainer width="100%" height="100%">
@@ -631,10 +686,11 @@ export const ManagerCapacity: React.FC = () => {
                 <Tooltip formatter={(value: any) => `${formatHours(Number(value))}h`} />
                 <Bar dataKey="available" name="Capacity" fill={BRAND_BLUE_SOFT} radius={[0, 6, 6, 0]} onClick={(data: any) => applyChartFilters({ area: data?.areaFilter })} />
                 <Bar dataKey="consumed" name="Consumido" fill={BRAND_BLUE_DARK} radius={[0, 6, 6, 0]} onClick={(data: any) => applyChartFilters({ area: data?.areaFilter })} />
+                <Bar dataKey="budgeted" name="Orçado" fill="#64748b" radius={[0, 6, 6, 0]} onClick={(data: any) => applyChartFilters({ area: data?.areaFilter })} />
               </BarChart>
             </ResponsiveContainer>
           </div>
-          <p className="mt-3 text-xs text-slate-500">Clique em uma barra para filtrar automaticamente a tela pela area selecionada.</p>
+          <p className="mt-3 text-xs text-slate-500">Clique em uma barra para filtrar automaticamente a tela pela area selecionada e comparar capacidade, consumo e orçamento cadastrado.</p>
         </div>
 
         <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
@@ -642,11 +698,17 @@ export const ManagerCapacity: React.FC = () => {
             <AlertTriangle size={18} className="text-amber-600" />
             <h2 className="font-semibold text-slate-800">Alertas de Consumo</h2>
           </div>
-          {committeeHighlights.length === 0 ? (
+          <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-600 mb-4">
+            <div className="flex items-center justify-between gap-3">
+              <span>Consumo sobre orçamento visível</span>
+              <strong className="text-slate-900">{formatPercentage(budgetSummary.consumedVsBudgetPct)}%</strong>
+            </div>
+          </div>
+          {highConsumptionHighlights.length === 0 ? (
             <p className="text-sm text-slate-500">Sem alertas de consumo acima de 85% para o recorte atual.</p>
           ) : (
             <div className="grid grid-cols-1 gap-3">
-              {committeeHighlights.map((row) => (
+              {highConsumptionHighlights.map((row) => (
                 <button
                   key={row.userId}
                   type="button"

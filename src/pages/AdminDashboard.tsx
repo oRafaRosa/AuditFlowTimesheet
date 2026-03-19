@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { store, SUPABASE_SCHEMA_SQL } from '../services/store';
-import { User, Project, TimesheetEntry, CalendarException, formatHours } from '../types';
+import { User, Project, TimesheetEntry, CalendarException, UserArea, formatHours } from '../types';
 import { Database, Edit, Filter, Calendar, Trash2, Loader2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { MyStatusWidget } from '../components/MyStatusWidget';
 import { formatDateForDisplay } from '../utils/date';
@@ -55,7 +55,7 @@ export const AdminDashboard: React.FC = () => {
 
     // estado de projetos
   const [editingProject, setEditingProject] = useState<Project | null>(null);
-  const [projectData, setProjectData] = useState({ name: '', code: '', classification: 'Audit' as any, budgetedHours: 0, active: true, allowedManagerIds: [] as string[] });
+    const [projectData, setProjectData] = useState({ name: '', code: '', classification: 'Audit' as any, area: '' as UserArea | '', budgetedHours: 0, active: true, allowedManagerIds: [] as string[] });
 
     // estado de exceções do calendário
   const [exceptionData, setExceptionData] = useState({ date: '', type: 'OFFDAY' as any, name: '' });
@@ -244,6 +244,7 @@ export const AdminDashboard: React.FC = () => {
           name: p.name, 
           code: p.code, 
           classification: p.classification, 
+          area: p.area || '',
           budgetedHours: p.budgetedHours,
           active: p.active,
           allowedManagerIds: p.allowedManagerIds || []
@@ -252,18 +253,23 @@ export const AdminDashboard: React.FC = () => {
 
   const handleCancelEditProject = () => {
       setEditingProject(null);
-      setProjectData({ name: '', code: '', classification: 'Audit', budgetedHours: 0, active: true, allowedManagerIds: [] });
+      setProjectData({ name: '', code: '', classification: 'Audit', area: '', budgetedHours: 0, active: true, allowedManagerIds: [] });
   };
 
   const handleSaveProject = async (e: React.FormEvent) => {
     e.preventDefault();
+        const normalizedProjectData = {
+            ...projectData,
+            area: projectData.area || undefined
+        };
+
     if (editingProject) {
-        await store.updateProject(editingProject.id, projectData);
+                await store.updateProject(editingProject.id, normalizedProjectData);
         setEditingProject(null);
     } else {
-        await store.addProject(projectData);
+                await store.addProject(normalizedProjectData);
     }
-    setProjectData({ name: '', code: '', classification: 'Audit', budgetedHours: 0, active: true, allowedManagerIds: [] });
+    setProjectData({ name: '', code: '', classification: 'Audit', area: '', budgetedHours: 0, active: true, allowedManagerIds: [] });
     refreshData();
   };
 
@@ -321,6 +327,14 @@ export const AdminDashboard: React.FC = () => {
 
     // helpers
   const managers = users.filter(u => (u.role === 'MANAGER' || u.role === 'ADMIN') && u.isActive !== false);
+    const areaLabelMap: Record<UserArea, string> = {
+        AUDITORIA_INTERNA: 'Auditoria Interna',
+        CONTROLES_INTERNOS: 'Controles Internos',
+        COMPLIANCE: 'Compliance',
+        CANAL_DENUNCIAS: 'Canal de Denuncias',
+        GESTAO_RISCOS_DIGITAIS: 'Gestao de Riscos Digitais',
+        OUTROS: 'Outros'
+    };
   const getManagerName = (id?: string) => users.find(u => u.id === id)?.name || '-';
   const getUserName = (id: string) => users.find(u => u.id === id)?.name || 'Desconhecido';
   const getProjectName = (id: string) => projects.find(p => p.id === id)?.name || 'Desconhecido';
@@ -671,6 +685,7 @@ export const AdminDashboard: React.FC = () => {
                               <tr>
                                   <th className="px-6 py-3">Projeto</th>
                                   <th className="px-6 py-3">Tipo</th>
+                                  <th className="px-6 py-3">Area</th>
                                   <th className="px-6 py-3">Orçamento</th>
                                   <th className="px-6 py-3">Permissões</th>
                                   <th className="px-6 py-3 text-right">Ação</th>
@@ -684,6 +699,7 @@ export const AdminDashboard: React.FC = () => {
                                           <div className="font-medium">{p.name}</div>
                                       </td>
                                       <td className="px-6 py-3">{p.classification}</td>
+                                      <td className="px-6 py-3">{p.area ? areaLabelMap[p.area] : '-'}</td>
                                       <td className="px-6 py-3">{p.budgetedHours}h</td>
                                       <td className="px-6 py-3 text-xs text-slate-500 max-w-[150px] truncate">
                                           {!p.allowedManagerIds || p.allowedManagerIds.length === 0 
@@ -726,9 +742,21 @@ export const AdminDashboard: React.FC = () => {
                               </select>
                           </div>
                           <div>
-                              <label className="block text-xs font-bold text-slate-500 mb-1">Orçamento (h)</label>
-                              <input type="number" className="w-full border border-gray-300 p-2 rounded-lg text-sm" value={projectData.budgetedHours} onChange={e => setProjectData({...projectData, budgetedHours: Number(e.target.value)})} />
+                              <label className="block text-xs font-bold text-slate-500 mb-1">Area</label>
+                              <select className="w-full border border-gray-300 p-2 rounded-lg text-sm" value={projectData.area} onChange={e => setProjectData({...projectData, area: e.target.value as UserArea | ''})}>
+                                  <option value="">Sem area</option>
+                                  <option value="AUDITORIA_INTERNA">Auditoria Interna</option>
+                                  <option value="CONTROLES_INTERNOS">Controles Internos</option>
+                                  <option value="COMPLIANCE">Compliance</option>
+                                  <option value="CANAL_DENUNCIAS">Canal de Denuncias</option>
+                                  <option value="GESTAO_RISCOS_DIGITAIS">Gestao de Riscos Digitais</option>
+                                  <option value="OUTROS">Outros</option>
+                              </select>
                           </div>
+                      </div>
+                      <div>
+                          <label className="block text-xs font-bold text-slate-500 mb-1">Orçamento (h)</label>
+                          <input type="number" className="w-full border border-gray-300 p-2 rounded-lg text-sm" value={projectData.budgetedHours} onChange={e => setProjectData({...projectData, budgetedHours: Number(e.target.value)})} />
                       </div>
                       
                       <div>

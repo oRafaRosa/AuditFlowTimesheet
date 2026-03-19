@@ -597,6 +597,7 @@ class StoreService {
           name: p.name,
           code: p.code,
           classification: p.classification,
+          area: p.area || undefined,
           budgetedHours: p.budgeted_hours,
           active: p.active,
           allowedManagerIds: p.allowed_manager_ids || []
@@ -609,6 +610,7 @@ class StoreService {
         name: project.name,
         code: project.code,
         classification: project.classification,
+      area: project.area || null,
         budgeted_hours: project.budgetedHours,
         active: project.active,
         allowed_manager_ids: project.allowedManagerIds
@@ -621,6 +623,7 @@ class StoreService {
     if (data.name) dbUpdate.name = data.name;
     if (data.code) dbUpdate.code = data.code;
     if (data.classification) dbUpdate.classification = data.classification;
+    if (data.area !== undefined) dbUpdate.area = data.area || null;
     if (data.budgetedHours !== undefined) dbUpdate.budgeted_hours = data.budgetedHours;
     if (data.active !== undefined) dbUpdate.active = data.active;
     if (data.allowedManagerIds) dbUpdate.allowed_manager_ids = data.allowedManagerIds;
@@ -1187,11 +1190,26 @@ create table if not exists projects (
   name text not null,
   code text,
   classification text,
+  area text,
   budgeted_hours numeric default 0,
   active boolean default true,
   allowed_manager_ids text[], 
   created_at timestamp with time zone default timezone('utc'::text, now())
 );
+
+alter table projects drop constraint if exists projects_area_check;
+alter table projects
+  add constraint projects_area_check
+  check (
+    area is null or area in (
+      'AUDITORIA_INTERNA',
+      'CONTROLES_INTERNOS',
+      'COMPLIANCE',
+      'CANAL_DENUNCIAS',
+      'GESTAO_RISCOS_DIGITAIS',
+      'OUTROS'
+    )
+  );
 
 -- 4. Tabela de Timesheet (Lançamentos)
 create table if not exists timesheets (

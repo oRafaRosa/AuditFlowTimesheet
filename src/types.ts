@@ -40,6 +40,7 @@ export interface Project {
   name: string;
   code: string;
   classification: 'Backoffice' | 'Audit' | 'Consulting' | 'Training' | 'Vacation';
+  area?: UserArea;
   budgetedHours: number;
   active: boolean;
   allowedManagerIds?: string[]; // lista de ids dos gestores que podem ver esse projeto
