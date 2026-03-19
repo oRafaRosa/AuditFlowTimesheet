@@ -41,7 +41,17 @@ export const AdminDashboard: React.FC = () => {
 
     // estado de usuários
   const [editingUser, setEditingUser] = useState<User | null>(null);
-  const [userData, setUserData] = useState({ name: '', email: '', role: 'USER' as any, managerId: '', isActive: true, requiresTimesheet: true });
+    const [userData, setUserData] = useState({
+        name: '',
+        email: '',
+        role: 'USER' as any,
+        managerId: '',
+        area: 'AUDITORIA_INTERNA' as any,
+        admissionDate: '2020-01-01',
+        terminationDate: '',
+        isActive: true,
+        requiresTimesheet: true
+    });
 
     // estado de projetos
   const [editingProject, setEditingProject] = useState<Project | null>(null);
@@ -179,6 +189,9 @@ export const AdminDashboard: React.FC = () => {
         email: u.email, 
         role: u.role, 
         managerId: u.managerId || '', 
+                area: u.area || 'AUDITORIA_INTERNA',
+                admissionDate: u.admissionDate || '2020-01-01',
+                terminationDate: u.terminationDate || '',
         isActive: u.isActive !== false,
         requiresTimesheet: u.requiresTimesheet !== false // default true se não existir
       });
@@ -186,7 +199,17 @@ export const AdminDashboard: React.FC = () => {
 
   const handleCancelEditUser = () => {
       setEditingUser(null);
-      setUserData({ name: '', email: '', role: 'USER', managerId: '', isActive: true, requiresTimesheet: true });
+            setUserData({
+                name: '',
+                email: '',
+                role: 'USER',
+                managerId: '',
+                area: 'AUDITORIA_INTERNA',
+                admissionDate: '2020-01-01',
+                terminationDate: '',
+                isActive: true,
+                requiresTimesheet: true
+            });
   };
 
   const handleSaveUser = async (e: React.FormEvent) => {
@@ -200,7 +223,17 @@ export const AdminDashboard: React.FC = () => {
             avatarUrl: `https://ui-avatars.com/api/?name=${userData.name}` 
         });
     }
-    setUserData({ name: '', email: '', role: 'USER', managerId: '', isActive: true, requiresTimesheet: true });
+        setUserData({
+            name: '',
+            email: '',
+            role: 'USER',
+            managerId: '',
+            area: 'AUDITORIA_INTERNA',
+            admissionDate: '2020-01-01',
+            terminationDate: '',
+            isActive: true,
+            requiresTimesheet: true
+        });
     refreshData();
   };
 
@@ -480,6 +513,9 @@ export const AdminDashboard: React.FC = () => {
                                           <UserSortIcon column="role" />
                                       </button>
                                   </th>
+                                  <th className="px-6 py-3">Área</th>
+                                  <th className="px-6 py-3">Admissão</th>
+                                  <th className="px-6 py-3">Desligamento</th>
                                   <th className="px-6 py-3 text-right">Ação</th>
                               </tr>
                           </thead>
@@ -507,6 +543,9 @@ export const AdminDashboard: React.FC = () => {
                                               )}
                                           </div>
                                       </td>
+                                      <td className="px-6 py-3 text-xs text-slate-600">{(u.area || 'AUDITORIA_INTERNA').replace(/_/g, ' ')}</td>
+                                      <td className="px-6 py-3 text-xs text-slate-600">{u.admissionDate ? formatDateForDisplay(u.admissionDate) : '-'}</td>
+                                      <td className="px-6 py-3 text-xs text-slate-600">{u.terminationDate ? formatDateForDisplay(u.terminationDate) : '-'}</td>
                                       <td className="px-6 py-3 text-right">
                                           <button onClick={() => handleEditUserClick(u)} className="text-brand-600 hover:text-brand-800 p-1 rounded hover:bg-brand-50">
                                               <Edit size={16} />
@@ -546,6 +585,37 @@ export const AdminDashboard: React.FC = () => {
                                   <option key={m.id} value={m.id}>{m.name}</option>
                               ))}
                           </select>
+                      </div>
+                      <div>
+                          <label className="block text-xs font-bold text-slate-500 mb-1">Área</label>
+                          <select className="w-full border border-gray-300 p-2 rounded-lg text-sm" value={userData.area} onChange={e => setUserData({...userData, area: e.target.value as any})}>
+                              <option value="AUDITORIA_INTERNA">Auditoria Interna</option>
+                              <option value="CONTROLES_INTERNOS">Controles Internos</option>
+                              <option value="COMPLIANCE">Compliance</option>
+                              <option value="CANAL_DENUNCIAS">Canal de Denúncias</option>
+                              <option value="OUTROS">Outros</option>
+                          </select>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                          <div>
+                              <label className="block text-xs font-bold text-slate-500 mb-1">Data de Admissão</label>
+                              <input
+                                  type="date"
+                                  className="w-full border border-gray-300 p-2 rounded-lg text-sm"
+                                  value={userData.admissionDate}
+                                  onChange={e => setUserData({...userData, admissionDate: e.target.value})}
+                                  required
+                              />
+                          </div>
+                          <div>
+                              <label className="block text-xs font-bold text-slate-500 mb-1">Data de Desligamento</label>
+                              <input
+                                  type="date"
+                                  className="w-full border border-gray-300 p-2 rounded-lg text-sm"
+                                  value={userData.terminationDate}
+                                  onChange={e => setUserData({...userData, terminationDate: e.target.value})}
+                              />
+                          </div>
                       </div>
                       <div>
                           <label className="flex items-center gap-2 cursor-pointer">

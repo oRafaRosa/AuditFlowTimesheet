@@ -11,11 +11,16 @@ export const formatPercentage = (value: number): string => {
 
 export type Role = 'ADMIN' | 'MANAGER' | 'USER';
 
+export type UserArea = 'AUDITORIA_INTERNA' | 'CONTROLES_INTERNOS' | 'COMPLIANCE' | 'CANAL_DENUNCIAS' | 'OUTROS';
+
 export interface User {
   id: string;
   name: string;
   email: string;
   role: Role;
+  area?: UserArea;
+  admissionDate?: string; // yyyy-mm-dd
+  terminationDate?: string; // yyyy-mm-dd (vazio quando ativo)
   isActive?: boolean;
   managerId?: string; // id do gestor
   delegatedManagerId?: string; // id do gestor temporário

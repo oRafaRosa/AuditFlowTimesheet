@@ -637,6 +637,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               <div className="px-4 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider mt-4">Gestão</div>
               <NavItem to="/manager" icon={PieChart} label="Dashboard Equipe" />
               <NavItem to="/manager/budget" icon={TrendingUp} label="Orçado vs Realizado" />
+              <NavItem to="/manager/reports/capacity" icon={Users} label="Capacity Equipes" />
               <NavItem to="/manager/reports" icon={FileBarChart} label="Relatórios" />
             </>
           )}
@@ -758,6 +759,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                   <div className="px-4 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider mt-4">Gestão</div>
                   <NavItem to="/manager" icon={PieChart} label="Dashboard Equipe" onClick={() => setMobileMenuOpen(false)} />
                   <NavItem to="/manager/budget" icon={TrendingUp} label="Orçado vs Realizado" onClick={() => setMobileMenuOpen(false)} />
+                  <NavItem to="/manager/reports/capacity" icon={Users} label="Capacity Equipes" onClick={() => setMobileMenuOpen(false)} />
                   <NavItem to="/manager/reports" icon={FileBarChart} label="Relatórios" onClick={() => setMobileMenuOpen(false)} />
                 </>
               )}

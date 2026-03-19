@@ -7,6 +7,7 @@ import { UserReports } from './pages/UserReports'; // Import
 import { ManagerDashboard } from './pages/ManagerDashboard';
 import { ManagerProjectBudget } from './pages/ManagerProjectBudget';
 import { ManagerReports } from './pages/ManagerReports';
+import { ManagerCapacity } from './pages/ManagerCapacity';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { HelpCenter } from './pages/HelpCenter'; 
 import { AchievementsHub } from './pages/AchievementsHub';
@@ -102,6 +103,14 @@ const App: React.FC = () => {
             </ProtectedRoute>
           } 
         />
+        <Route
+          path="/manager/reports/capacity"
+          element={
+            <ProtectedRoute allowedRoles={['MANAGER', 'ADMIN']}>
+              <ManagerCapacity />
+            </ProtectedRoute>
+          }
+        />
         <Route 
           path="/manager/budget" 
           element={
@@ -109,6 +118,10 @@ const App: React.FC = () => {
               <ManagerProjectBudget />
             </ProtectedRoute>
           } 
+        />
+        <Route
+          path="/manager/capacity"
+          element={<Navigate to="/manager/reports/capacity" replace />}
         />
 
         {/* rotas de admin */}

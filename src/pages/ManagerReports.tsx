@@ -1,14 +1,15 @@
 
 
 import React, { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { store } from '../services/store';
 import { User, Project, TimesheetEntry, formatHours } from '../types';
-import { Filter, Loader2, Download } from 'lucide-react';
+import { Filter, Loader2, Download, Users } from 'lucide-react';
 import { formatDateForDisplay, formatLocalDate } from '../utils/date';
 
 export const ManagerReports: React.FC = () => {
   const location = useLocation();
+    const navigate = useNavigate();
   const [entries, setEntries] = useState<TimesheetEntry[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -86,26 +87,9 @@ export const ManagerReports: React.FC = () => {
         store.getProjects()
     ]);
     
-    console.log('DEBUG: allEntries sample:', allEntries.slice(0, 3));
-    console.log('DEBUG: allEntries febrero count:', allEntries.filter(e => e.date.includes('2026-02')).length);
-    console.log('DEBUG: allEntries enero count:', allEntries.filter(e => e.date.includes('2026-01')).length);
-    console.log('DEBUG: Kelson entries in allEntries:', allEntries.filter(e => e.userId === '86442e36-66e4-4a6f-917c-2afbd4238d28'));
-    
     // pré-filtro das entradas só da minha equipe
     const myTeamIds = myTeam.map(m => m.id);
     const teamEntries = allEntries.filter(e => myTeamIds.includes(e.userId));
-    
-    console.log('DEBUG ManagerReports:', {
-      currentUserRole: currentUser.role,
-      currentUserId: currentUser.id,
-      allUsersCount: allUsers.length,
-      myTeamCount: myTeam.length,
-      allEntriesCount: allEntries.length,
-      teamEntriesCount: teamEntries.length,
-      kelsonInTeam: myTeamIds.includes('86442e36-66e4-4a6f-917c-2afbd4238d28'),
-      kelsonEntriesInAll: allEntries.filter(e => e.userId === '86442e36-66e4-4a6f-917c-2afbd4238d28').length,
-      kelsonEntriesInTeam: teamEntries.filter(e => e.userId === '86442e36-66e4-4a6f-917c-2afbd4238d28').length
-    });
     
     setEntries(teamEntries);
     
@@ -167,6 +151,22 @@ export const ManagerReports: React.FC = () => {
   return (
     <div className="space-y-6">
         <h1 className="text-2xl font-bold text-slate-800">Relatórios Gerenciais</h1>
+
+        <div className="rounded-xl border border-teal-200 bg-gradient-to-r from-teal-50 via-cyan-50 to-white p-4 md:p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <div>
+                <p className="text-xs font-bold uppercase tracking-wide text-teal-700">Gestão de Capacity</p>
+                <p className="text-sm text-slate-700 mt-1">
+                    Veja indicadores por pessoa, equipe e área com base em admissão, desligamento, feriados e dias úteis.
+                </p>
+            </div>
+            <button
+                onClick={() => navigate('/manager/reports/capacity')}
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-teal-700 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-800"
+            >
+                <Users size={16} />
+                Abrir Relatório de Capacity
+            </button>
+        </div>
         
         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
