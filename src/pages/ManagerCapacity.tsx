@@ -63,6 +63,11 @@ const CHART_COLORS = [BRAND_BLUE, '#3558D4', '#5F7AE1', '#7F95E8', '#AAB8EE', '#
 
 const toDateKey = (d: Date) => formatLocalDate(d);
 
+const truncateLabel = (value: string, maxLength: number) => {
+  if (value.length <= maxLength) return value;
+  return `${value.slice(0, Math.max(0, maxLength - 1)).trim()}…`;
+};
+
 const maxDate = (a: Date, b: Date): Date => (a.getTime() >= b.getTime() ? a : b);
 const minDate = (a: Date, b: Date): Date => (a.getTime() <= b.getTime() ? a : b);
 
@@ -328,7 +333,13 @@ export const ManagerCapacity: React.FC = () => {
       grouped.set(key, current);
     });
 
-    return [...grouped.values()].sort((a, b) => b.consumed - a.consumed);
+    return [...grouped.values()]
+      .sort((a, b) => b.consumed - a.consumed)
+      .slice(0, 8)
+      .map((item) => ({
+        ...item,
+        shortTeam: truncateLabel(item.team, 22)
+      }));
   }, [rows]);
 
   const byAreaChart = useMemo(() => {
@@ -350,9 +361,10 @@ export const ManagerCapacity: React.FC = () => {
 
   const topPeopleChart = useMemo(() => {
     return rows
-      .slice(0, 12)
+      .slice(0, 10)
       .map((row) => ({
         name: row.userName,
+        shortName: truncateLabel(row.userName, 26),
         consumed: row.consumedToDateHours,
         remaining: row.remainingYearHours,
         utilization: row.utilizationPct
@@ -503,12 +515,12 @@ export const ManagerCapacity: React.FC = () => {
             <Users size={18} className="text-brand-600" />
             <h2 className="font-semibold text-slate-800">Capacity por Equipe</h2>
           </div>
-          <div className="h-[320px]">
+          <div className="h-[340px]">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={byTeamChart} margin={{ top: 10, right: 10, left: 0, bottom: 30 }}>
+              <BarChart data={byTeamChart} layout="vertical" margin={{ top: 8, right: 16, left: 24, bottom: 8 }} barCategoryGap={12}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="team" angle={-20} textAnchor="end" interval={0} height={70} />
-                <YAxis />
+                <XAxis type="number" />
+                <YAxis type="category" dataKey="shortTeam" width={170} tickLine={false} axisLine={false} />
                 <Tooltip formatter={(value: any) => `${formatHours(Number(value))}h`} />
                 <Legend />
                 <Bar dataKey="consumed" name="Consumido" fill={BRAND_BLUE_DARK} radius={[6, 6, 0, 0]} />
@@ -523,9 +535,10 @@ export const ManagerCapacity: React.FC = () => {
             <CalendarClock size={18} className="text-brand-600" />
             <h2 className="font-semibold text-slate-800">Visao Geral</h2>
           </div>
-          <div className="h-[320px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
+          <div className="grid grid-cols-1 gap-4">
+            <div className="h-[220px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
                 <Pie
                   data={[
                     { name: 'Consumido', value: summary.totalConsumedToDate },
@@ -533,8 +546,8 @@ export const ManagerCapacity: React.FC = () => {
                   ]}
                   cx="50%"
                   cy="50%"
-                  innerRadius={62}
-                  outerRadius={95}
+                  innerRadius={54}
+                  outerRadius={78}
                   paddingAngle={2}
                   dataKey="value"
                 >
@@ -543,8 +556,19 @@ export const ManagerCapacity: React.FC = () => {
                 </Pie>
                 <Tooltip formatter={(value: any) => `${formatHours(Number(value))}h`} />
                 <Legend />
-              </PieChart>
-            </ResponsiveContainer>
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-lg bg-[#f5f7ff] border border-[#d9e1ff] px-3 py-3">
+                <p className="text-[11px] font-bold uppercase text-slate-500">Consumido</p>
+                <p className="mt-1 text-lg font-bold text-[#00248a]">{formatHours(summary.totalConsumedToDate)}h</p>
+              </div>
+              <div className="rounded-lg bg-[#f5f7ff] border border-[#d9e1ff] px-3 py-3">
+                <p className="text-[11px] font-bold uppercase text-slate-500">Restante</p>
+                <p className="mt-1 text-lg font-bold text-[#0033C6]">{formatHours(summary.totalRemainingYear)}h</p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -555,12 +579,12 @@ export const ManagerCapacity: React.FC = () => {
             <Clock3 size={18} className="text-brand-600" />
             <h2 className="font-semibold text-slate-800">Top Colaboradores por Consumo</h2>
           </div>
-          <div className="h-[320px]">
+          <div className="h-[420px]">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={topPeopleChart} margin={{ top: 10, right: 10, left: 0, bottom: 30 }}>
+              <BarChart data={topPeopleChart} layout="vertical" margin={{ top: 8, right: 16, left: 24, bottom: 8 }} barCategoryGap={10}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" angle={-20} textAnchor="end" interval={0} height={70} />
-                <YAxis />
+                <XAxis type="number" />
+                <YAxis type="category" dataKey="shortName" width={170} tickLine={false} axisLine={false} />
                 <Tooltip formatter={(value: any) => `${formatHours(Number(value))}h`} />
                 <Legend />
                 <Bar dataKey="consumed" name="Consumido" fill={BRAND_BLUE_DARK} radius={[6, 6, 0, 0]} />
