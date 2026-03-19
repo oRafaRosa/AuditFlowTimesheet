@@ -1,15 +1,14 @@
 
 
 import React, { useState, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { store } from '../services/store';
 import { User, Project, TimesheetEntry, formatHours } from '../types';
-import { Filter, Loader2, Download, Users } from 'lucide-react';
+import { Filter, Loader2, Download } from 'lucide-react';
 import { formatDateForDisplay, formatLocalDate } from '../utils/date';
 
 export const ManagerReports: React.FC = () => {
   const location = useLocation();
-    const navigate = useNavigate();
   const [entries, setEntries] = useState<TimesheetEntry[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -151,22 +150,6 @@ export const ManagerReports: React.FC = () => {
   return (
     <div className="space-y-6">
         <h1 className="text-2xl font-bold text-slate-800">Relatórios Gerenciais</h1>
-
-        <div className="rounded-xl border border-teal-200 bg-gradient-to-r from-teal-50 via-cyan-50 to-white p-4 md:p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-            <div>
-                <p className="text-xs font-bold uppercase tracking-wide text-teal-700">Gestão de Capacity</p>
-                <p className="text-sm text-slate-700 mt-1">
-                    Veja indicadores por pessoa, equipe e área com base em admissão, desligamento, feriados e dias úteis.
-                </p>
-            </div>
-            <button
-                onClick={() => navigate('/manager/reports/capacity')}
-                className="inline-flex items-center justify-center gap-2 rounded-lg bg-teal-700 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-800"
-            >
-                <Users size={16} />
-                Abrir Relatório de Capacity
-            </button>
-        </div>
         
         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">

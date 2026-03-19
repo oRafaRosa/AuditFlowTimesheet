@@ -45,7 +45,10 @@ const AREA_LABEL: Record<UserArea, string> = {
   OUTROS: 'Outros'
 };
 
-const CHART_COLORS = ['#0f766e', '#0ea5e9', '#f59e0b', '#ef4444', '#6366f1', '#22c55e'];
+const BRAND_BLUE = '#0033C6';
+const BRAND_RED = '#E71A3B';
+const BRAND_BLUE_DARK = '#00248a';
+const CHART_COLORS = [BRAND_BLUE, BRAND_RED, BRAND_BLUE_DARK, '#d11a36', '#7f95e8', '#f3a5b2'];
 
 const toDateKey = (d: Date) => formatLocalDate(d);
 
@@ -315,17 +318,17 @@ export const ManagerCapacity: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-2xl overflow-hidden border border-slate-200 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-700 text-white p-6 md:p-8">
-        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+      <section className="rounded-2xl overflow-hidden border border-[#d6dcf5] bg-[#F0EFEA] p-5 md:p-6 shadow-sm">
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-slate-300 font-bold">Gestao de Capacity</p>
-            <h1 className="text-2xl md:text-3xl font-bold mt-2">Capacidade das Equipes - {selectedYear}</h1>
-            <p className="text-sm text-slate-200 mt-2 max-w-3xl">
+            <p className="text-xs uppercase tracking-[0.2em] text-[#0033C6] font-bold">Capacity</p>
+            <h1 className="text-2xl md:text-3xl font-bold mt-2 text-slate-900">Capacidade da Equipe - {selectedYear}</h1>
+            <p className="text-sm text-slate-600 mt-2 max-w-3xl">
               Visao consolidada de horas disponiveis e consumidas para apresentacoes gerenciais e comites,
               considerando admissao, desligamento, feriados e dias uteis.
             </p>
           </div>
-          <div className="rounded-xl bg-white/10 border border-white/15 px-4 py-3 text-xs">
+          <div className="rounded-xl border border-[#d6dcf5] bg-white px-4 py-3 text-xs text-slate-600">
             Atualizado em {new Date().toLocaleDateString('pt-BR')} as {new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
           </div>
         </div>
@@ -414,25 +417,25 @@ export const ManagerCapacity: React.FC = () => {
       <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
           <p className="text-xs text-slate-500 font-bold uppercase">Horas disponiveis no ano</p>
-          <p className="text-2xl font-bold text-slate-900 mt-2">{formatHours(summary.totalAvailableYear)}</p>
+          <p className="text-2xl font-bold text-[#0033C6] mt-2">{formatHours(summary.totalAvailableYear)}</p>
           <p className="text-xs text-slate-500 mt-1">Base total de capacity anual</p>
         </div>
 
         <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
           <p className="text-xs text-slate-500 font-bold uppercase">Horas de hoje ate 31/12</p>
-          <p className="text-2xl font-bold text-slate-900 mt-2">{formatHours(summary.totalRemainingYear)}</p>
+          <p className="text-2xl font-bold text-[#0033C6] mt-2">{formatHours(summary.totalRemainingYear)}</p>
           <p className="text-xs text-slate-500 mt-1">Disponibilidade restante do ano</p>
         </div>
 
         <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
           <p className="text-xs text-slate-500 font-bold uppercase">Horas consumidas ate hoje</p>
-          <p className="text-2xl font-bold text-slate-900 mt-2">{formatHours(summary.totalConsumedToDate)}</p>
+          <p className="text-2xl font-bold text-[#E71A3B] mt-2">{formatHours(summary.totalConsumedToDate)}</p>
           <p className="text-xs text-slate-500 mt-1">Lancamentos acumulados no ano</p>
         </div>
 
         <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
           <p className="text-xs text-slate-500 font-bold uppercase">Taxa de consumo</p>
-          <p className="text-2xl font-bold text-slate-900 mt-2">{formatPercentage(summary.utilization)}%</p>
+          <p className="text-2xl font-bold text-[#E71A3B] mt-2">{formatPercentage(summary.utilization)}%</p>
           <p className="text-xs text-slate-500 mt-1">Consumido / disponivel do ano</p>
         </div>
       </section>
@@ -441,7 +444,7 @@ export const ManagerCapacity: React.FC = () => {
         <div className="xl:col-span-2 bg-white rounded-xl border border-slate-100 shadow-sm p-5">
           <div className="flex items-center gap-2 mb-4">
             <Users size={18} className="text-brand-600" />
-            <h2 className="font-semibold text-slate-800">Capacity por Equipe (Gestor)</h2>
+            <h2 className="font-semibold text-slate-800">Capacity por Equipe</h2>
           </div>
           <div className="h-[320px]">
             <ResponsiveContainer width="100%" height="100%">
@@ -451,8 +454,8 @@ export const ManagerCapacity: React.FC = () => {
                 <YAxis />
                 <Tooltip formatter={(value: any) => `${formatHours(Number(value))}h`} />
                 <Legend />
-                <Bar dataKey="consumed" name="Consumido" fill="#0f766e" radius={[6, 6, 0, 0]} />
-                <Bar dataKey="remaining" name="Restante" fill="#0ea5e9" radius={[6, 6, 0, 0]} />
+                <Bar dataKey="consumed" name="Consumido" fill={BRAND_RED} radius={[6, 6, 0, 0]} />
+                <Bar dataKey="remaining" name="Restante" fill={BRAND_BLUE} radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -478,8 +481,8 @@ export const ManagerCapacity: React.FC = () => {
                   paddingAngle={2}
                   dataKey="value"
                 >
-                  <Cell fill="#0f766e" />
-                  <Cell fill="#0ea5e9" />
+                  <Cell fill={BRAND_RED} />
+                  <Cell fill={BRAND_BLUE} />
                 </Pie>
                 <Tooltip formatter={(value: any) => `${formatHours(Number(value))}h`} />
                 <Legend />
@@ -503,8 +506,8 @@ export const ManagerCapacity: React.FC = () => {
                 <YAxis />
                 <Tooltip formatter={(value: any) => `${formatHours(Number(value))}h`} />
                 <Legend />
-                <Bar dataKey="consumed" name="Consumido" fill="#14b8a6" radius={[6, 6, 0, 0]} />
-                <Bar dataKey="remaining" name="Disponivel ate 31/12" fill="#93c5fd" radius={[6, 6, 0, 0]} />
+                <Bar dataKey="consumed" name="Consumido" fill={BRAND_RED} radius={[6, 6, 0, 0]} />
+                <Bar dataKey="remaining" name="Disponivel ate 31/12" fill={BRAND_BLUE} radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -607,13 +610,13 @@ export const ManagerCapacity: React.FC = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
             {committeeHighlights.map((row) => (
-              <div key={row.userId} className="rounded-lg border border-amber-200 bg-amber-50 p-3">
-                <p className="text-sm font-semibold text-amber-900">{row.userName}</p>
-                <p className="text-xs text-amber-800 mt-1">{row.areaLabel} • {row.managerName}</p>
-                <p className="text-xs text-amber-800 mt-2">
+              <div key={row.userId} className="rounded-lg border border-[#f2b7c1] bg-[#fff6f7] p-3">
+                <p className="text-sm font-semibold text-[#b3132f]">{row.userName}</p>
+                <p className="text-xs text-[#b3132f] mt-1">{row.areaLabel} • {row.managerName}</p>
+                <p className="text-xs text-[#b3132f] mt-2">
                   {formatHours(row.consumedToDateHours)}h consumidas de {formatHours(row.availableYearHours)}h
                 </p>
-                <p className="text-xs font-bold text-amber-900 mt-1">{formatPercentage(row.utilizationPct)}% de consumo</p>
+                <p className="text-xs font-bold text-[#b3132f] mt-1">{formatPercentage(row.utilizationPct)}% de consumo</p>
               </div>
             ))}
           </div>
