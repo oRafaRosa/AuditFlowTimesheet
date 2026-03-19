@@ -1,0 +1,35 @@
+"filename", "language", "JSON with Comments", "JSON", "TypeScript", "Markdown", "TypeScript JSX", "HTML", "YAML", "JavaScript", "comment", "blank", "total"
+"c:\Users\2160034597\OneDrive - Grupo Casas Bahia S.A\Área de Trabalho\Timesheet GRC e AI\AuditFlowTimesheet\.github\workflows\deploy.yml", "YAML", 0, 0, 0, 0, 0, 0, 50, 0, 0, 11, 61
+"c:\Users\2160034597\OneDrive - Grupo Casas Bahia S.A\Área de Trabalho\Timesheet GRC e AI\AuditFlowTimesheet\README.md", "Markdown", 0, 0, 0, 110, 0, 0, 0, 0, 0, 38, 148
+"c:\Users\2160034597\OneDrive - Grupo Casas Bahia S.A\Área de Trabalho\Timesheet GRC e AI\AuditFlowTimesheet\assets\index-BqE1x8FA.js", "JavaScript", 0, 0, 0, 0, 0, 0, 0, 490, 0, 21, 511
+"c:\Users\2160034597\OneDrive - Grupo Casas Bahia S.A\Área de Trabalho\Timesheet GRC e AI\AuditFlowTimesheet\index.html", "HTML", 0, 0, 0, 0, 0, 48, 0, 0, 1, 1, 50
+"c:\Users\2160034597\OneDrive - Grupo Casas Bahia S.A\Área de Trabalho\Timesheet GRC e AI\AuditFlowTimesheet\metadata.json", "JSON", 0, 5, 0, 0, 0, 0, 0, 0, 0, 0, 5
+"c:\Users\2160034597\OneDrive - Grupo Casas Bahia S.A\Área de Trabalho\Timesheet GRC e AI\AuditFlowTimesheet\package-lock.json", "JSON", 0, 2052, 0, 0, 0, 0, 0, 0, 0, 1, 2053
+"c:\Users\2160034597\OneDrive - Grupo Casas Bahia S.A\Área de Trabalho\Timesheet GRC e AI\AuditFlowTimesheet\package.json", "JSON", 0, 26, 0, 0, 0, 0, 0, 0, 0, 0, 26
+"c:\Users\2160034597\OneDrive - Grupo Casas Bahia S.A\Área de Trabalho\Timesheet GRC e AI\AuditFlowTimesheet\src\App.tsx", "TypeScript JSX", 0, 0, 0, 0, 112, 0, 0, 0, 6, 13, 131
+"c:\Users\2160034597\OneDrive - Grupo Casas Bahia S.A\Área de Trabalho\Timesheet GRC e AI\AuditFlowTimesheet\src\components\FeatureLockedView.tsx", "TypeScript JSX", 0, 0, 0, 0, 65, 0, 0, 0, 0, 6, 71
+"c:\Users\2160034597\OneDrive - Grupo Casas Bahia S.A\Área de Trabalho\Timesheet GRC e AI\AuditFlowTimesheet\src\components\GamificationSnapshot.tsx", "TypeScript JSX", 0, 0, 0, 0, 149, 0, 0, 0, 0, 19, 168
+"c:\Users\2160034597\OneDrive - Grupo Casas Bahia S.A\Área de Trabalho\Timesheet GRC e AI\AuditFlowTimesheet\src\components\Layout.tsx", "TypeScript JSX", 0, 0, 0, 0, 793, 0, 0, 0, 24, 111, 928
+"c:\Users\2160034597\OneDrive - Grupo Casas Bahia S.A\Área de Trabalho\Timesheet GRC e AI\AuditFlowTimesheet\src\components\MyStatusWidget.tsx", "TypeScript JSX", 0, 0, 0, 0, 216, 0, 0, 0, 15, 35, 266
+"c:\Users\2160034597\OneDrive - Grupo Casas Bahia S.A\Área de Trabalho\Timesheet GRC e AI\AuditFlowTimesheet\src\config\features.ts", "TypeScript", 0, 0, 3, 0, 0, 0, 0, 0, 0, 2, 5
+"c:\Users\2160034597\OneDrive - Grupo Casas Bahia S.A\Área de Trabalho\Timesheet GRC e AI\AuditFlowTimesheet\src\index.html", "HTML", 0, 0, 0, 0, 0, 48, 0, 0, 1, 1, 50
+"c:\Users\2160034597\OneDrive - Grupo Casas Bahia S.A\Área de Trabalho\Timesheet GRC e AI\AuditFlowTimesheet\src\index.tsx", "TypeScript JSX", 0, 0, 0, 0, 13, 0, 0, 0, 0, 2, 15
+"c:\Users\2160034597\OneDrive - Grupo Casas Bahia S.A\Área de Trabalho\Timesheet GRC e AI\AuditFlowTimesheet\src\pages\AchievementsHub.tsx", "TypeScript JSX", 0, 0, 0, 0, 241, 0, 0, 0, 0, 20, 261
+"c:\Users\2160034597\OneDrive - Grupo Casas Bahia S.A\Área de Trabalho\Timesheet GRC e AI\AuditFlowTimesheet\src\pages\AdminDashboard.tsx", "TypeScript JSX", 0, 0, 0, 0, 751, 0, 0, 0, 16, 60, 827
+"c:\Users\2160034597\OneDrive - Grupo Casas Bahia S.A\Área de Trabalho\Timesheet GRC e AI\AuditFlowTimesheet\src\pages\HelpCenter.tsx", "TypeScript JSX", 0, 0, 0, 0, 340, 0, 0, 0, 4, 38, 382
+"c:\Users\2160034597\OneDrive - Grupo Casas Bahia S.A\Área de Trabalho\Timesheet GRC e AI\AuditFlowTimesheet\src\pages\Login.tsx", "TypeScript JSX", 0, 0, 0, 0, 97, 0, 0, 0, 2, 13, 112
+"c:\Users\2160034597\OneDrive - Grupo Casas Bahia S.A\Área de Trabalho\Timesheet GRC e AI\AuditFlowTimesheet\src\pages\ManagerDashboard.tsx", "TypeScript JSX", 0, 0, 0, 0, 959, 0, 0, 0, 31, 82, 1072
+"c:\Users\2160034597\OneDrive - Grupo Casas Bahia S.A\Área de Trabalho\Timesheet GRC e AI\AuditFlowTimesheet\src\pages\ManagerProjectBudget.tsx", "TypeScript JSX", 0, 0, 0, 0, 406, 0, 0, 0, 16, 46, 468
+"c:\Users\2160034597\OneDrive - Grupo Casas Bahia S.A\Área de Trabalho\Timesheet GRC e AI\AuditFlowTimesheet\src\pages\ManagerReports.tsx", "TypeScript JSX", 0, 0, 0, 0, 199, 0, 0, 0, 9, 33, 241
+"c:\Users\2160034597\OneDrive - Grupo Casas Bahia S.A\Área de Trabalho\Timesheet GRC e AI\AuditFlowTimesheet\src\pages\UserDashboard.tsx", "TypeScript JSX", 0, 0, 0, 0, 799, 0, 0, 0, 30, 85, 914
+"c:\Users\2160034597\OneDrive - Grupo Casas Bahia S.A\Área de Trabalho\Timesheet GRC e AI\AuditFlowTimesheet\src\pages\UserReports.tsx", "TypeScript JSX", 0, 0, 0, 0, 313, 0, 0, 0, 9, 36, 358
+"c:\Users\2160034597\OneDrive - Grupo Casas Bahia S.A\Área de Trabalho\Timesheet GRC e AI\AuditFlowTimesheet\src\services\notifications.ts", "TypeScript", 0, 0, 24, 0, 0, 0, 0, 0, 4, 5, 33
+"c:\Users\2160034597\OneDrive - Grupo Casas Bahia S.A\Área de Trabalho\Timesheet GRC e AI\AuditFlowTimesheet\src\services\store.ts", "TypeScript", 0, 0, 986, 0, 0, 0, 0, 0, 43, 172, 1201
+"c:\Users\2160034597\OneDrive - Grupo Casas Bahia S.A\Área de Trabalho\Timesheet GRC e AI\AuditFlowTimesheet\src\types.ts", "TypeScript", 0, 0, 144, 0, 0, 0, 0, 0, 3, 23, 170
+"c:\Users\2160034597\OneDrive - Grupo Casas Bahia S.A\Área de Trabalho\Timesheet GRC e AI\AuditFlowTimesheet\src\utils\date.ts", "TypeScript", 0, 0, 26, 0, 0, 0, 0, 0, 0, 7, 33
+"c:\Users\2160034597\OneDrive - Grupo Casas Bahia S.A\Área de Trabalho\Timesheet GRC e AI\AuditFlowTimesheet\src\utils\gamification.ts", "TypeScript", 0, 0, 817, 0, 0, 0, 0, 0, 2, 117, 936
+"c:\Users\2160034597\OneDrive - Grupo Casas Bahia S.A\Área de Trabalho\Timesheet GRC e AI\AuditFlowTimesheet\src\utils\workCalendar.ts", "TypeScript", 0, 0, 72, 0, 0, 0, 0, 0, 1, 17, 90
+"c:\Users\2160034597\OneDrive - Grupo Casas Bahia S.A\Área de Trabalho\Timesheet GRC e AI\AuditFlowTimesheet\src\vite-env.d.ts", "TypeScript", 0, 0, 7, 0, 0, 0, 0, 0, 3, 3, 13
+"c:\Users\2160034597\OneDrive - Grupo Casas Bahia S.A\Área de Trabalho\Timesheet GRC e AI\AuditFlowTimesheet\tsconfig.json", "JSON with Comments", 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20
+"c:\Users\2160034597\OneDrive - Grupo Casas Bahia S.A\Área de Trabalho\Timesheet GRC e AI\AuditFlowTimesheet\vite.config.ts", "TypeScript", 0, 0, 12, 0, 0, 0, 0, 0, 1, 2, 15
+"Total", "-", 20, 2083, 2091, 110, 5453, 96, 50, 490, 221, 1020, 11634

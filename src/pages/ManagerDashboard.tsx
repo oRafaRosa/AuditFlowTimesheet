@@ -154,6 +154,7 @@ export const ManagerDashboard: React.FC = () => {
       await Promise.all(
         uniqueTeam
           .filter(member => member.id !== freshUserData.id)
+          .filter(member => member.requiresTimesheet !== false) // ignora quem não precisa lançar
           .map(async (member) => {
             const periods = await store.getLastPeriods(member.id);
             return periods
@@ -193,7 +194,10 @@ export const ManagerDashboard: React.FC = () => {
       expectedLoader: (year: number, month: number) => Promise<number>
     ): Promise<TeamPerformancePeriod> => {
       const expectedHours = await expectedLoader(year, month);
-      const stats = members.map((member) => {
+      // só considera quem precisa de fato lançar horas
+      const stats = members
+        .filter((member) => member.requiresTimesheet !== false)
+        .map((member) => {
         const memberEntries = entries.filter((entry) => {
           const date = parseDateOnly(entry.date);
           return entry.userId === member.id && date.getMonth() === month && date.getFullYear() === year;

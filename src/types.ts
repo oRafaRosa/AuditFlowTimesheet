@@ -21,6 +21,7 @@ export interface User {
   delegatedManagerId?: string; // id do gestor temporário
   avatarUrl?: string;
   isDefaultPassword?: boolean; // flag pra forçar troca de senha
+  requiresTimesheet?: boolean; // se false, não precisa lançar horas (não recebe alertas nem aparece em pendências)
 }
 
 export interface Project {

@@ -139,10 +139,11 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           }
 
           // c. usuário: lembrete diário (depois das 16h)
+          // só pra quem precisa de fato lançar horas
           const dayOfWeek = today.getDay();
           const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
           
-          if (!isWeekend && today.getHours() >= 16) {
+          if (!isWeekend && today.getHours() >= 16 && user.requiresTimesheet !== false) {
               const entries = entriesCache ?? await store.getEntries(user.id);
               entriesCache = entries;
               const todayStr = formatLocalDate(today);
@@ -167,7 +168,8 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           }
 
           // d. usuário: pendências de lançamentos (dias úteis sem horas)
-          if (user.role === 'USER') {
+          // só pra quem precisa de fato lançar horas
+          if (user.role === 'USER' && user.requiresTimesheet !== false) {
               const entries = entriesCache ?? await store.getEntries(user.id);
               entriesCache = entries;
               const currentWeekStart = new Date(today);

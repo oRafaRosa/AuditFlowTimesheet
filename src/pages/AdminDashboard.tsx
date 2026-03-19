@@ -39,7 +39,7 @@ export const AdminDashboard: React.FC = () => {
 
     // estado de usuários
   const [editingUser, setEditingUser] = useState<User | null>(null);
-  const [userData, setUserData] = useState({ name: '', email: '', role: 'USER' as any, managerId: '', isActive: true });
+  const [userData, setUserData] = useState({ name: '', email: '', role: 'USER' as any, managerId: '', isActive: true, requiresTimesheet: true });
 
     // estado de projetos
   const [editingProject, setEditingProject] = useState<Project | null>(null);
@@ -172,12 +172,19 @@ export const AdminDashboard: React.FC = () => {
     // --- handlers de usuário ---
   const handleEditUserClick = (u: User) => {
       setEditingUser(u);
-      setUserData({ name: u.name, email: u.email, role: u.role, managerId: u.managerId || '', isActive: u.isActive !== false });
+      setUserData({ 
+        name: u.name, 
+        email: u.email, 
+        role: u.role, 
+        managerId: u.managerId || '', 
+        isActive: u.isActive !== false,
+        requiresTimesheet: u.requiresTimesheet !== false // default true se não existir
+      });
   };
 
   const handleCancelEditUser = () => {
       setEditingUser(null);
-      setUserData({ name: '', email: '', role: 'USER', managerId: '', isActive: true });
+      setUserData({ name: '', email: '', role: 'USER', managerId: '', isActive: true, requiresTimesheet: true });
   };
 
   const handleSaveUser = async (e: React.FormEvent) => {
@@ -191,7 +198,7 @@ export const AdminDashboard: React.FC = () => {
             avatarUrl: `https://ui-avatars.com/api/?name=${userData.name}` 
         });
     }
-    setUserData({ name: '', email: '', role: 'USER', managerId: '', isActive: true });
+    setUserData({ name: '', email: '', role: 'USER', managerId: '', isActive: true, requiresTimesheet: true });
     refreshData();
   };
 
@@ -441,6 +448,11 @@ export const AdminDashboard: React.FC = () => {
                                               <span className={`px-2 py-1 rounded text-[10px] font-bold ${u.isActive === false ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>
                                                   {u.isActive === false ? 'INATIVO' : 'ATIVO'}
                                               </span>
+                                              {u.requiresTimesheet === false && (
+                                                  <span className="px-2 py-1 rounded text-[10px] font-bold bg-amber-100 text-amber-700" title="Não precisa lançar horas">
+                                                      SEM TIMESHEET
+                                                  </span>
+                                              )}
                                           </div>
                                       </td>
                                       <td className="px-6 py-3 text-right">
@@ -495,6 +507,20 @@ export const AdminDashboard: React.FC = () => {
                           </label>
                           <p className="text-[11px] text-slate-400 mt-1">
                               Se desativar, ele perde acesso e deixa de aparecer nas pendências do gestor.
+                          </p>
+                      </div>
+                      <div>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                  type="checkbox"
+                                  checked={userData.requiresTimesheet}
+                                  onChange={e => setUserData({...userData, requiresTimesheet: e.target.checked})}
+                                  className="rounded text-brand-600"
+                              />
+                              <span className="text-sm font-medium text-slate-700">Precisa lançar horas</span>
+                          </label>
+                          <p className="text-[11px] text-slate-400 mt-1">
+                              Se desmarcar, não recebe notificações de pendências nem aparece em relatórios de divergência.
                           </p>
                       </div>
                       <div className="flex gap-2 pt-2">

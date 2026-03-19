@@ -1,0 +1,76 @@
+Date : 2026-03-18 15:24:00
+Directory : c:\Users\2160034597\OneDrive - Grupo Casas Bahia S.A\Área de Trabalho\Timesheet GRC e AI
+Total : 33 files,  10393 codes, 221 comments, 1020 blanks, all 11634 lines
+
+Languages
++--------------------+------------+------------+------------+------------+------------+
+| language           | files      | code       | comment    | blank      | total      |
++--------------------+------------+------------+------------+------------+------------+
+| TypeScript JSX     |         15 |      5,453 |        162 |        599 |      6,214 |
+| TypeScript         |          9 |      2,091 |         57 |        348 |      2,496 |
+| JSON               |          3 |      2,083 |          0 |          1 |      2,084 |
+| JavaScript         |          1 |        490 |          0 |         21 |        511 |
+| Markdown           |          1 |        110 |          0 |         38 |        148 |
+| HTML               |          2 |         96 |          2 |          2 |        100 |
+| YAML               |          1 |         50 |          0 |         11 |         61 |
+| JSON with Comments |          1 |         20 |          0 |          0 |         20 |
++--------------------+------------+------------+------------+------------+------------+
+
+Directories
++-----------------------------------------------------------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| path                                                                                                                                                | files      | code       | comment    | blank      | total      |
++-----------------------------------------------------------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| .                                                                                                                                                   |         33 |     10,393 |        221 |      1,020 |     11,634 |
+| AuditFlowTimesheet                                                                                                                                  |         33 |     10,393 |        221 |      1,020 |     11,634 |
+| AuditFlowTimesheet (Files)                                                                                                                          |          7 |      2,273 |          2 |         42 |      2,317 |
+| AuditFlowTimesheet\.github                                                                                                                          |          1 |         50 |          0 |         11 |         61 |
+| AuditFlowTimesheet\.github\workflows                                                                                                                |          1 |         50 |          0 |         11 |         61 |
+| AuditFlowTimesheet\assets                                                                                                                           |          1 |        490 |          0 |         21 |        511 |
+| AuditFlowTimesheet\src                                                                                                                              |         24 |      7,580 |        219 |        946 |      8,745 |
+| AuditFlowTimesheet\src (Files)                                                                                                                      |          5 |        324 |         13 |         42 |        379 |
+| AuditFlowTimesheet\src\components                                                                                                                   |          4 |      1,223 |         39 |        171 |      1,433 |
+| AuditFlowTimesheet\src\config                                                                                                                       |          1 |          3 |          0 |          2 |          5 |
+| AuditFlowTimesheet\src\pages                                                                                                                        |          9 |      4,105 |        117 |        413 |      4,635 |
+| AuditFlowTimesheet\src\services                                                                                                                     |          2 |      1,010 |         47 |        177 |      1,234 |
+| AuditFlowTimesheet\src\utils                                                                                                                        |          3 |        915 |          3 |        141 |      1,059 |
++-----------------------------------------------------------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+
+Files
++-----------------------------------------------------------------------------------------------------------------------------------------------------+--------------------+------------+------------+------------+------------+
+| filename                                                                                                                                            | language           | code       | comment    | blank      | total      |
++-----------------------------------------------------------------------------------------------------------------------------------------------------+--------------------+------------+------------+------------+------------+
+| c:\Users\2160034597\OneDrive - Grupo Casas Bahia S.A\Área de Trabalho\Timesheet GRC e AI\AuditFlowTimesheet\.github\workflows\deploy.yml            | YAML               |         50 |          0 |         11 |         61 |
+| c:\Users\2160034597\OneDrive - Grupo Casas Bahia S.A\Área de Trabalho\Timesheet GRC e AI\AuditFlowTimesheet\README.md                               | Markdown           |        110 |          0 |         38 |        148 |
+| c:\Users\2160034597\OneDrive - Grupo Casas Bahia S.A\Área de Trabalho\Timesheet GRC e AI\AuditFlowTimesheet\assets\index-BqE1x8FA.js                | JavaScript         |        490 |          0 |         21 |        511 |
+| c:\Users\2160034597\OneDrive - Grupo Casas Bahia S.A\Área de Trabalho\Timesheet GRC e AI\AuditFlowTimesheet\index.html                              | HTML               |         48 |          1 |          1 |         50 |
+| c:\Users\2160034597\OneDrive - Grupo Casas Bahia S.A\Área de Trabalho\Timesheet GRC e AI\AuditFlowTimesheet\metadata.json                           | JSON               |          5 |          0 |          0 |          5 |
+| c:\Users\2160034597\OneDrive - Grupo Casas Bahia S.A\Área de Trabalho\Timesheet GRC e AI\AuditFlowTimesheet\package-lock.json                       | JSON               |      2,052 |          0 |          1 |      2,053 |
+| c:\Users\2160034597\OneDrive - Grupo Casas Bahia S.A\Área de Trabalho\Timesheet GRC e AI\AuditFlowTimesheet\package.json                            | JSON               |         26 |          0 |          0 |         26 |
+| c:\Users\2160034597\OneDrive - Grupo Casas Bahia S.A\Área de Trabalho\Timesheet GRC e AI\AuditFlowTimesheet\src\App.tsx                             | TypeScript JSX     |        112 |          6 |         13 |        131 |
+| c:\Users\2160034597\OneDrive - Grupo Casas Bahia S.A\Área de Trabalho\Timesheet GRC e AI\AuditFlowTimesheet\src\components\FeatureLockedView.tsx    | TypeScript JSX     |         65 |          0 |          6 |         71 |
+| c:\Users\2160034597\OneDrive - Grupo Casas Bahia S.A\Área de Trabalho\Timesheet GRC e AI\AuditFlowTimesheet\src\components\GamificationSnapshot.tsx | TypeScript JSX     |        149 |          0 |         19 |        168 |
+| c:\Users\2160034597\OneDrive - Grupo Casas Bahia S.A\Área de Trabalho\Timesheet GRC e AI\AuditFlowTimesheet\src\components\Layout.tsx               | TypeScript JSX     |        793 |         24 |        111 |        928 |
+| c:\Users\2160034597\OneDrive - Grupo Casas Bahia S.A\Área de Trabalho\Timesheet GRC e AI\AuditFlowTimesheet\src\components\MyStatusWidget.tsx       | TypeScript JSX     |        216 |         15 |         35 |        266 |
+| c:\Users\2160034597\OneDrive - Grupo Casas Bahia S.A\Área de Trabalho\Timesheet GRC e AI\AuditFlowTimesheet\src\config\features.ts                  | TypeScript         |          3 |          0 |          2 |          5 |
+| c:\Users\2160034597\OneDrive - Grupo Casas Bahia S.A\Área de Trabalho\Timesheet GRC e AI\AuditFlowTimesheet\src\index.html                          | HTML               |         48 |          1 |          1 |         50 |
+| c:\Users\2160034597\OneDrive - Grupo Casas Bahia S.A\Área de Trabalho\Timesheet GRC e AI\AuditFlowTimesheet\src\index.tsx                           | TypeScript JSX     |         13 |          0 |          2 |         15 |
+| c:\Users\2160034597\OneDrive - Grupo Casas Bahia S.A\Área de Trabalho\Timesheet GRC e AI\AuditFlowTimesheet\src\pages\AchievementsHub.tsx           | TypeScript JSX     |        241 |          0 |         20 |        261 |
+| c:\Users\2160034597\OneDrive - Grupo Casas Bahia S.A\Área de Trabalho\Timesheet GRC e AI\AuditFlowTimesheet\src\pages\AdminDashboard.tsx            | TypeScript JSX     |        751 |         16 |         60 |        827 |
+| c:\Users\2160034597\OneDrive - Grupo Casas Bahia S.A\Área de Trabalho\Timesheet GRC e AI\AuditFlowTimesheet\src\pages\HelpCenter.tsx                | TypeScript JSX     |        340 |          4 |         38 |        382 |
+| c:\Users\2160034597\OneDrive - Grupo Casas Bahia S.A\Área de Trabalho\Timesheet GRC e AI\AuditFlowTimesheet\src\pages\Login.tsx                     | TypeScript JSX     |         97 |          2 |         13 |        112 |
+| c:\Users\2160034597\OneDrive - Grupo Casas Bahia S.A\Área de Trabalho\Timesheet GRC e AI\AuditFlowTimesheet\src\pages\ManagerDashboard.tsx          | TypeScript JSX     |        959 |         31 |         82 |      1,072 |
+| c:\Users\2160034597\OneDrive - Grupo Casas Bahia S.A\Área de Trabalho\Timesheet GRC e AI\AuditFlowTimesheet\src\pages\ManagerProjectBudget.tsx      | TypeScript JSX     |        406 |         16 |         46 |        468 |
+| c:\Users\2160034597\OneDrive - Grupo Casas Bahia S.A\Área de Trabalho\Timesheet GRC e AI\AuditFlowTimesheet\src\pages\ManagerReports.tsx            | TypeScript JSX     |        199 |          9 |         33 |        241 |
+| c:\Users\2160034597\OneDrive - Grupo Casas Bahia S.A\Área de Trabalho\Timesheet GRC e AI\AuditFlowTimesheet\src\pages\UserDashboard.tsx             | TypeScript JSX     |        799 |         30 |         85 |        914 |
+| c:\Users\2160034597\OneDrive - Grupo Casas Bahia S.A\Área de Trabalho\Timesheet GRC e AI\AuditFlowTimesheet\src\pages\UserReports.tsx               | TypeScript JSX     |        313 |          9 |         36 |        358 |
+| c:\Users\2160034597\OneDrive - Grupo Casas Bahia S.A\Área de Trabalho\Timesheet GRC e AI\AuditFlowTimesheet\src\services\notifications.ts           | TypeScript         |         24 |          4 |          5 |         33 |
+| c:\Users\2160034597\OneDrive - Grupo Casas Bahia S.A\Área de Trabalho\Timesheet GRC e AI\AuditFlowTimesheet\src\services\store.ts                   | TypeScript         |        986 |         43 |        172 |      1,201 |
+| c:\Users\2160034597\OneDrive - Grupo Casas Bahia S.A\Área de Trabalho\Timesheet GRC e AI\AuditFlowTimesheet\src\types.ts                            | TypeScript         |        144 |          3 |         23 |        170 |
+| c:\Users\2160034597\OneDrive - Grupo Casas Bahia S.A\Área de Trabalho\Timesheet GRC e AI\AuditFlowTimesheet\src\utils\date.ts                       | TypeScript         |         26 |          0 |          7 |         33 |
+| c:\Users\2160034597\OneDrive - Grupo Casas Bahia S.A\Área de Trabalho\Timesheet GRC e AI\AuditFlowTimesheet\src\utils\gamification.ts               | TypeScript         |        817 |          2 |        117 |        936 |
+| c:\Users\2160034597\OneDrive - Grupo Casas Bahia S.A\Área de Trabalho\Timesheet GRC e AI\AuditFlowTimesheet\src\utils\workCalendar.ts               | TypeScript         |         72 |          1 |         17 |         90 |
+| c:\Users\2160034597\OneDrive - Grupo Casas Bahia S.A\Área de Trabalho\Timesheet GRC e AI\AuditFlowTimesheet\src\vite-env.d.ts                       | TypeScript         |          7 |          3 |          3 |         13 |
+| c:\Users\2160034597\OneDrive - Grupo Casas Bahia S.A\Área de Trabalho\Timesheet GRC e AI\AuditFlowTimesheet\tsconfig.json                           | JSON with Comments |         20 |          0 |          0 |         20 |
+| c:\Users\2160034597\OneDrive - Grupo Casas Bahia S.A\Área de Trabalho\Timesheet GRC e AI\AuditFlowTimesheet\vite.config.ts                          | TypeScript         |         12 |          1 |          2 |         15 |
+| Total                                                                                                                                               |                    |     10,393 |        221 |      1,020 |     11,634 |
++-----------------------------------------------------------------------------------------------------------------------------------------------------+--------------------+------------+------------+------------+------------+
