@@ -35,6 +35,8 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const user = store.getCurrentUser();
   const location = useLocation();
   const navigate = useNavigate();
+  const commitHash = import.meta.env.VITE_APP_COMMIT?.trim() || 'local';
+  const shortCommitHash = commitHash.slice(0, 7);
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
   
   // estado da troca de senha
@@ -862,6 +864,10 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       <main className={`flex-1 md:ml-64 p-4 md:p-8 pt-20 md:pt-8 overflow-y-auto min-h-screen ${user.isDefaultPassword ? 'filter blur-sm pointer-events-none select-none overflow-hidden h-screen' : ''}`}>
         {children}
       </main>
+
+      <div className="fixed bottom-2 right-3 z-10 pointer-events-none select-none text-[10px] text-slate-400">
+        commit {shortCommitHash}
+      </div>
 
       {/* modal de troca de senha */}
       {showPasswordModal && (

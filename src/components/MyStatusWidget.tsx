@@ -159,47 +159,6 @@ export const MyStatusWidget: React.FC<MyStatusWidgetProps> = ({ userId, onUpdate
             </div>
         )}
 
-        {/* card do status atual */}
-        <div className="bg-gradient-to-br from-brand-600 to-brand-800 p-6 rounded-xl text-white shadow-lg">
-            <h3 className="text-lg font-bold mb-2">Mês Atual</h3>
-            <div className="flex items-center justify-between gap-2 mb-4">
-                <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${
-                    periodStatus?.status === 'APPROVED' ? 'bg-green-400 text-green-900' : 
-                    periodStatus?.status === 'SUBMITTED' ? 'bg-amber-400 text-amber-900' :
-                    periodStatus?.status === 'REJECTED' ? 'bg-red-400 text-red-900' :
-                    'bg-white/20 text-white'
-                }`}>
-                    {periodStatus?.status === 'OPEN' ? 'Em Aberto' : 
-                     periodStatus?.status === 'SUBMITTED' ? 'Aguardando Aprovação' :
-                     periodStatus?.status === 'REJECTED' ? 'Rejeitado' : 'Aprovado'}
-                </span>
-                
-                {/* botão de envio do mês atual direto no card */}
-                {(periodStatus?.status === 'OPEN' || periodStatus?.status === 'REJECTED') && (
-                    <button 
-                        onClick={() => periodStatus && validateAndSubmit(periodStatus.year, periodStatus.month)}
-                        disabled={processing || isUserInactive}
-                        className="bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors disabled:opacity-50"
-                        title={isUserInactive ? "Usuário inativo" : "Enviar Mês Atual"}
-                    >
-                        {processing ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />} 
-                        Enviar
-                    </button>
-                )}
-            </div>
-            <p className="text-brand-50 text-sm mb-4">
-                {periodStatus?.status === 'OPEN' ? 'Lance suas horas diariamente. Ao final do mês, envie para aprovação.' :
-                 periodStatus?.status === 'SUBMITTED' ? 'Seu gestor está analisando seus lançamentos.' :
-                 periodStatus?.status === 'REJECTED' ? 'Atenção: Verifique correções solicitadas.' :
-                 'Ciclo encerrado.'}
-            </p>
-            {periodStatus?.status === 'REJECTED' && (
-                 <div className="bg-red-500/20 p-3 rounded text-xs text-red-100 mb-2 border border-red-500/30">
-                     <strong>Motivo:</strong> {periodStatus.rejectionReason}
-                 </div>
-            )}
-        </div>
-
         {/* lista de histórico */}
         <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
             <div className="p-4 bg-gray-50 border-b border-gray-100 flex items-center gap-2">

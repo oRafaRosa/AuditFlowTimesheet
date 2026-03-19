@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { store, SUPABASE_SCHEMA_SQL } from '../services/store';
 import { User, Project, TimesheetEntry, CalendarException, formatHours } from '../types';
-import { Database, Edit, Filter, Calendar, Trash2, Loader2 } from 'lucide-react';
+import { Database, Edit, Filter, Calendar, Trash2, Loader2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { MyStatusWidget } from '../components/MyStatusWidget';
 import { formatDateForDisplay } from '../utils/date';
 
@@ -36,6 +36,8 @@ export const AdminDashboard: React.FC = () => {
   const [managerApprovalBacklog, setManagerApprovalBacklog] = useState<ManagerApprovalBacklogGroup[]>([]);
   const [showSqlModal, setShowSqlModal] = useState(false);
   const [loading, setLoading] = useState(false);
+    const [userSortColumn, setUserSortColumn] = useState<'name' | 'manager' | 'role'>('name');
+    const [userSortDirection, setUserSortDirection] = useState<'asc' | 'desc'>('asc');
 
     // estado de usuários
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -299,6 +301,41 @@ export const AdminDashboard: React.FC = () => {
       year: 'numeric'
     });
 
+    const handleUserSort = (column: 'name' | 'manager' | 'role') => {
+        if (userSortColumn === column) {
+            setUserSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+            return;
+        }
+
+        setUserSortColumn(column);
+        setUserSortDirection('asc');
+    };
+
+    const UserSortIcon = ({ column }: { column: 'name' | 'manager' | 'role' }) => {
+        if (userSortColumn !== column) return <ArrowUpDown size={14} className="text-slate-400" />;
+        return userSortDirection === 'asc'
+            ? <ArrowUp size={14} className="text-brand-600" />
+            : <ArrowDown size={14} className="text-brand-600" />;
+    };
+
+    const sortedUsers = React.useMemo(() => {
+        const sorted = [...users].sort((a, b) => {
+            let comparison = 0;
+
+            if (userSortColumn === 'name') {
+                comparison = a.name.localeCompare(b.name, 'pt-BR');
+            } else if (userSortColumn === 'manager') {
+                comparison = getManagerName(a.managerId).localeCompare(getManagerName(b.managerId), 'pt-BR');
+            } else {
+                comparison = a.role.localeCompare(b.role, 'pt-BR');
+            }
+
+            return userSortDirection === 'asc' ? comparison : -comparison;
+        });
+
+        return sorted;
+    }, [users, userSortColumn, userSortDirection]);
+
   if (loading && users.length === 0) return <div className="flex items-center justify-center h-screen"><Loader2 className="animate-spin text-brand-600" /></div>;
 
   return (
@@ -425,14 +462,29 @@ export const AdminDashboard: React.FC = () => {
                       <table className="w-full text-left text-sm">
                           <thead className="bg-gray-50 font-semibold text-slate-500 border-b border-gray-200">
                               <tr>
-                                  <th className="px-6 py-3">Nome</th>
-                                  <th className="px-6 py-3">Gestor (Equipe)</th>
-                                  <th className="px-6 py-3">Função</th>
+                                  <th className="px-6 py-3">
+                                      <button type="button" onClick={() => handleUserSort('name')} className="inline-flex items-center gap-2 hover:text-slate-700 transition-colors">
+                                          Nome
+                                          <UserSortIcon column="name" />
+                                      </button>
+                                  </th>
+                                  <th className="px-6 py-3">
+                                      <button type="button" onClick={() => handleUserSort('manager')} className="inline-flex items-center gap-2 hover:text-slate-700 transition-colors">
+                                          Gestor (Equipe)
+                                          <UserSortIcon column="manager" />
+                                      </button>
+                                  </th>
+                                  <th className="px-6 py-3">
+                                      <button type="button" onClick={() => handleUserSort('role')} className="inline-flex items-center gap-2 hover:text-slate-700 transition-colors">
+                                          Função
+                                          <UserSortIcon column="role" />
+                                      </button>
+                                  </th>
                                   <th className="px-6 py-3 text-right">Ação</th>
                               </tr>
                           </thead>
                           <tbody className="divide-y divide-gray-100">
-                              {users.map(u => (
+                              {sortedUsers.map(u => (
                                   <tr key={u.id} className={u.isActive === false ? 'bg-slate-50 opacity-60' : 'hover:bg-slate-50'}>
                                       <td className="px-6 py-3 flex items-center gap-2">
                                           <img src={u.avatarUrl} className="w-6 h-6 rounded-full" />

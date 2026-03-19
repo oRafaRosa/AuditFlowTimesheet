@@ -344,6 +344,7 @@ class StoreService {
         email: d.email,
         role: d.role,
         isActive: d.is_active !== false,
+        requiresTimesheet: d.requires_timesheet !== false,
         managerId: d.manager_id,
         delegatedManagerId: d.delegated_manager_id,
         avatarUrl: `https://ui-avatars.com/api/?name=${d.full_name}`
@@ -359,6 +360,7 @@ class StoreService {
         role: user.role,
         manager_id: managerIdValue,
         is_active: user.isActive !== false,
+      requires_timesheet: user.requiresTimesheet !== false,
         password: DEFAULT_PASSWORD_HASH // seta senha padrão pros novos
     };
 
@@ -374,6 +376,7 @@ class StoreService {
         email: data.email,
         role: data.role,
         isActive: data.is_active !== false,
+      requiresTimesheet: data.requires_timesheet !== false,
         managerId: data.manager_id,
         avatarUrl: `https://ui-avatars.com/api/?name=${data.full_name}`
     };
@@ -385,12 +388,17 @@ class StoreService {
     if (data.email) dbUpdate.email = data.email.trim();
     if (data.role) dbUpdate.role = data.role;
     if (data.isActive !== undefined) dbUpdate.is_active = data.isActive;
+    if (data.requiresTimesheet !== undefined) dbUpdate.requires_timesheet = data.requiresTimesheet;
     
     if (data.managerId !== undefined) {
         dbUpdate.manager_id = (data.managerId && data.managerId.trim() !== '') ? data.managerId : null;
     }
 
-    await supabase.from('profiles').update(dbUpdate).eq('id', id);
+    const { error } = await supabase.from('profiles').update(dbUpdate).eq('id', id);
+    if (error) {
+      console.error('Erro ao atualizar usuário:', error);
+      throw error;
+    }
   }
 
   // centraliza a regra do gestor efetivo pra envio e aprovação durante delegação
@@ -537,6 +545,7 @@ class StoreService {
         email: d.email,
         role: d.role,
         isActive: d.is_active !== false,
+      requiresTimesheet: d.requires_timesheet !== false,
         managerId: d.manager_id,
         delegatedManagerId: d.delegated_manager_id,
         avatarUrl: `https://ui-avatars.com/api/?name=${d.full_name}`
@@ -1103,10 +1112,14 @@ create table if not exists profiles (
   full_name text not null,
   role text default 'USER' check (role in ('ADMIN', 'MANAGER', 'USER')),
   is_active boolean default true,
+  requires_timesheet boolean default true,
   manager_id uuid references profiles(id),
   email text unique not null,
   password text
 );
+
+-- coluna para ambientes já existentes
+alter table profiles add column if not exists requires_timesheet boolean default true;
 
 -- 3. Tabela de Projetos
 create table if not exists projects (

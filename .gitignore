@@ -28,5 +28,6 @@ dist-ssr
 *.sln
 *.sw?
 AGENTS.md
+migrations/
 .antigravity/
 .github/copilot-instructions.md
