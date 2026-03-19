@@ -153,7 +153,12 @@ export const ManagerCapacity: React.FC = () => {
     });
 
     return scopedUsers
-      .filter((u) => includeInactive || u.isActive !== false)
+      .filter((u) => {
+        if (includeInactive || u.isActive !== false) return true;
+        if (!u.terminationDate) return false;
+
+        return parseDateOnly(u.terminationDate).getFullYear() === selectedYear;
+      })
       .filter((u) => includeWithoutTimesheet || u.requiresTimesheet !== false)
       .filter((u) => !selectedManagerId || u.id === selectedManagerId || u.managerId === selectedManagerId)
       .filter((u) => !selectedArea || u.area === selectedArea)
