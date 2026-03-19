@@ -7,6 +7,7 @@ import { formatDateForDisplay, formatLocalDate, parseDateOnly } from '../utils/d
 import { buildGamificationProfiles } from '../utils/gamification';
 import { buildCalendarMaps, isExpectedWorkingDay, listPendingDaysForMonth } from '../utils/workCalendar';
 import { GAMIFICATION_ENABLED } from '../config/features';
+import { LoadingIndicator } from './LoadingIndicator';
 import { 
   LayoutDashboard, 
   Users, 
@@ -865,8 +866,10 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         {children}
       </main>
 
+      <LoadingIndicator />
+
       <div className="fixed bottom-2 right-3 z-10 pointer-events-none select-none text-[10px] text-slate-400">
-        commit {shortCommitHash}
+        {shortCommitHash}
       </div>
 
       {/* modal de troca de senha */}

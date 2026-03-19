@@ -1,6 +1,7 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { User, Project, TimesheetEntry, Holiday, CalendarException, HOURS_PER_DAY, TimesheetPeriod, PeriodStatus, FrequentEntryTemplate, TimesheetPeriodEvent, UserActivityEvent, UserActivityType, UserLoginActivity } from '../types';
 import { formatLocalDate, normalizeDateValue } from '../utils/date';
+import { loadingState } from './loadingState';
 
 // --- CONFIGURAÇÃO DO SUPABASE ---
 // pegando do .env se existir, senão usa fallback pra build funcionar
@@ -23,6 +24,16 @@ const DEFAULT_PASSWORD_HASH = '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a
 class StoreService {
   constructor() {
     // opcional: checar conexão ou dar init
+  }
+
+  // wrapper pra registrar loading das operações
+  private async withLoading<T>(operation: () => Promise<T>): Promise<T> {
+    loadingState.startLoading();
+    try {
+      return await operation();
+    } finally {
+      loadingState.stopLoading();
+    }
   }
 
   private isMissingRelationError(error: any): boolean {
@@ -335,51 +346,55 @@ class StoreService {
   // --- usuários ---
   
   async getUsers(): Promise<User[]> {
-    const { data, error } = await supabase.from('profiles').select('*');
-    if (error) return [];
-    
-    return data.map((d: any) => ({
-        id: d.id,
-        name: d.full_name,
-        email: d.email,
-        role: d.role,
-        isActive: d.is_active !== false,
-        requiresTimesheet: d.requires_timesheet !== false,
-        managerId: d.manager_id,
-        delegatedManagerId: d.delegated_manager_id,
-        avatarUrl: `https://ui-avatars.com/api/?name=${d.full_name}`
-    }));
+    return this.withLoading(async () => {
+      const { data, error } = await supabase.from('profiles').select('*');
+      if (error) return [];
+      
+      return data.map((d: any) => ({
+          id: d.id,
+          name: d.full_name,
+          email: d.email,
+          role: d.role,
+          isActive: d.is_active !== false,
+          requiresTimesheet: d.requires_timesheet !== false,
+          managerId: d.manager_id,
+          delegatedManagerId: d.delegated_manager_id,
+          avatarUrl: `https://ui-avatars.com/api/?name=${d.full_name}`
+      }));
+    });
   }
 
   async addUser(user: Omit<User, 'id'>): Promise<User | null> {
-    const managerIdValue = (user.managerId && user.managerId.trim() !== '') ? user.managerId : null;
-    
-    const dbUser = {
-        full_name: user.name,
-        email: user.email.trim(),
-        role: user.role,
-        manager_id: managerIdValue,
-        is_active: user.isActive !== false,
-      requires_timesheet: user.requiresTimesheet !== false,
-        password: DEFAULT_PASSWORD_HASH // seta senha padrão pros novos
-    };
+    return this.withLoading(async () => {
+      const managerIdValue = (user.managerId && user.managerId.trim() !== '') ? user.managerId : null;
+      
+      const dbUser = {
+          full_name: user.name,
+          email: user.email.trim(),
+          role: user.role,
+          manager_id: managerIdValue,
+          is_active: user.isActive !== false,
+        requires_timesheet: user.requiresTimesheet !== false,
+          password: DEFAULT_PASSWORD_HASH // seta senha padrão pros novos
+      };
 
-    const { data, error } = await supabase.from('profiles').insert(dbUser).select().single();
-    if (error) {
-        console.error("Erro ao adicionar usuário:", error);
-        return null;
-    }
-    
-    return {
-        id: data.id,
-        name: data.full_name,
-        email: data.email,
-        role: data.role,
-        isActive: data.is_active !== false,
-      requiresTimesheet: data.requires_timesheet !== false,
-        managerId: data.manager_id,
-        avatarUrl: `https://ui-avatars.com/api/?name=${data.full_name}`
-    };
+      const { data, error } = await supabase.from('profiles').insert(dbUser).select().single();
+      if (error) {
+          console.error("Erro ao adicionar usuário:", error);
+          return null;
+      }
+      
+      return {
+          id: data.id,
+          name: data.full_name,
+          email: data.email,
+          role: data.role,
+          isActive: data.is_active !== false,
+        requiresTimesheet: data.requires_timesheet !== false,
+          managerId: data.manager_id,
+          avatarUrl: `https://ui-avatars.com/api/?name=${data.full_name}`
+      };
+    });
   }
 
   async updateUser(id: string, data: Partial<User>) {
@@ -555,18 +570,20 @@ class StoreService {
   // --- projetos ---
   
   async getProjects(): Promise<Project[]> {
-    const { data, error } = await supabase.from('projects').select('*');
-    if (error) return [];
+    return this.withLoading(async () => {
+      const { data, error } = await supabase.from('projects').select('*');
+      if (error) return [];
 
-    return data.map((p: any) => ({
-        id: p.id,
-        name: p.name,
-        code: p.code,
-        classification: p.classification,
-        budgetedHours: p.budgeted_hours,
-        active: p.active,
-        allowedManagerIds: p.allowed_manager_ids || []
-    }));
+      return data.map((p: any) => ({
+          id: p.id,
+          name: p.name,
+          code: p.code,
+          classification: p.classification,
+          budgetedHours: p.budgeted_hours,
+          active: p.active,
+          allowedManagerIds: p.allowed_manager_ids || []
+      }));
+    });
   }
 
   async addProject(project: Omit<Project, 'id'>) {
@@ -596,50 +613,52 @@ class StoreService {
   // --- lançamentos ---
   
   async getEntries(userId?: string): Promise<TimesheetEntry[]> {
-    let allData: any[] = [];
-    const pageSize = 1000;
-    let page = 0;
-    let hasMore = true;
+    return this.withLoading(async () => {
+      let allData: any[] = [];
+      const pageSize = 1000;
+      let page = 0;
+      let hasMore = true;
 
-    while (hasMore) {
-        let query = supabase
-            .from('timesheets')
-            .select('*')
-            .order('created_at', { ascending: false })
-            .range(page * pageSize, (page + 1) * pageSize - 1);
-        
-        if (userId) {
-            query = query.eq('user_id', userId);
-        }
-        
-        const { data, error } = await query;
-        if (error || !data || data.length === 0) {
-            hasMore = false;
-        } else {
-            allData = allData.concat(data);
-            if (data.length < pageSize) {
-                hasMore = false;
-            }
-        }
-        page++;
-    }
+      while (hasMore) {
+          let query = supabase
+              .from('timesheets')
+              .select('*')
+              .order('created_at', { ascending: false })
+              .range(page * pageSize, (page + 1) * pageSize - 1);
+          
+          if (userId) {
+              query = query.eq('user_id', userId);
+          }
+          
+          const { data, error } = await query;
+          if (error || !data || data.length === 0) {
+              hasMore = false;
+          } else {
+              allData = allData.concat(data);
+              if (data.length < pageSize) {
+                  hasMore = false;
+              }
+          }
+          page++;
+      }
 
-    const result = allData.map((e: any) => {
-      // usa work_date se tiver, senão cai no date
-      const displayDate = normalizeDateValue(e.work_date) || normalizeDateValue(e.date) || '';
+      const result = allData.map((e: any) => {
+        // usa work_date se tiver, senão cai no date
+        const displayDate = normalizeDateValue(e.work_date) || normalizeDateValue(e.date) || '';
 
-      return {
-        id: e.id,
-        userId: e.user_id,
-        projectId: e.project_id,
-        date: displayDate,
-        hours: e.hours,
-        description: e.description,
-        createdAt: e.created_at
-      };
+        return {
+          id: e.id,
+          userId: e.user_id,
+          projectId: e.project_id,
+          date: displayDate,
+          hours: e.hours,
+          description: e.description,
+          createdAt: e.created_at
+        };
+      });
+
+      return result;
     });
-
-    return result;
   }
 
   async addEntry(entry: Omit<TimesheetEntry, 'id' | 'createdAt'>) {
@@ -670,35 +689,37 @@ class StoreService {
   // --- fluxo de aprovação (períodos) ---
 
   async getPeriodStatus(userId: string, year: number, month: number): Promise<TimesheetPeriod> {
-      const { data } = await supabase
-        .from('timesheet_periods')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('year', year)
-        .eq('month', month)
-        .maybeSingle();
-      
-      if (data) {
-          return {
-              id: data.id,
-              userId: data.user_id,
-              year: data.year,
-              month: data.month,
-              status: data.status,
-              managerId: data.manager_id,
-              rejectionReason: data.rejection_reason,
-              updatedAt: data.updated_at
-          };
-      }
+      return this.withLoading(async () => {
+        const { data } = await supabase
+          .from('timesheet_periods')
+          .select('*')
+          .eq('user_id', userId)
+          .eq('year', year)
+          .eq('month', month)
+          .maybeSingle();
+        
+        if (data) {
+            return {
+                id: data.id,
+                userId: data.user_id,
+                year: data.year,
+                month: data.month,
+                status: data.status,
+                managerId: data.manager_id,
+                rejectionReason: data.rejection_reason,
+                updatedAt: data.updated_at
+            };
+        }
 
-      return {
-          id: '',
-          userId,
-          year,
-          month,
-          status: 'OPEN',
-          updatedAt: new Date().toISOString()
-      };
+        return {
+            id: '',
+            userId,
+            year,
+            month,
+            status: 'OPEN',
+            updatedAt: new Date().toISOString()
+        };
+      });
   }
 
   // retorna só períodos onde tem lançamento ou status
@@ -964,9 +985,11 @@ class StoreService {
   }
 
   async getHolidays(): Promise<Holiday[]> {
-    const { data, error } = await supabase.from('holidays').select('*');
-    if (error) return [];
-    return data;
+    return this.withLoading(async () => {
+      const { data, error } = await supabase.from('holidays').select('*');
+      if (error) return [];
+      return data;
+    });
   }
 
   // deixei as combinações frequentes no localStorage pra não depender de migration no banco
