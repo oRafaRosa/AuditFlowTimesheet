@@ -58,7 +58,7 @@ const AREA_LABEL: Record<UserArea, string> = {
   AUDITORIA_INTERNA: 'Auditoria Interna',
   CONTROLES_INTERNOS: 'Controles Internos',
   COMPLIANCE: 'Compliance',
-  CANAL_DENUNCIAS: 'Canal de Denuncias',
+  CANAL_DENUNCIAS: 'Canal de Denúncias',
   GESTAO_RISCOS_DIGITAIS: 'Gestao de Riscos Digitais',
   OUTROS: 'Outros'
 };
@@ -297,7 +297,7 @@ export const ManagerCapacity: React.FC = () => {
           userName: u.name,
           requiresTimesheet: u.requiresTimesheet,
           area,
-          areaLabel: area ? AREA_LABEL[area] : 'Sem area',
+          areaLabel: area ? AREA_LABEL[area] : 'Sem área',
           managerId,
           managerName,
           admissionDate,
@@ -445,7 +445,7 @@ export const ManagerCapacity: React.FC = () => {
     scopedProjects.forEach((project) => {
       const key = project.area || 'SEM_AREA';
       const current = grouped.get(key) || {
-        area: project.area ? AREA_LABEL[project.area] : 'Sem area',
+        area: project.area ? AREA_LABEL[project.area] : 'Sem área',
         areaFilter: key as AreaFilterValue,
         consumed: 0,
         available: 0,
@@ -528,8 +528,8 @@ export const ManagerCapacity: React.FC = () => {
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Capacity da Equipe</h1>
           <p className="mt-2 max-w-3xl text-slate-500">
-            Visao consolidada de horas disponiveis e consumidas em {selectedYear}, considerando admissao,
-            desligamento, feriados e dias uteis.
+            Visão consolidada de horas disponíveis e consumidas em {selectedYear}, considerando admissão,
+            desligamento, feriados e dias úteis.
           </p>
         </div>
         <div className="inline-flex items-center rounded-full bg-brand-50 px-3 py-1 text-xs font-bold text-brand-700">
@@ -540,7 +540,7 @@ export const ManagerCapacity: React.FC = () => {
       <section className="bg-white p-5 rounded-xl border border-slate-100 shadow-sm">
         <div className="flex items-center gap-2 mb-4 text-slate-700 font-semibold">
           <Filter size={16} />
-          Filtros Analiticos
+          Filtros Analíticos
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-3">
@@ -572,14 +572,14 @@ export const ManagerCapacity: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-xs text-slate-500 font-bold mb-1">Area</label>
+            <label className="block text-xs text-slate-500 font-bold mb-1">Área</label>
             <select
               className="w-full rounded-lg border border-slate-300 p-2 text-sm outline-none focus:ring-2 focus:ring-brand-500"
               value={selectedArea}
               onChange={(e) => setSelectedArea((e.target.value || '') as AreaFilterValue)}
             >
               <option value="">Todas</option>
-              <option value="SEM_AREA">Sem area</option>
+              <option value="SEM_AREA">Sem área</option>
               {Object.entries(AREA_LABEL).map(([value, label]) => (
                 <option key={value} value={value}>{label}</option>
               ))}
@@ -612,13 +612,13 @@ export const ManagerCapacity: React.FC = () => {
 
       <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
         <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
-          <p className="text-xs text-slate-500 font-bold uppercase">Horas disponiveis no ano</p>
+          <p className="text-xs text-slate-500 font-bold uppercase">Horas disponíveis no ano</p>
           <p className="mt-2 text-2xl font-bold text-slate-800">{formatHours(summary.totalAvailableYear)}</p>
-          <p className="text-xs text-slate-500 mt-1">Base total de capacity anual</p>
+          <p className="text-xs text-slate-500 mt-1">Base total de capacidade anual</p>
         </div>
 
         <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
-          <p className="text-xs text-slate-500 font-bold uppercase">Horas de hoje ate 31/12</p>
+          <p className="text-xs text-slate-500 font-bold uppercase">Horas de hoje até 31/12</p>
           <p className="mt-2 text-2xl font-bold text-slate-800">{formatHours(summary.totalRemainingYear)}</p>
           <p className="text-xs text-slate-500 mt-1">Disponibilidade restante do ano</p>
         </div>
@@ -629,10 +629,10 @@ export const ManagerCapacity: React.FC = () => {
           className="bg-white rounded-xl border border-slate-100 shadow-sm p-5 text-left transition-colors hover:border-brand-200 hover:bg-brand-50/30"
           title="Clique para ver quem pode estar sem apontamento correto de timesheet."
         >
-          <p className="text-xs text-slate-500 font-bold uppercase">Horas consumidas ate hoje</p>
+          <p className="text-xs text-slate-500 font-bold uppercase">Horas consumidas até hoje</p>
           <p className="mt-2 text-2xl font-bold text-brand-700">{formatHours(summary.totalConsumedToDate)}</p>
           <p className="text-xs text-slate-500 mt-1">Com base nas horas apontadas no timesheet</p>
-          <p className="text-[11px] text-slate-400 mt-2">{formatHours(timesheetGapSummary.elapsedHours)}h uteis ja decorridas ate hoje no ano (somente quem exige timesheet)</p>
+          <p className="text-[11px] text-slate-400 mt-2">{formatHours(timesheetGapSummary.elapsedHours)}h úteis já decorridas até hoje no ano (somente quem exige timesheet)</p>
           <p className="text-[11px] text-amber-700 mt-2 font-semibold">
             Gap estimado de apontamento: {formatHours(timesheetGapSummary.missingHours)}h
           </p>
@@ -641,7 +641,7 @@ export const ManagerCapacity: React.FC = () => {
         <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
           <p className="text-xs text-slate-500 font-bold uppercase">Taxa de consumo</p>
           <p className="mt-2 text-2xl font-bold text-brand-700">{formatPercentage(summary.utilization)}%</p>
-          <p className="text-xs text-slate-500 mt-1">Consumido / disponivel do ano</p>
+          <p className="text-xs text-slate-500 mt-1">Consumido / disponível no ano</p>
         </div>
 
         <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
@@ -654,9 +654,9 @@ export const ManagerCapacity: React.FC = () => {
       {showTimesheetGapDetails && (
         <section className="bg-white rounded-xl border border-slate-100 shadow-sm p-5 space-y-4">
           <div className="flex flex-col gap-1">
-            <h2 className="font-semibold text-slate-800">Diferencas de Timesheet (Decorrido vs Consumido)</h2>
+            <h2 className="font-semibold text-slate-800">Diferenças de Timesheet (Decorrido vs Consumido)</h2>
             <p className="text-sm text-slate-500">
-              Esta analise compara horas uteis ja decorridas no ano com horas registradas no timesheet para identificar provavel falta de apontamento.
+              Esta análise compara horas úteis já decorridas no ano com horas registradas no timesheet para identificar provável falta de apontamento.
             </p>
           </div>
 
@@ -676,14 +676,14 @@ export const ManagerCapacity: React.FC = () => {
           </div>
 
           {timesheetGapHighlights.length === 0 ? (
-            <p className="text-sm text-slate-500">Nao foram encontrados gaps relevantes de apontamento para os filtros atuais.</p>
+            <p className="text-sm text-slate-500">Não foram encontrados gaps relevantes de apontamento para os filtros atuais.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead className="border-b border-slate-200 text-slate-500">
                   <tr>
                     <th className="py-2 pr-3">Colaborador</th>
-                    <th className="py-2 pr-3">Area</th>
+                    <th className="py-2 pr-3">Área</th>
                     <th className="py-2 pr-3">Equipe</th>
                     <th className="py-2 pr-3 text-right">Decorrido</th>
                     <th className="py-2 pr-3 text-right">Consumido</th>
@@ -756,7 +756,7 @@ export const ManagerCapacity: React.FC = () => {
         <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
           <div className="flex items-center gap-2 mb-4">
             <CalendarClock size={18} className="text-brand-600" />
-            <h2 className="font-semibold text-slate-800">Visao Geral</h2>
+            <h2 className="font-semibold text-slate-800">Visão Geral</h2>
           </div>
           <div className="grid grid-cols-1 gap-4">
             <div className="h-[220px]">
@@ -804,8 +804,8 @@ export const ManagerCapacity: React.FC = () => {
       <section className="bg-white rounded-xl border border-slate-100 shadow-sm p-5 space-y-4">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
-            <h2 className="font-semibold text-slate-800">Disponibilidade para Alocacao em Projetos</h2>
-            <p className="text-sm text-slate-500">Comparativo entre capacidade anual disponivel e horas orcadas em projetos no recorte atual.</p>
+            <h2 className="font-semibold text-slate-800">Disponibilidade para Alocação em Projetos</h2>
+            <p className="text-sm text-slate-500">Comparativo entre capacidade anual disponível e horas orçadas em projetos no recorte atual.</p>
           </div>
           <div className="text-right">
             <p className="text-xs font-bold uppercase text-slate-500">Saldo total para alocar</p>
@@ -817,19 +817,19 @@ export const ManagerCapacity: React.FC = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
           <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3">
-            <p className="text-[11px] font-bold uppercase text-slate-500">Capacity anual visivel</p>
+            <p className="text-[11px] font-bold uppercase text-slate-500">Capacidade anual visível</p>
             <p className="mt-1 text-lg font-bold text-slate-800">{formatHours(summary.totalAvailableYear)}h</p>
           </div>
           <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3">
-            <p className="text-[11px] font-bold uppercase text-slate-500">Horas orcadas em projeto</p>
+            <p className="text-[11px] font-bold uppercase text-slate-500">Horas orçadas em projetos</p>
             <p className="mt-1 text-lg font-bold text-slate-800">{formatHours(budgetSummary.totalBudgetedHours)}h</p>
           </div>
           <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3">
-            <p className="text-[11px] font-bold uppercase text-slate-500">Orcado / Capacity</p>
+            <p className="text-[11px] font-bold uppercase text-slate-500">Orçado / Capacidade</p>
             <p className="mt-1 text-lg font-bold text-slate-800">{formatPercentage(budgetSummary.budgetVsCapacityPct)}%</p>
           </div>
           <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3">
-            <p className="text-[11px] font-bold uppercase text-slate-500">Areas com deficit</p>
+            <p className="text-[11px] font-bold uppercase text-slate-500">Áreas com déficit</p>
             <p className="mt-1 text-lg font-bold text-slate-800">{allocationSummary.overAllocatedAreas}</p>
           </div>
         </div>
@@ -838,11 +838,11 @@ export const ManagerCapacity: React.FC = () => {
           <table className="w-full text-left text-sm">
             <thead className="border-b border-slate-200 text-slate-500">
               <tr>
-                <th className="py-2 pr-3">Area</th>
-                <th className="py-2 pr-3 text-right">Capacity</th>
-                <th className="py-2 pr-3 text-right">Orcado</th>
-                <th className="py-2 pr-3 text-right">Saldo alocavel</th>
-                <th className="py-2 pr-0 text-right">Pressao do orcado</th>
+                <th className="py-2 pr-3">Área</th>
+                <th className="py-2 pr-3 text-right">Capacidade</th>
+                <th className="py-2 pr-3 text-right">Orçado</th>
+                <th className="py-2 pr-3 text-right">Saldo alocável</th>
+                <th className="py-2 pr-0 text-right">Alocado em projetos</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -859,7 +859,7 @@ export const ManagerCapacity: React.FC = () => {
               ))}
               {allocationByArea.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="py-8 text-center text-slate-400">Sem dados de area para o recorte atual.</td>
+                  <td colSpan={5} className="py-8 text-center text-slate-400">Sem dados de área para o recorte atual.</td>
                 </tr>
               )}
             </tbody>
@@ -871,7 +871,7 @@ export const ManagerCapacity: React.FC = () => {
         <div className="xl:col-span-2 bg-white rounded-xl border border-slate-100 shadow-sm p-5">
           <div className="flex items-center gap-2 mb-4">
             <TrendingUp size={18} className="text-brand-600" />
-            <h2 className="font-semibold text-slate-800">Capacity vs Consumo vs Orçado por Area</h2>
+            <h2 className="font-semibold text-slate-800">Capacidade vs Consumo vs Orçado por Área</h2>
           </div>
           <div className="h-[380px]">
             <ResponsiveContainer width="100%" height="100%">
@@ -886,7 +886,7 @@ export const ManagerCapacity: React.FC = () => {
               </BarChart>
             </ResponsiveContainer>
           </div>
-          <p className="mt-3 text-xs text-slate-500">Clique em uma barra para filtrar automaticamente a tela pela area selecionada e comparar capacidade, consumo e orçamento cadastrado.</p>
+          <p className="mt-3 text-xs text-slate-500">Clique em uma barra para filtrar automaticamente a tela pela área selecionada e comparar capacidade, consumo e orçamento cadastrado.</p>
         </div>
 
         <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
@@ -931,7 +931,7 @@ export const ManagerCapacity: React.FC = () => {
 
       <section className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
         <div className="p-4 border-b border-slate-100 bg-slate-50 flex flex-wrap items-center justify-between gap-2">
-          <h2 className="font-semibold text-slate-800">Visao por Colaborador</h2>
+          <h2 className="font-semibold text-slate-800">Visão por Colaborador</h2>
           <span className="text-xs text-slate-500">{rows.length} colaborador(es) no recorte</span>
         </div>
         <div className="overflow-x-auto">
@@ -946,7 +946,7 @@ export const ManagerCapacity: React.FC = () => {
                 </th>
                 <th className="px-4 py-3">
                   <button type="button" className="inline-flex items-center gap-2 hover:text-slate-700 transition-colors" onClick={() => handleSort('areaLabel')} title="Área organizacional cadastrada para o colaborador.">
-                    Area
+                    Área
                     <SortIcon column="areaLabel" />
                   </button>
                 </th>
@@ -958,7 +958,7 @@ export const ManagerCapacity: React.FC = () => {
                 </th>
                 <th className="px-4 py-3">
                   <button type="button" className="inline-flex items-center gap-2 hover:text-slate-700 transition-colors" onClick={() => handleSort('admissionDate')} title="Data de admissão usada para iniciar o cálculo das horas disponíveis dentro do ano selecionado.">
-                    Admissao
+                    Admissão
                     <SortIcon column="admissionDate" />
                   </button>
                 </th>
@@ -970,19 +970,19 @@ export const ManagerCapacity: React.FC = () => {
                 </th>
                 <th className="px-4 py-3 text-right">
                   <button type="button" className="inline-flex items-center justify-end gap-2 hover:text-slate-700 transition-colors w-full" onClick={() => handleSort('availableYearHours')} title="Total de horas úteis disponíveis no ano, considerando admissão, desligamento, feriados e exceções do calendário.">
-                    Disponivel ano
+                    Disponível no ano
                     <SortIcon column="availableYearHours" />
                   </button>
                 </th>
                 <th className="px-4 py-3 text-right">
                   <button type="button" className="inline-flex items-center justify-end gap-2 hover:text-slate-700 transition-colors w-full" onClick={() => handleSort('remainingYearHours')} title="Total de horas disponíveis de hoje até 31/12, calculado com base nos colaboradores ativos no período restante do ano.">
-                    Disponivel ate 31/12
+                    Disponível até 31/12
                     <SortIcon column="remainingYearHours" />
                   </button>
                 </th>
                 <th className="px-4 py-3 text-right">
                   <button type="button" className="inline-flex items-center justify-end gap-2 hover:text-slate-700 transition-colors w-full" onClick={() => handleSort('consumedToDateHours')} title="Horas já lançadas pelo colaborador do início do recorte até a data de hoje.">
-                    Consumido ate hoje
+                    Consumido até hoje
                     <SortIcon column="consumedToDateHours" />
                   </button>
                 </th>
