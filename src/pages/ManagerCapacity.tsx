@@ -12,7 +12,7 @@ import {
   Cell,
   Legend
 } from 'recharts';
-import { Filter, Loader2, Users, CalendarClock, Clock3, TrendingUp, AlertTriangle } from 'lucide-react';
+import { Filter, Loader2, Users, CalendarClock, Clock3, TrendingUp, AlertTriangle, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { store } from '../services/store';
 import { CalendarException, Holiday, TimesheetEntry, User, UserArea, formatHours, formatPercentage } from '../types';
 import { buildCalendarMaps, isExpectedWorkingDay } from '../utils/workCalendar';
@@ -34,6 +34,17 @@ interface CapacityRow {
   activeInYear: boolean;
 }
 
+type CapacitySortColumn =
+  | 'userName'
+  | 'areaLabel'
+  | 'managerName'
+  | 'admissionDate'
+  | 'terminationDate'
+  | 'availableYearHours'
+  | 'remainingYearHours'
+  | 'consumedToDateHours'
+  | 'utilizationPct';
+
 const HOURS_PER_DAY = 8.8;
 
 const AREA_LABEL: Record<UserArea, string> = {
@@ -46,9 +57,9 @@ const AREA_LABEL: Record<UserArea, string> = {
 };
 
 const BRAND_BLUE = '#0033C6';
-const BRAND_RED = '#E71A3B';
 const BRAND_BLUE_DARK = '#00248a';
-const CHART_COLORS = [BRAND_BLUE, BRAND_RED, BRAND_BLUE_DARK, '#d11a36', '#7f95e8', '#f3a5b2'];
+const BRAND_RED = '#E71A3B';
+const CHART_COLORS = [BRAND_BLUE, '#3558D4', '#5F7AE1', '#7F95E8', '#AAB8EE', '#CBD4F4'];
 
 const toDateKey = (d: Date) => formatLocalDate(d);
 
@@ -84,6 +95,8 @@ export const ManagerCapacity: React.FC = () => {
   const [nameFilter, setNameFilter] = useState('');
   const [includeInactive, setIncludeInactive] = useState(false);
   const [includeWithoutTimesheet, setIncludeWithoutTimesheet] = useState(false);
+  const [sortColumn, setSortColumn] = useState<CapacitySortColumn>('utilizationPct');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   const currentUser = store.getCurrentUser();
 
@@ -152,7 +165,11 @@ export const ManagerCapacity: React.FC = () => {
       entriesByUser.set(entry.userId, list);
     });
 
-    return scopedUsers
+    const filteredRows = scopedUsers
+      .filter((u) => {
+        const isLeadershipWithoutTimesheet = (u.role === 'MANAGER' || u.role === 'ADMIN') && u.requiresTimesheet === false;
+        return !isLeadershipWithoutTimesheet;
+      })
       .filter((u) => {
         if (includeInactive || u.isActive !== false) return true;
         if (!u.terminationDate) return false;
@@ -225,6 +242,22 @@ export const ManagerCapacity: React.FC = () => {
       })
       .filter((row) => row.activeInYear)
       .sort((a, b) => b.utilizationPct - a.utilizationPct);
+
+    return filteredRows.sort((a, b) => {
+      const directionFactor = sortDirection === 'asc' ? 1 : -1;
+
+      if (sortColumn === 'terminationDate') {
+        const valueA = a.terminationDate || '';
+        const valueB = b.terminationDate || '';
+        return valueA.localeCompare(valueB, 'pt-BR') * directionFactor;
+      }
+
+      if (sortColumn === 'admissionDate' || sortColumn === 'userName' || sortColumn === 'areaLabel' || sortColumn === 'managerName') {
+        return String(a[sortColumn]).localeCompare(String(b[sortColumn]), 'pt-BR') * directionFactor;
+      }
+
+      return ((a[sortColumn] as number) - (b[sortColumn] as number)) * directionFactor;
+    });
   }, [
     scopedUsers,
     entries,
@@ -236,8 +269,27 @@ export const ManagerCapacity: React.FC = () => {
     nameFilter,
     includeInactive,
     includeWithoutTimesheet,
-    managerMap
+    managerMap,
+    sortColumn,
+    sortDirection
   ]);
+
+  const handleSort = (column: CapacitySortColumn) => {
+    if (sortColumn === column) {
+      setSortDirection((current) => current === 'asc' ? 'desc' : 'asc');
+      return;
+    }
+
+    setSortColumn(column);
+    setSortDirection(column === 'userName' || column === 'areaLabel' || column === 'managerName' || column === 'admissionDate' || column === 'terminationDate' ? 'asc' : 'desc');
+  };
+
+  const SortIcon = ({ column }: { column: CapacitySortColumn }) => {
+    if (sortColumn !== column) return <ArrowUpDown size={14} className="text-slate-400" />;
+    return sortDirection === 'asc'
+      ? <ArrowUp size={14} className="text-[#0033C6]" />
+      : <ArrowDown size={14} className="text-[#0033C6]" />;
+  };
 
   const summary = useMemo(() => {
     const totalAvailableYear = rows.reduce((sum, row) => sum + row.availableYearHours, 0);
@@ -434,13 +486,13 @@ export const ManagerCapacity: React.FC = () => {
 
         <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
           <p className="text-xs text-slate-500 font-bold uppercase">Horas consumidas ate hoje</p>
-          <p className="text-2xl font-bold text-[#E71A3B] mt-2">{formatHours(summary.totalConsumedToDate)}</p>
+          <p className="text-2xl font-bold text-[#3558D4] mt-2">{formatHours(summary.totalConsumedToDate)}</p>
           <p className="text-xs text-slate-500 mt-1">Lancamentos acumulados no ano</p>
         </div>
 
         <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
           <p className="text-xs text-slate-500 font-bold uppercase">Taxa de consumo</p>
-          <p className="text-2xl font-bold text-[#E71A3B] mt-2">{formatPercentage(summary.utilization)}%</p>
+          <p className="text-2xl font-bold text-[#3558D4] mt-2">{formatPercentage(summary.utilization)}%</p>
           <p className="text-xs text-slate-500 mt-1">Consumido / disponivel do ano</p>
         </div>
       </section>
@@ -459,7 +511,7 @@ export const ManagerCapacity: React.FC = () => {
                 <YAxis />
                 <Tooltip formatter={(value: any) => `${formatHours(Number(value))}h`} />
                 <Legend />
-                <Bar dataKey="consumed" name="Consumido" fill={BRAND_RED} radius={[6, 6, 0, 0]} />
+                <Bar dataKey="consumed" name="Consumido" fill={BRAND_BLUE_DARK} radius={[6, 6, 0, 0]} />
                 <Bar dataKey="remaining" name="Restante" fill={BRAND_BLUE} radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -486,8 +538,8 @@ export const ManagerCapacity: React.FC = () => {
                   paddingAngle={2}
                   dataKey="value"
                 >
-                  <Cell fill={BRAND_RED} />
-                  <Cell fill={BRAND_BLUE} />
+                  <Cell fill={BRAND_BLUE_DARK} />
+                  <Cell fill="#9FB1F1" />
                 </Pie>
                 <Tooltip formatter={(value: any) => `${formatHours(Number(value))}h`} />
                 <Legend />
@@ -501,7 +553,7 @@ export const ManagerCapacity: React.FC = () => {
         <div className="xl:col-span-2 bg-white rounded-xl border border-slate-100 shadow-sm p-5">
           <div className="flex items-center gap-2 mb-4">
             <Clock3 size={18} className="text-brand-600" />
-            <h2 className="font-semibold text-slate-800">Top Pessoas por Consumo</h2>
+            <h2 className="font-semibold text-slate-800">Top Colaboradores por Consumo</h2>
           </div>
           <div className="h-[320px]">
             <ResponsiveContainer width="100%" height="100%">
@@ -511,7 +563,7 @@ export const ManagerCapacity: React.FC = () => {
                 <YAxis />
                 <Tooltip formatter={(value: any) => `${formatHours(Number(value))}h`} />
                 <Legend />
-                <Bar dataKey="consumed" name="Consumido" fill={BRAND_RED} radius={[6, 6, 0, 0]} />
+                <Bar dataKey="consumed" name="Consumido" fill={BRAND_BLUE_DARK} radius={[6, 6, 0, 0]} />
                 <Bar dataKey="remaining" name="Disponivel ate 31/12" fill={BRAND_BLUE} radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -551,22 +603,67 @@ export const ManagerCapacity: React.FC = () => {
 
       <section className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
         <div className="p-4 border-b border-slate-100 bg-slate-50 flex flex-wrap items-center justify-between gap-2">
-          <h2 className="font-semibold text-slate-800">Visao por Pessoa</h2>
+          <h2 className="font-semibold text-slate-800">Visao por Colaborador</h2>
           <span className="text-xs text-slate-500">{rows.length} colaborador(es) no recorte</span>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead className="bg-white border-b border-slate-200 text-slate-500 font-semibold">
               <tr>
-                <th className="px-4 py-3">Pessoa</th>
-                <th className="px-4 py-3">Area</th>
-                <th className="px-4 py-3">Equipe</th>
-                <th className="px-4 py-3">Admissao</th>
-                <th className="px-4 py-3">Desligamento</th>
-                <th className="px-4 py-3 text-right">Disponivel ano</th>
-                <th className="px-4 py-3 text-right">Disponivel ate 31/12</th>
-                <th className="px-4 py-3 text-right">Consumido ate hoje</th>
-                <th className="px-4 py-3 text-right">% Consumo</th>
+                <th className="px-4 py-3">
+                  <button type="button" className="inline-flex items-center gap-2 hover:text-slate-700 transition-colors" onClick={() => handleSort('userName')} title="Nome do colaborador considerado no recorte atual de capacity.">
+                    Colaborador
+                    <SortIcon column="userName" />
+                  </button>
+                </th>
+                <th className="px-4 py-3">
+                  <button type="button" className="inline-flex items-center gap-2 hover:text-slate-700 transition-colors" onClick={() => handleSort('areaLabel')} title="Área organizacional cadastrada para o colaborador.">
+                    Area
+                    <SortIcon column="areaLabel" />
+                  </button>
+                </th>
+                <th className="px-4 py-3">
+                  <button type="button" className="inline-flex items-center gap-2 hover:text-slate-700 transition-colors" onClick={() => handleSort('managerName')} title="Equipe do colaborador com base no gestor responsável.">
+                    Equipe
+                    <SortIcon column="managerName" />
+                  </button>
+                </th>
+                <th className="px-4 py-3">
+                  <button type="button" className="inline-flex items-center gap-2 hover:text-slate-700 transition-colors" onClick={() => handleSort('admissionDate')} title="Data de admissão usada para iniciar o cálculo das horas disponíveis dentro do ano selecionado.">
+                    Admissao
+                    <SortIcon column="admissionDate" />
+                  </button>
+                </th>
+                <th className="px-4 py-3">
+                  <button type="button" className="inline-flex items-center gap-2 hover:text-slate-700 transition-colors" onClick={() => handleSort('terminationDate')} title="Data de desligamento usada para encerrar o cálculo quando o colaborador saiu durante o ano selecionado.">
+                    Desligamento
+                    <SortIcon column="terminationDate" />
+                  </button>
+                </th>
+                <th className="px-4 py-3 text-right">
+                  <button type="button" className="inline-flex items-center justify-end gap-2 hover:text-slate-700 transition-colors w-full" onClick={() => handleSort('availableYearHours')} title="Total de horas úteis disponíveis no ano, considerando admissão, desligamento, feriados e exceções do calendário.">
+                    Disponivel ano
+                    <SortIcon column="availableYearHours" />
+                  </button>
+                </th>
+                <th className="px-4 py-3 text-right">
+                  <button type="button" className="inline-flex items-center justify-end gap-2 hover:text-slate-700 transition-colors w-full" onClick={() => handleSort('remainingYearHours')} title="Total de horas disponíveis de hoje até 31/12, calculado com base nos colaboradores ativos no período restante do ano.">
+                    Disponivel ate 31/12
+                    <SortIcon column="remainingYearHours" />
+                  </button>
+                </th>
+                <th className="px-4 py-3 text-right">
+                  <button type="button" className="inline-flex items-center justify-end gap-2 hover:text-slate-700 transition-colors w-full" onClick={() => handleSort('consumedToDateHours')} title="Horas já lançadas pelo colaborador do início do recorte até a data de hoje.">
+                    Consumido ate hoje
+                    <SortIcon column="consumedToDateHours" />
+                  </button>
+                </th>
+                <th className="px-4 py-3 text-right">
+                  <button type="button" className="inline-flex items-center justify-end gap-2 hover:text-slate-700 transition-colors w-full" onClick={() => handleSort('utilizationPct')} title="Percentual consumido em relação à disponibilidade total do ano para o colaborador.">
+                    % Consumo
+                    <SortIcon column="utilizationPct" />
+                  </button>
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
