@@ -539,7 +539,7 @@ export const ManagerCapacity: React.FC = () => {
                 onChange={(e) => setIncludeWithoutTimesheet(e.target.checked)}
                 className="rounded text-brand-600"
               />
-              Incluir sem timesheet
+              Incluir gestores
             </label>
           </div>
         </div>

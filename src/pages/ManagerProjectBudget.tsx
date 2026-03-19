@@ -1,18 +1,29 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { store } from '../services/store';
-import { Project, TimesheetEntry, User, formatHours, formatPercentage } from '../types';
+import { Project, TimesheetEntry, User, UserArea, formatHours, formatPercentage } from '../types';
 import { Search, TrendingUp, AlertTriangle, CheckCircle, Loader2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 
 interface ProjectBudgetData {
   id: string;
   name: string;
   code: string;
+  area: UserArea | 'SEM_AREA';
+  areaLabel: string;
   budgeted: number;
   consumed: number;
   percentage: number;
   status: 'safe' | 'warning' | 'danger';
 }
+
+const AREA_LABEL: Record<UserArea, string> = {
+  AUDITORIA_INTERNA: 'Auditoria Interna',
+  CONTROLES_INTERNOS: 'Controles Internos',
+  COMPLIANCE: 'Compliance',
+  CANAL_DENUNCIAS: 'Canal de Denuncias',
+  GESTAO_RISCOS_DIGITAIS: 'Gestao de Riscos Digitais',
+  OUTROS: 'Outros'
+};
 
 export const ManagerProjectBudget: React.FC = () => {
   const navigate = useNavigate();
@@ -26,6 +37,7 @@ export const ManagerProjectBudget: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<'all' | 'safe' | 'warning' | 'danger'>('all');
   const [selectedProjectIds, setSelectedProjectIds] = useState<Set<string>>(new Set());
   const [teamFilter, setTeamFilter] = useState('');
+  const [areaFilter, setAreaFilter] = useState<UserArea | 'SEM_AREA' | ''>('');
   const [codePrefixFilter, setCodePrefixFilter] = useState('');
   const [sortColumn, setSortColumn] = useState<'name' | 'budgeted' | 'consumed' | 'percentage'>('percentage');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
@@ -34,8 +46,8 @@ export const ManagerProjectBudget: React.FC = () => {
     loadData();
   }, []);
 
-  const buildProjectData = (projectsList: Project[], entriesList: TimesheetEntry[]) => {
-    return projectsList.map(p => {
+  const buildProjectData = (projectsList: Project[], entriesList: TimesheetEntry[]): ProjectBudgetData[] => {
+    return projectsList.map((p): ProjectBudgetData => {
       const consumed = entriesList
         .filter(e => e.projectId === p.id)
         .reduce((acc, curr) => acc + curr.hours, 0);
@@ -46,10 +58,14 @@ export const ManagerProjectBudget: React.FC = () => {
       if (percentage > 100) status = 'danger';
       else if (percentage >= 85) status = 'warning';
 
+      const area: UserArea | 'SEM_AREA' = p.area ?? 'SEM_AREA';
+
       return {
         id: p.id,
         name: p.name,
         code: p.code,
+        area,
+        areaLabel: area === 'SEM_AREA' ? 'Sem area' : AREA_LABEL[area],
         budgeted: p.budgetedHours,
         consumed: consumed,
         percentage: percentage,
@@ -101,6 +117,11 @@ export const ManagerProjectBudget: React.FC = () => {
       result = result.filter(p => p.code.startsWith(codePrefixFilter));
     }
 
+    // filtro por área do projeto
+    if (areaFilter) {
+      result = result.filter(p => p.area === areaFilter);
+    }
+
     // filtro de status
     if (statusFilter !== 'all') {
       result = result.filter(p => p.status === statusFilter);
@@ -129,7 +150,7 @@ export const ManagerProjectBudget: React.FC = () => {
     });
 
     setFilteredData(result);
-  }, [searchTerm, statusFilter, projectData, selectedProjectIds, codePrefixFilter, teamFilter, sortColumn, sortDirection]);
+  }, [searchTerm, statusFilter, projectData, selectedProjectIds, codePrefixFilter, areaFilter, teamFilter, sortColumn, sortDirection]);
 
   useEffect(() => {
     if (!projects.length) return;
@@ -228,7 +249,7 @@ export const ManagerProjectBudget: React.FC = () => {
       {/* filtros e tabela */}
       <div className="space-y-4">
         <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-4">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             {/* busca */}
             <div>
               <label className="block text-xs font-bold text-slate-500 mb-2">Buscar Projeto</label>
@@ -273,6 +294,22 @@ export const ManagerProjectBudget: React.FC = () => {
                 <option value="safe">Dentro do Orçado</option>
                 <option value="warning">Próximo do Limite</option>
                 <option value="danger">Acima do Orçado</option>
+              </select>
+            </div>
+
+            {/* filtro de área */}
+            <div>
+              <label className="block text-xs font-bold text-slate-500 mb-2">Área</label>
+              <select
+                value={areaFilter}
+                onChange={(e) => setAreaFilter((e.target.value || '') as UserArea | 'SEM_AREA' | '')}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none"
+              >
+                <option value="">Todas</option>
+                <option value="SEM_AREA">Sem area</option>
+                {Object.entries(AREA_LABEL).map(([value, label]) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
               </select>
             </div>
 

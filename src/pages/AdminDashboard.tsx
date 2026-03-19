@@ -4,7 +4,6 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { store, SUPABASE_SCHEMA_SQL } from '../services/store';
 import { User, Project, TimesheetEntry, CalendarException, UserArea, formatHours } from '../types';
 import { Database, Edit, Filter, Calendar, Trash2, Loader2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
-import { MyStatusWidget } from '../components/MyStatusWidget';
 import { formatDateForDisplay } from '../utils/date';
 
 interface ManagerApprovalBacklogGroup {
@@ -386,8 +385,8 @@ export const AdminDashboard: React.FC = () => {
   if (loading && users.length === 0) return <div className="flex items-center justify-center h-screen"><Loader2 className="animate-spin text-brand-600" /></div>;
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-      <div className="lg:col-span-3 space-y-6">
+        <div className="space-y-6">
+            <div className="space-y-6">
         <h1 className="text-2xl font-bold text-slate-800">Administração do Sistema</h1>
         
         <div className="flex border-b border-gray-200 overflow-x-auto">
@@ -992,12 +991,6 @@ export const AdminDashboard: React.FC = () => {
               </div>
           </div>
         )}
-      </div>
-
-    {/* coluna direita: status pessoal do admin */}
-      <div className="lg:col-span-1 space-y-6">
-           <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider">Meu Controle</h3>
-           {currentUser && <MyStatusWidget userId={currentUser.id} />}
       </div>
     </div>
   );
