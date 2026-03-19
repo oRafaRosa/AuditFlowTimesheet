@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   ResponsiveContainer,
   BarChart,
@@ -111,6 +112,7 @@ const countWorkingDays = (start: Date, end: Date, holidays: Holiday[], exception
 
 export const ManagerCapacity: React.FC = () => {
   const currentYear = new Date().getFullYear();
+  const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState<User[]>([]);
@@ -349,6 +351,10 @@ export const ManagerCapacity: React.FC = () => {
     setSelectedManagerId(managerId);
     setSelectedArea(area);
     if (clearName) setNameFilter('');
+  };
+
+  const openManagerReportByUser = (userId: string) => {
+    navigate(`/manager/reports?userId=${userId}`);
   };
 
   const clearAllFilters = () => {
@@ -715,7 +721,16 @@ export const ManagerCapacity: React.FC = () => {
                 <tbody className="divide-y divide-slate-100">
                   {timesheetGapHighlights.map((row) => (
                     <tr key={row.userId} className="hover:bg-slate-50">
-                      <td className="py-2 pr-3 font-medium text-slate-800">{row.userName}</td>
+                      <td className="py-2 pr-3 font-medium text-slate-800">
+                        <button
+                          type="button"
+                          onClick={() => openManagerReportByUser(row.userId)}
+                          className="text-left text-brand-700 hover:text-brand-800 hover:underline"
+                          title="Abrir Relatórios Gerenciais filtrado para este colaborador"
+                        >
+                          {row.userName}
+                        </button>
+                      </td>
                       <td className="py-2 pr-3 text-slate-600">{row.areaLabel}</td>
                       <td className="py-2 pr-3 text-slate-600">{row.managerName}</td>
                       <td className="py-2 pr-3 text-right text-slate-600">{formatHours(row.elapsedToDateHours)}h</td>
