@@ -15,6 +15,7 @@ import {
   Clock, 
   LogOut, 
   Menu,
+  X,
   ShieldCheck,
   PieChart,
   Settings,
@@ -63,6 +64,21 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         setShowPasswordModal(true);
     }
   }, [user?.isDefaultPassword]);
+
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [mobileMenuOpen]);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -558,9 +574,10 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
   const isActive = (path: string) => location.pathname === path;
 
-  const NavItem = ({ to, icon: Icon, label, locked = false }: any) => (
+  const NavItem = ({ to, icon: Icon, label, locked = false, onClick }: any) => (
     <Link
       to={to}
+      onClick={onClick}
       className={`flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
         isActive(to)
           ? 'bg-brand-50 text-brand-600'
@@ -685,18 +702,128 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
          </div>
          <div className="flex items-center gap-4">
              <div className="relative">
-                 <button onClick={() => setShowNotificationPanel(!showNotificationPanel)} className="p-2 text-slate-600 relative">
+                 <button
+                   onClick={() => {
+                     setMobileMenuOpen(false);
+                     setShowNotificationPanel(!showNotificationPanel);
+                   }}
+                   className="p-2 text-slate-600 relative"
+                 >
                      <Bell size={20} />
                      {notifications.length > 0 && (
                          <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border border-white"></span>
                      )}
                  </button>
              </div>
-             <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="p-2 text-slate-600">
+             <button
+               onClick={() => {
+                 setShowNotificationPanel(false);
+                 setMobileMenuOpen(!mobileMenuOpen);
+               }}
+               className="p-2 text-slate-600"
+             >
                 <Menu size={24} />
              </button>
          </div>
       </div>
+
+      {/* menu mobile */}
+      {mobileMenuOpen && (
+        <div className="md:hidden fixed inset-0 z-40" role="dialog" aria-modal="true" aria-label="Menu principal">
+          <div className="absolute inset-0 bg-black/45" onClick={() => setMobileMenuOpen(false)} />
+          <aside className="absolute top-0 right-0 h-full w-[86%] max-w-sm bg-white shadow-2xl flex flex-col">
+            <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+              <div className="text-sm font-semibold text-slate-700">Menu</div>
+              <button
+                onClick={() => setMobileMenuOpen(false)}
+                className="p-2 text-slate-600 rounded-lg hover:bg-slate-100"
+                aria-label="Fechar menu"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+              {user.role === 'ADMIN' && (
+                <>
+                  <div className="px-4 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">Administração</div>
+                  <NavItem to="/admin" icon={ShieldCheck} label="Painel Admin" onClick={() => setMobileMenuOpen(false)} />
+                  <NavItem to="/admin/users" icon={Users} label="Usuários" onClick={() => setMobileMenuOpen(false)} />
+                  <NavItem to="/admin/projects" icon={Briefcase} label="Trabalhos" onClick={() => setMobileMenuOpen(false)} />
+                </>
+              )}
+
+              {(user.role === 'MANAGER' || user.role === 'ADMIN') && (
+                <>
+                  <div className="px-4 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider mt-4">Gestão</div>
+                  <NavItem to="/manager" icon={PieChart} label="Dashboard Equipe" onClick={() => setMobileMenuOpen(false)} />
+                  <NavItem to="/manager/budget" icon={TrendingUp} label="Orçado vs Realizado" onClick={() => setMobileMenuOpen(false)} />
+                  <NavItem to="/manager/reports" icon={FileBarChart} label="Relatórios" onClick={() => setMobileMenuOpen(false)} />
+                </>
+              )}
+
+              <div className="px-4 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider mt-4">Meu Espaço</div>
+              <NavItem to="/dashboard" icon={LayoutDashboard} label="Meu Dashboard" onClick={() => setMobileMenuOpen(false)} />
+              <NavItem to="/timesheet" icon={Clock} label="Meus Lançamentos" onClick={() => setMobileMenuOpen(false)} />
+              <NavItem to="/reports" icon={TableProperties} label="Relatórios Detalhados" onClick={() => setMobileMenuOpen(false)} />
+              <NavItem to="/achievements" icon={Trophy} label="Ranking & Conquistas" locked={!GAMIFICATION_ENABLED} onClick={() => setMobileMenuOpen(false)} />
+
+              <div className="px-4 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider mt-4">Nossos Apps</div>
+              <a
+                href="https://orafarosa.github.io/AuditFlowSampling/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+              >
+                <ExternalLink size={20} />
+                AuditFlow Sampling
+              </a>
+              <a
+                href="https://orafarosa.github.io/AuditFlow-RiskMap/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+              >
+                <ExternalLink size={20} />
+                AuditFlow RiskMap
+              </a>
+
+              <div className="mt-4 border-t border-gray-100 pt-4">
+                <NavItem to="/help" icon={BookOpen} label="Ajuda & Sobre" onClick={() => setMobileMenuOpen(false)} />
+              </div>
+            </nav>
+
+            <div className="p-4 border-t border-gray-100">
+              <div className="flex items-center gap-3 px-2 py-2">
+                <img src={user.avatarUrl} alt="Avatar" className="w-9 h-9 rounded-full bg-slate-200" />
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-slate-900 truncate">{user.name}</p>
+                  <button
+                    onClick={() => {
+                      setShowPasswordModal(true);
+                      setMobileMenuOpen(false);
+                    }}
+                    className="text-xs text-brand-600 hover:text-brand-800 flex items-center gap-1 mt-0.5"
+                  >
+                    <Settings size={10} /> Alterar Senha
+                  </button>
+                </div>
+              </div>
+
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  handleLogout();
+                }}
+                className="mt-2 w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+              >
+                <LogOut size={16} />
+                Sair
+              </button>
+            </div>
+          </aside>
+        </div>
+      )}
 
       {/* barra topo desktop */}
       <div className="hidden md:block fixed top-6 right-8 z-20">
