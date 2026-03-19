@@ -309,6 +309,7 @@ export const ManagerCapacity: React.FC = () => {
     const totalAvailableYear = rows.reduce((sum, row) => sum + row.availableYearHours, 0);
     const totalRemainingYear = rows.reduce((sum, row) => sum + row.remainingYearHours, 0);
     const totalConsumedToDate = rows.reduce((sum, row) => sum + row.consumedToDateHours, 0);
+    const totalElapsedYear = Math.max(totalAvailableYear - totalRemainingYear, 0);
 
     const utilization = totalAvailableYear > 0
       ? (totalConsumedToDate / totalAvailableYear) * 100
@@ -318,6 +319,7 @@ export const ManagerCapacity: React.FC = () => {
       totalAvailableYear,
       totalRemainingYear,
       totalConsumedToDate,
+      totalElapsedYear,
       utilization
     };
   }, [rows]);
@@ -508,7 +510,8 @@ export const ManagerCapacity: React.FC = () => {
         <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
           <p className="text-xs text-slate-500 font-bold uppercase">Horas consumidas ate hoje</p>
           <p className="mt-2 text-2xl font-bold text-brand-700">{formatHours(summary.totalConsumedToDate)}</p>
-          <p className="text-xs text-slate-500 mt-1">Lancamentos acumulados no ano</p>
+          <p className="text-xs text-slate-500 mt-1">Com base nas horas apontadas no timesheet</p>
+          <p className="text-[11px] text-slate-400 mt-2">{formatHours(summary.totalElapsedYear)}h uteis ja decorridas ate hoje no ano</p>
         </div>
 
         <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
