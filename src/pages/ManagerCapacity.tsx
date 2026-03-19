@@ -1,12 +1,17 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
   Tooltip,
+  CartesianGrid,
   PieChart,
   Pie,
   Cell
 } from 'recharts';
-import { Filter, Loader2, Users, CalendarClock, Clock3, TrendingUp, AlertTriangle, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { Filter, Loader2, Users, CalendarClock, TrendingUp, AlertTriangle, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { store } from '../services/store';
 import { CalendarException, Holiday, TimesheetEntry, User, UserArea, formatHours, formatPercentage } from '../types';
 import { buildCalendarMaps, isExpectedWorkingDay } from '../utils/workCalendar';
@@ -38,6 +43,10 @@ type CapacitySortColumn =
   | 'remainingYearHours'
   | 'consumedToDateHours'
   | 'utilizationPct';
+
+type AreaFilterValue = UserArea | '' | 'SEM_AREA';
+
+const NO_MANAGER_FILTER = 'SEM_GESTOR';
 
 const HOURS_PER_DAY = 8.8;
 
@@ -105,9 +114,8 @@ export const ManagerCapacity: React.FC = () => {
 
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [selectedManagerId, setSelectedManagerId] = useState('');
-  const [selectedArea, setSelectedArea] = useState<UserArea | ''>('');
+  const [selectedArea, setSelectedArea] = useState<AreaFilterValue>('');
   const [nameFilter, setNameFilter] = useState('');
-  const [includeInactive, setIncludeInactive] = useState(false);
   const [includeWithoutTimesheet, setIncludeWithoutTimesheet] = useState(false);
   const [sortColumn, setSortColumn] = useState<CapacitySortColumn>('utilizationPct');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
@@ -164,8 +172,8 @@ export const ManagerCapacity: React.FC = () => {
   }, [users]);
 
   const managerOptions = useMemo(() => {
-    return scopedUsers.filter((u) => (u.role === 'MANAGER' || u.role === 'ADMIN') && (u.isActive !== false || includeInactive));
-  }, [scopedUsers, includeInactive]);
+    return scopedUsers.filter((u) => u.role === 'MANAGER' || u.role === 'ADMIN');
+  }, [scopedUsers]);
 
   const rows = useMemo(() => {
     const today = parseDateOnly(formatLocalDate());
@@ -185,14 +193,22 @@ export const ManagerCapacity: React.FC = () => {
         return !isLeadershipWithoutTimesheet;
       })
       .filter((u) => {
-        if (includeInactive || u.isActive !== false) return true;
+        if (u.isActive !== false) return true;
         if (!u.terminationDate) return false;
 
         return parseDateOnly(u.terminationDate).getFullYear() === selectedYear;
       })
       .filter((u) => includeWithoutTimesheet || u.requiresTimesheet !== false)
-      .filter((u) => !selectedManagerId || u.id === selectedManagerId || u.managerId === selectedManagerId)
-      .filter((u) => !selectedArea || u.area === selectedArea)
+      .filter((u) => {
+        if (!selectedManagerId) return true;
+        if (selectedManagerId === NO_MANAGER_FILTER) return !u.managerId;
+        return u.id === selectedManagerId || u.managerId === selectedManagerId;
+      })
+      .filter((u) => {
+        if (!selectedArea) return true;
+        if (selectedArea === 'SEM_AREA') return !u.area;
+        return u.area === selectedArea;
+      })
       .filter((u) => !nameFilter.trim() || u.name.toLowerCase().includes(nameFilter.toLowerCase().trim()))
       .map((u) => {
         const admissionDate = u.admissionDate || '2020-01-01';
@@ -281,12 +297,17 @@ export const ManagerCapacity: React.FC = () => {
     selectedManagerId,
     selectedArea,
     nameFilter,
-    includeInactive,
     includeWithoutTimesheet,
     managerMap,
     sortColumn,
     sortDirection
   ]);
+
+  const applyChartFilters = ({ managerId = '', area = '', clearName = true }: { managerId?: string; area?: AreaFilterValue; clearName?: boolean }) => {
+    setSelectedManagerId(managerId);
+    setSelectedArea(area);
+    if (clearName) setNameFilter('');
+  };
 
   const handleSort = (column: CapacitySortColumn) => {
     if (sortColumn === column) {
@@ -325,12 +346,13 @@ export const ManagerCapacity: React.FC = () => {
   }, [rows]);
 
   const byTeamChart = useMemo(() => {
-    const grouped = new Map<string, { team: string; consumed: number; available: number; remaining: number; members: number }>();
+    const grouped = new Map<string, { team: string; managerFilter: string; consumed: number; available: number; remaining: number; members: number }>();
 
     rows.forEach((row) => {
-      const key = row.managerId || 'SEM_GESTOR';
+      const key = row.managerId || NO_MANAGER_FILTER;
       const current = grouped.get(key) || {
         team: row.managerName,
+        managerFilter: key,
         consumed: 0,
         available: 0,
         remaining: 0,
@@ -354,35 +376,22 @@ export const ManagerCapacity: React.FC = () => {
   }, [rows]);
 
   const byAreaChart = useMemo(() => {
-    const grouped = new Map<string, { area: string; consumed: number; available: number }>();
+    const grouped = new Map<string, { area: string; areaFilter: AreaFilterValue; consumed: number; available: number }>();
 
     rows.forEach((row) => {
       const key = row.area || 'SEM_AREA';
-      const current = grouped.get(key) || { area: row.areaLabel, consumed: 0, available: 0 };
+      const current = grouped.get(key) || { area: row.areaLabel, areaFilter: key as AreaFilterValue, consumed: 0, available: 0 };
       current.consumed += row.consumedToDateHours;
       current.available += row.availableYearHours;
       grouped.set(key, current);
     });
 
-    return [...grouped.values()].map((item) => ({
-      ...item,
-      utilization: item.available > 0 ? (item.consumed / item.available) * 100 : 0
-    }));
-  }, [rows]);
-
-  const topCollaborators = useMemo(() => {
-    return rows
-      .slice(0, 8)
-      .map((row) => ({
-        userId: row.userId,
-        name: row.userName,
-        team: row.managerName,
-        area: row.areaLabel,
-        consumed: row.consumedToDateHours,
-        remaining: row.remainingYearHours,
-        available: row.availableYearHours,
-        utilization: row.utilizationPct
-      }));
+    return [...grouped.values()]
+      .map((item) => ({
+        ...item,
+        utilization: item.available > 0 ? (item.consumed / item.available) * 100 : 0
+      }))
+      .sort((a, b) => b.available - a.available);
   }, [rows]);
 
   const committeeHighlights = useMemo(() => {
@@ -441,6 +450,7 @@ export const ManagerCapacity: React.FC = () => {
               onChange={(e) => setSelectedManagerId(e.target.value)}
             >
               <option value="">Todas</option>
+              <option value={NO_MANAGER_FILTER}>Sem Gestor</option>
               {managerOptions.map((manager) => (
                 <option key={manager.id} value={manager.id}>{manager.name}</option>
               ))}
@@ -452,9 +462,10 @@ export const ManagerCapacity: React.FC = () => {
             <select
               className="w-full rounded-lg border border-slate-300 p-2 text-sm outline-none focus:ring-2 focus:ring-brand-500"
               value={selectedArea}
-              onChange={(e) => setSelectedArea((e.target.value || '') as UserArea | '')}
+              onChange={(e) => setSelectedArea((e.target.value || '') as AreaFilterValue)}
             >
               <option value="">Todas</option>
+              <option value="SEM_AREA">Sem area</option>
               {Object.entries(AREA_LABEL).map(([value, label]) => (
                 <option key={value} value={value}>{label}</option>
               ))}
@@ -472,15 +483,6 @@ export const ManagerCapacity: React.FC = () => {
           </div>
 
           <div className="flex flex-col justify-end gap-2">
-            <label className="flex items-center gap-2 text-xs text-slate-600">
-              <input
-                type="checkbox"
-                checked={includeInactive}
-                onChange={(e) => setIncludeInactive(e.target.checked)}
-                className="rounded text-brand-600"
-              />
-              Incluir inativos
-            </label>
             <label className="flex items-center gap-2 text-xs text-slate-600">
               <input
                 type="checkbox"
@@ -532,7 +534,13 @@ export const ManagerCapacity: React.FC = () => {
               const tone = getUtilizationTone(item.utilization);
 
               return (
-              <article key={item.team} className="rounded-xl border border-slate-200 p-4">
+              <button
+                key={item.team}
+                type="button"
+                onClick={() => applyChartFilters({ managerId: item.managerFilter })}
+                className="rounded-xl border border-slate-200 p-4 text-left transition-colors hover:border-brand-200 hover:bg-brand-50/40"
+                title="Clique para filtrar a tela por esta equipe."
+              >
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <h3 className="text-sm font-semibold text-slate-800">{item.team}</h3>
@@ -555,7 +563,7 @@ export const ManagerCapacity: React.FC = () => {
                 <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100">
                   <div className="h-full rounded-full" style={{ width: `${Math.min(item.utilization, 100)}%`, backgroundColor: tone.bar }} />
                 </div>
-              </article>
+              </button>
             )})}
           </div>
         </div>
@@ -611,75 +619,55 @@ export const ManagerCapacity: React.FC = () => {
       <section className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         <div className="xl:col-span-2 bg-white rounded-xl border border-slate-100 shadow-sm p-5">
           <div className="flex items-center gap-2 mb-4">
-            <Clock3 size={18} className="text-brand-600" />
-            <h2 className="font-semibold text-slate-800">Top Colaboradores por Consumo</h2>
+            <TrendingUp size={18} className="text-brand-600" />
+            <h2 className="font-semibold text-slate-800">Capacity vs Consumo por Area</h2>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {topCollaborators.map((item) => {
-              const tone = getUtilizationTone(item.utilization);
-
-              return (
-                <article key={item.userId} className="rounded-xl border border-slate-200 p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <h3 className="text-sm font-semibold text-slate-800">{item.name}</h3>
-                      <p className="mt-1 text-xs text-slate-500">{item.area} • {item.team}</p>
-                    </div>
-                    <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${tone.badge}`}>
-                      {formatPercentage(item.utilization)}%
-                    </span>
-                  </div>
-                  <div className="mt-4 grid grid-cols-2 gap-3">
-                    <div className="rounded-lg bg-slate-50 px-3 py-2">
-                      <p className="text-[11px] font-bold uppercase text-slate-500">Consumido</p>
-                      <p className="mt-1 font-semibold text-slate-900">{formatHours(item.consumed)}h</p>
-                    </div>
-                    <div className="rounded-lg bg-slate-50 px-3 py-2">
-                      <p className="text-[11px] font-bold uppercase text-slate-500">Restante</p>
-                      <p className="mt-1 font-semibold text-slate-900">{formatHours(item.remaining)}h</p>
-                    </div>
-                  </div>
-                  <p className="mt-3 text-xs text-slate-500">{formatHours(item.consumed)}h de {formatHours(item.available)}h no ano</p>
-                  <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
-                    <div className="h-full rounded-full" style={{ width: `${Math.min(item.utilization, 100)}%`, backgroundColor: tone.bar }} />
-                  </div>
-                </article>
-              );
-            })}
+          <div className="h-[380px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={byAreaChart} layout="vertical" margin={{ top: 8, right: 16, left: 24, bottom: 8 }} barCategoryGap={14}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis type="number" />
+                <YAxis type="category" dataKey="area" width={160} tickLine={false} axisLine={false} />
+                <Tooltip formatter={(value: any) => `${formatHours(Number(value))}h`} />
+                <Bar dataKey="available" name="Capacity" fill={BRAND_BLUE_SOFT} radius={[0, 6, 6, 0]} onClick={(data: any) => applyChartFilters({ area: data?.areaFilter })} />
+                <Bar dataKey="consumed" name="Consumido" fill={BRAND_BLUE_DARK} radius={[0, 6, 6, 0]} onClick={(data: any) => applyChartFilters({ area: data?.areaFilter })} />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
+          <p className="mt-3 text-xs text-slate-500">Clique em uma barra para filtrar automaticamente a tela pela area selecionada.</p>
         </div>
 
         <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
           <div className="flex items-center gap-2 mb-4">
-            <TrendingUp size={18} className="text-brand-600" />
-            <h2 className="font-semibold text-slate-800">Consumo por Area</h2>
+            <AlertTriangle size={18} className="text-amber-600" />
+            <h2 className="font-semibold text-slate-800">Alertas de Consumo</h2>
           </div>
-          <div className="space-y-3">
-            {byAreaChart.length === 0 && <p className="text-sm text-slate-400">Sem dados para o filtro atual.</p>}
-            {byAreaChart.map((item) => {
-              const tone = getUtilizationTone(item.utilization);
-
-              return (
-              <div key={item.area} className="rounded-lg border border-slate-200 p-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-semibold text-slate-700">{item.area}</p>
-                  <span className={`rounded-full px-2 py-1 text-xs font-bold ${tone.badge}`}>
-                    {formatPercentage(item.utilization)}%
-                  </span>
-                </div>
-                <p className="text-xs text-slate-500 mt-1">{formatHours(item.consumed)}h de {formatHours(item.available)}h</p>
-                <div className="w-full bg-slate-100 rounded-full h-2 mt-2 overflow-hidden">
-                  <div
-                    className="h-2 rounded-full"
-                    style={{
-                      width: `${Math.min(item.utilization, 100)}%`,
-                      backgroundColor: tone.bar
-                    }}
-                  />
-                </div>
-              </div>
-            )})}
-          </div>
+          {committeeHighlights.length === 0 ? (
+            <p className="text-sm text-slate-500">Sem alertas de consumo acima de 85% para o recorte atual.</p>
+          ) : (
+            <div className="grid grid-cols-1 gap-3">
+              {committeeHighlights.map((row) => (
+                <button
+                  key={row.userId}
+                  type="button"
+                  onClick={() => {
+                    setSelectedManagerId(row.managerId || NO_MANAGER_FILTER);
+                    setSelectedArea((row.area || 'SEM_AREA') as AreaFilterValue);
+                    setNameFilter(row.userName);
+                  }}
+                  className="rounded-lg border border-red-200 bg-red-50 p-3 text-left transition-colors hover:border-red-300 hover:bg-red-100"
+                  title="Clique para filtrar a tela por este colaborador."
+                >
+                  <p className="text-sm font-semibold text-red-700">{row.userName}</p>
+                  <p className="mt-1 text-xs text-red-700">{row.areaLabel} • {row.managerName}</p>
+                  <p className="mt-2 text-xs text-red-700">
+                    {formatHours(row.consumedToDateHours)}h consumidas de {formatHours(row.availableYearHours)}h
+                  </p>
+                  <p className="mt-1 text-xs font-bold text-red-700">{formatPercentage(row.utilizationPct)}% de consumo</p>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
@@ -776,29 +764,6 @@ export const ManagerCapacity: React.FC = () => {
             </tbody>
           </table>
         </div>
-      </section>
-
-      <section className="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
-        <div className="flex items-center gap-2 mb-4">
-          <AlertTriangle size={18} className="text-amber-600" />
-          <h2 className="font-semibold text-slate-800">Highlights para Apresentacao em Comite</h2>
-        </div>
-        {committeeHighlights.length === 0 ? (
-          <p className="text-sm text-slate-500">Sem alertas de consumo acima de 85% para o recorte atual.</p>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
-            {committeeHighlights.map((row) => (
-              <div key={row.userId} className="rounded-lg border border-[#f2b7c1] bg-[#fff6f7] p-3">
-                <p className="text-sm font-semibold text-[#b3132f]">{row.userName}</p>
-                <p className="text-xs text-[#b3132f] mt-1">{row.areaLabel} • {row.managerName}</p>
-                <p className="text-xs text-[#b3132f] mt-2">
-                  {formatHours(row.consumedToDateHours)}h consumidas de {formatHours(row.availableYearHours)}h
-                </p>
-                <p className="text-xs font-bold text-[#b3132f] mt-1">{formatPercentage(row.utilizationPct)}% de consumo</p>
-              </div>
-            ))}
-          </div>
-        )}
       </section>
     </div>
   );
