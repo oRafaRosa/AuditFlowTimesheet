@@ -223,9 +223,13 @@ export const ManagerCapacity: React.FC = () => {
 
     const filteredRows = scopedUsers
       .filter((u) => {
-        const isLeadershipWithoutTimesheet = (u.role === 'MANAGER' || u.role === 'ADMIN') && u.requiresTimesheet === false;
-        if (isLeadershipWithoutTimesheet && !includeWithoutTimesheet) return false;
-        return true;
+        // Quem está marcado como "sem timesheet" não entra no capacity.
+        if (u.requiresTimesheet === false) return false;
+
+        // Checkbox mantém o comportamento de incluir lideranças no recorte.
+        if (includeWithoutTimesheet) return true;
+
+        return u.role !== 'MANAGER' && u.role !== 'ADMIN';
       })
       .filter((u) => {
         if (u.isActive !== false) return true;
