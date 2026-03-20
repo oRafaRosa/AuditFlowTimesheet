@@ -31,11 +31,11 @@ const formatRiskCode = (value: string) => {
 // Paleta fixa da matriz alinhada ao print de referencia.
 const getCellColor = (col: number, row: number) => {
   const colorMap = [
-    ['#f3ea00', '#f3ea00', '#ffbf00', '#ff331f', '#ff1f1f'],
-    ['#5e8a3a', '#f3ea00', '#ffc400', '#ffbf00', '#ff331f'],
-    ['#5e8a3a', '#5e8a3a', '#f3ea00', '#ffc400', '#ffbf00'],
-    ['#2f31e8', '#5e8a3a', '#5e8a3a', '#f3ea00', '#ffc400'],
-    ['#2f31e8', '#2f31e8', '#5e8a3a', '#f3ea00', '#f3ea00']
+    ['rgba(243, 234, 0, 0.78)', 'rgba(243, 234, 0, 0.78)', 'rgba(255, 191, 0, 0.76)', 'rgba(255, 51, 31, 0.76)', 'rgba(255, 31, 31, 0.78)'],
+    ['rgba(94, 138, 58, 0.80)', 'rgba(243, 234, 0, 0.78)', 'rgba(255, 196, 0, 0.76)', 'rgba(255, 191, 0, 0.76)', 'rgba(255, 51, 31, 0.76)'],
+    ['rgba(94, 138, 58, 0.80)', 'rgba(94, 138, 58, 0.80)', 'rgba(243, 234, 0, 0.78)', 'rgba(255, 196, 0, 0.76)', 'rgba(255, 191, 0, 0.76)'],
+    ['rgba(47, 49, 232, 0.76)', 'rgba(94, 138, 58, 0.80)', 'rgba(94, 138, 58, 0.80)', 'rgba(243, 234, 0, 0.78)', 'rgba(255, 196, 0, 0.76)'],
+    ['rgba(47, 49, 232, 0.76)', 'rgba(47, 49, 232, 0.76)', 'rgba(94, 138, 58, 0.80)', 'rgba(243, 234, 0, 0.78)', 'rgba(243, 234, 0, 0.78)']
   ];
 
   return colorMap[row]?.[col] ?? 'rgba(255, 255, 255, 1)';
@@ -104,33 +104,34 @@ export const RiskMatrix: React.FC = () => {
     const mitigation = inherentScore > 0
       ? Math.max(0, ((inherentScore - residualScore) / inherentScore) * 100)
       : 0;
-    const title = record.title.length > 22 ? record.title.substring(0, 22) + '...' : record.title;
-    const tw = 232;
-    const th = 84;
+    const title = record.title.length > 24 ? record.title.substring(0, 24) + '...' : record.title;
+    const tw = 248;
+    const th = 94;
     const tx = x > 560 ? x - tw - 18 : x + 18;
     const ty = Math.min(Math.max(y - 42, 8), 470 - th - 8);
 
     return (
       <g style={{ pointerEvents: 'none' }}>
-        <rect x={tx + 4} y={ty + 4} width={tw} height={th} rx={12} fill="rgba(15, 23, 42, 0.16)" />
-        <rect x={tx} y={ty} width={tw} height={th} rx={12} fill="#111827" stroke="rgba(255,255,255,0.08)" strokeWidth={1} />
+        <rect x={tx + 5} y={ty + 5} width={tw} height={th} rx={14} fill="rgba(15, 23, 42, 0.12)" />
+        <rect x={tx} y={ty} width={tw} height={th} rx={14} fill="#162032" stroke="rgba(255,255,255,0.08)" strokeWidth={1} />
 
-        <text x={tx + 12} y={ty + 18} fontSize={12} fontWeight="700" fill="#f8fafc">{formattedCode}</text>
-        <text x={tx + tw - 12} y={ty + 18} textAnchor="end" fontSize={10} fill="#cbd5e1">{title}</text>
+        <rect x={tx + 12} y={ty + 12} width="48" height="24" rx="8" fill="#0f172a" stroke="rgba(255,255,255,0.10)" strokeWidth={1} />
+        <text x={tx + 36} y={ty + 28} textAnchor="middle" fontSize={10} fontWeight="700" fill="#f8fafc">{formattedCode}</text>
+        <text x={tx + tw - 12} y={ty + 28} textAnchor="end" fontSize={9} fill="#e2e8f0">{title}</text>
 
-        <rect x={tx + 10} y={ty + 26} width="102" height="32" rx="6" fill="#1f2937" />
-        <rect x={tx + 120} y={ty + 26} width="102" height="32" rx="6" fill="#1f2937" />
+        <rect x={tx + 12} y={ty + 44} width="106" height="30" rx="8" fill="rgba(255,255,255,0.05)" />
+        <rect x={tx + 130} y={ty + 44} width="106" height="30" rx="8" fill="rgba(255,255,255,0.05)" />
 
-        <text x={tx + 61} y={ty + 38} textAnchor="middle" fontSize={8} fill="#94a3b8">Inerente</text>
-        <text x={tx + 61} y={ty + 50} textAnchor="middle" fontSize={10} fontWeight="700" fill="#f8fafc">{record.inherentImpact.toFixed(3)} x {record.inherentProbability.toFixed(3)}</text>
-        <text x={tx + 61} y={ty + 61} textAnchor="middle" fontSize={8} fill="#cbd5e1">Score: {inherentScore.toFixed(3)}</text>
+        <text x={tx + 65} y={ty + 56} textAnchor="middle" fontSize={7} fill="#94a3b8">Inerente</text>
+        <text x={tx + 65} y={ty + 68} textAnchor="middle" fontSize={9} fontWeight="700" fill="#f8fafc">{record.inherentImpact.toFixed(3)} x {record.inherentProbability.toFixed(3)}</text>
+        <text x={tx + 65} y={ty + 78} textAnchor="middle" fontSize={7} fill="#cbd5e1">Score {inherentScore.toFixed(3)}</text>
 
-        <text x={tx + 171} y={ty + 38} textAnchor="middle" fontSize={8} fill="#60a5fa">Residual</text>
-        <text x={tx + 171} y={ty + 50} textAnchor="middle" fontSize={10} fontWeight="700" fill="#f8fafc">{record.residualImpact.toFixed(3)} x {record.residualProbability.toFixed(3)}</text>
-        <text x={tx + 171} y={ty + 61} textAnchor="middle" fontSize={8} fill="#cbd5e1">Score: {residualScore.toFixed(3)}</text>
+        <text x={tx + 183} y={ty + 56} textAnchor="middle" fontSize={7} fill="#60a5fa">Residual</text>
+        <text x={tx + 183} y={ty + 68} textAnchor="middle" fontSize={9} fontWeight="700" fill="#f8fafc">{record.residualImpact.toFixed(3)} x {record.residualProbability.toFixed(3)}</text>
+        <text x={tx + 183} y={ty + 78} textAnchor="middle" fontSize={7} fill="#cbd5e1">Score {residualScore.toFixed(3)}</text>
 
-        <text x={tx + 10} y={ty + 76} fontSize={9} fontWeight="600" fill="#94a3b8">Mitigacao</text>
-        <text x={tx + tw - 10} y={ty + 76} textAnchor="end" fontSize={9} fontWeight="700" fill="#4ade80">{mitigation.toFixed(1)}%</text>
+        <text x={tx + 14} y={ty + 90} fontSize={8} fontWeight="600" fill="#94a3b8">Mitigacao</text>
+        <text x={tx + tw - 14} y={ty + 90} textAnchor="end" fontSize={8} fontWeight="700" fill="#4ade80">{mitigation.toFixed(1)}%</text>
       </g>
     );
   }, [hoveredRisk]);
