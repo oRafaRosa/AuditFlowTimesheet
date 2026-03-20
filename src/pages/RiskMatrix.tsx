@@ -365,23 +365,25 @@ export const RiskMatrix: React.FC = () => {
   }
 
   // Renderizador de matriz reutilizável
-  const renderMatrixSVG = (className = "w-full min-w-[700px] h-auto") => (
-    <svg viewBox="0 0 860 470" className={className}>
+  const renderMatrixSVG = (className?: string) => {
+    const svgClass = className || (isFullScreen ? "w-full h-full" : "w-full min-w-[700px] h-auto");
+    return (
+    <svg viewBox="0 0 860 470" className={svgClass}>
       <rect x="0" y="0" width="860" height="470" fill="#ffffff" />
       
-      {/* Labels de impacto (embaixo) */}
-      <text x="130" y="460" textAnchor="middle" className="fill-slate-600 text-[11px] font-semibold">Irrelevante</text>
-      <text x="270" y="460" textAnchor="middle" className="fill-slate-600 text-[11px] font-semibold">Baixo</text>
-      <text x="410" y="460" textAnchor="middle" className="fill-slate-600 text-[11px] font-semibold">Moderado</text>
-      <text x="550" y="460" textAnchor="middle" className="fill-slate-600 text-[11px] font-semibold">Alto</text>
-      <text x="690" y="460" textAnchor="middle" className="fill-slate-600 text-[11px] font-semibold">Extremo</text>
+      {/* Labels de impacto (embaixo) - abaixo das células */}
+      <text x="130" y="435" textAnchor="middle" className="fill-slate-700 text-[12px] font-bold">Irrelevante</text>
+      <text x="270" y="435" textAnchor="middle" className="fill-slate-700 text-[12px] font-bold">Baixo</text>
+      <text x="410" y="435" textAnchor="middle" className="fill-slate-700 text-[12px] font-bold">Moderado</text>
+      <text x="550" y="435" textAnchor="middle" className="fill-slate-700 text-[12px] font-bold">Alto</text>
+      <text x="690" y="435" textAnchor="middle" className="fill-slate-700 text-[12px] font-bold">Extremo</text>
 
-      {/* Labels de probabilidade (lado esquerdo) */}
-      <text x="25" y="432" textAnchor="end" className="fill-slate-600 text-[11px] font-semibold">Extremo</text>
-      <text x="25" y="351" textAnchor="end" className="fill-slate-600 text-[11px] font-semibold">Alto</text>
-      <text x="25" y="270" textAnchor="end" className="fill-slate-600 text-[11px] font-semibold">Moderado</text>
-      <text x="25" y="189" textAnchor="end" className="fill-slate-600 text-[11px] font-semibold">Baixo</text>
-      <text x="25" y="108" textAnchor="end" className="fill-slate-600 text-[11px] font-semibold">Irrelevante</text>
+      {/* Labels de probabilidade (lado esquerdo) - alinhado com as células */}
+      <text x="45" y="54" textAnchor="end" className="fill-slate-700 text-[12px] font-bold">Extremo</text>
+      <text x="45" y="148" textAnchor="end" className="fill-slate-700 text-[12px] font-bold">Alto</text>
+      <text x="45" y="242" textAnchor="end" className="fill-slate-700 text-[12px] font-bold">Moderado</text>
+      <text x="45" y="336" textAnchor="end" className="fill-slate-700 text-[12px] font-bold">Baixo</text>
+      <text x="45" y="430" textAnchor="end" className="fill-slate-700 text-[12px] font-bold">Irrelevante</text>
       
       {Array.from({ length: 5 }).map((_, row) =>
         Array.from({ length: 5 }).map((__, col) => (
@@ -440,7 +442,8 @@ export const RiskMatrix: React.FC = () => {
 
       {tooltipEl}
     </svg>
-  );
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -539,44 +542,42 @@ export const RiskMatrix: React.FC = () => {
       </div>
 
       {isFullScreen && (
-        <div className="fixed inset-0 z-50 bg-black/10 flex flex-col items-center justify-center p-4">
-          <div className="w-full h-full bg-white rounded-2xl border border-slate-100 flex flex-col p-4">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setView('INHERENT')}
-                  className={`px-3 py-2 rounded-lg text-sm font-semibold ${view === 'INHERENT' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-700'}`}
-                >
-                  Risco inerente
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setView('RESIDUAL')}
-                  className={`px-3 py-2 rounded-lg text-sm font-semibold ${view === 'RESIDUAL' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-700'}`}
-                >
-                  Risco residual
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setView('MOVEMENT')}
-                  className={`px-3 py-2 rounded-lg text-sm font-semibold ${view === 'MOVEMENT' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-700'}`}
-                >
-                  Movimentacao dos riscos
-                </button>
-              </div>
+        <div className="fixed inset-0 z-50 bg-black/5 flex flex-col p-0">
+          <div className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between flex-shrink-0">
+            <div className="flex gap-2">
               <button
                 type="button"
-                onClick={() => setIsFullScreen(false)}
-                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                onClick={() => setView('INHERENT')}
+                className={`px-3 py-2 rounded-lg text-sm font-semibold ${view === 'INHERENT' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-700'}`}
               >
-                <Minimize size={13} />
-                Sair do fullscreen
+                Risco inerente
+              </button>
+              <button
+                type="button"
+                onClick={() => setView('RESIDUAL')}
+                className={`px-3 py-2 rounded-lg text-sm font-semibold ${view === 'RESIDUAL' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-700'}`}
+              >
+                Risco residual
+              </button>
+              <button
+                type="button"
+                onClick={() => setView('MOVEMENT')}
+                className={`px-3 py-2 rounded-lg text-sm font-semibold ${view === 'MOVEMENT' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-700'}`}
+              >
+                Movimentacao dos riscos
               </button>
             </div>
-            <div className="flex-1 overflow-x-auto overflow-y-auto">
-              {renderMatrixSVG("w-full h-full")}
-            </div>
+            <button
+              type="button"
+              onClick={() => setIsFullScreen(false)}
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              <Minimize size={13} />
+              Sair
+            </button>
+          </div>
+          <div className="flex-1 overflow-auto bg-white" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+            {renderMatrixSVG()}  
           </div>
         </div>
       )}
