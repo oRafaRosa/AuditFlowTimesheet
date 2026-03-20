@@ -34,7 +34,7 @@ const formatRiskCodeForDisplay = (value: string) => {
   return String(Number(digits.slice(-3)));
 };
 
-const splitRiskTitle = (value: string, lineLength = 26) => {
+const splitRiskTitle = (value: string, lineLength = 36) => {
   const words = String(value || '').trim().split(/\s+/).filter(Boolean);
   const lines: string[] = [];
   let current = '';
@@ -207,7 +207,7 @@ export const RiskMatrix: React.FC = () => {
     const mitigation = inherentScore > 0
       ? Math.max(0, ((inherentScore - residualScore) / inherentScore) * 100)
       : 0;
-    const titleLines = splitRiskTitle(record.title, 28);
+    const titleLines = splitRiskTitle(record.title, 36);
     const tw = 278;
     const th = 108;
     const txBase = x > matrixLayout.matrixLeft + matrixLayout.matrixPixelWidth / 2 ? x - tw - 18 : x + 18;
@@ -226,16 +226,16 @@ export const RiskMatrix: React.FC = () => {
           <text x={tx + 72} y={ty + 36} fontSize={9} fill="#cbd5e1">{titleLines[1]}</text>
         )}
 
-        <rect x={tx + 12} y={ty + 50} width="120" height="34" rx="8" fill="rgba(255,255,255,0.05)" />
-        <rect x={tx + 146} y={ty + 50} width="120" height="34" rx="8" fill="rgba(255,255,255,0.05)" />
+        <rect x={tx + 12} y={ty + 50} width="120" height="38" rx="8" fill="rgba(255,255,255,0.05)" />
+        <rect x={tx + 146} y={ty + 50} width="120" height="38" rx="8" fill="rgba(255,255,255,0.05)" />
 
         <text x={tx + 72} y={ty + 63} textAnchor="middle" fontSize={7} fill="#94a3b8">Inerente</text>
         <text x={tx + 72} y={ty + 75} textAnchor="middle" fontSize={8.5} fontWeight="700" fill="#f8fafc">{record.inherentImpact.toFixed(3)} x {record.inherentProbability.toFixed(3)}</text>
-        <text x={tx + 72} y={ty + 86} textAnchor="middle" fontSize={7} fill="#cbd5e1">Score: {inherentScore.toFixed(3)}</text>
+        <text x={tx + 72} y={ty + 85} textAnchor="middle" fontSize={7} fill="#cbd5e1">Score: {inherentScore.toFixed(3)}</text>
 
         <text x={tx + 206} y={ty + 63} textAnchor="middle" fontSize={7} fill="#60a5fa">Residual</text>
         <text x={tx + 206} y={ty + 75} textAnchor="middle" fontSize={8.5} fontWeight="700" fill="#f8fafc">{record.residualImpact.toFixed(3)} x {record.residualProbability.toFixed(3)}</text>
-        <text x={tx + 206} y={ty + 86} textAnchor="middle" fontSize={7} fill="#cbd5e1">Score: {residualScore.toFixed(3)}</text>
+        <text x={tx + 206} y={ty + 85} textAnchor="middle" fontSize={7} fill="#cbd5e1">Score: {residualScore.toFixed(3)}</text>
 
         <text x={tx + 14} y={ty + 101} fontSize={8} fontWeight="600" fill="#94a3b8">Mitigacao</text>
         <text x={tx + tw - 14} y={ty + 101} textAnchor="end" fontSize={8} fontWeight="700" fill="#4ade80">{mitigation.toFixed(1)}%</text>
