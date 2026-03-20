@@ -368,22 +368,38 @@ export const RiskMatrix: React.FC = () => {
   const renderMatrixSVG = (className?: string) => {
     const svgClass = className || (isFullScreen ? "w-full h-full" : "w-full min-w-[700px] h-auto");
     return (
-    <svg viewBox="0 0 860 470" className={svgClass}>
-      <rect x="0" y="0" width="860" height="470" fill="#ffffff" />
+    <svg viewBox="0 0 900 520" className={svgClass}>
+      <rect x="0" y="0" width="900" height="520" fill="#ffffff" />
       
-      {/* Labels de impacto (embaixo) - abaixo das células */}
-      <text x="130" y="435" textAnchor="middle" className="fill-slate-700 text-[12px] font-bold">Irrelevante</text>
-      <text x="270" y="435" textAnchor="middle" className="fill-slate-700 text-[12px] font-bold">Baixo</text>
-      <text x="410" y="435" textAnchor="middle" className="fill-slate-700 text-[12px] font-bold">Moderado</text>
-      <text x="550" y="435" textAnchor="middle" className="fill-slate-700 text-[12px] font-bold">Alto</text>
-      <text x="690" y="435" textAnchor="middle" className="fill-slate-700 text-[12px] font-bold">Extremo</text>
+      {/* Moldura ao redor da matriz */}
+      {/* Top border */}
+      <line x1="80" y1="35" x2="820" y2="35" stroke="#cbd5e1" strokeWidth="2" />
+      {/* Bottom border */}
+      <line x1="80" y1="435" x2="820" y2="435" stroke="#cbd5e1" strokeWidth="2" />
+      {/* Left border */}
+      <line x1="80" y1="35" x2="80" y2="435" stroke="#cbd5e1" strokeWidth="2" />
+      {/* Right border */}
+      <line x1="820" y1="35" x2="820" y2="435" stroke="#cbd5e1" strokeWidth="2" />
 
-      {/* Labels de probabilidade (lado esquerdo) - alinhado com as células */}
-      <text x="45" y="54" textAnchor="end" className="fill-slate-700 text-[12px] font-bold">Extremo</text>
-      <text x="45" y="148" textAnchor="end" className="fill-slate-700 text-[12px] font-bold">Alto</text>
-      <text x="45" y="242" textAnchor="end" className="fill-slate-700 text-[12px] font-bold">Moderado</text>
-      <text x="45" y="336" textAnchor="end" className="fill-slate-700 text-[12px] font-bold">Baixo</text>
-      <text x="45" y="430" textAnchor="end" className="fill-slate-700 text-[12px] font-bold">Irrelevante</text>
+      {/* IMPACTO - título embaixo da moldura */}
+      <text x="450" y="465" textAnchor="middle" className="fill-slate-800 text-[14px] font-bold">IMPACTO</text>
+      
+      {/* Labels de impacto (embaixo) */}
+      <text x="130" y="490" textAnchor="middle" className="fill-slate-700 text-[11px] font-semibold">Irrelevante</text>
+      <text x="270" y="490" textAnchor="middle" className="fill-slate-700 text-[11px] font-semibold">Baixo</text>
+      <text x="410" y="490" textAnchor="middle" className="fill-slate-700 text-[11px] font-semibold">Moderado</text>
+      <text x="550" y="490" textAnchor="middle" className="fill-slate-700 text-[11px] font-semibold">Alto</text>
+      <text x="690" y="490" textAnchor="middle" className="fill-slate-700 text-[11px] font-semibold">Extremo</text>
+
+      {/* PROBABILIDADE - título lado esquerdo da moldura (vertical) */}
+      <text x="25" y="240" textAnchor="middle" className="fill-slate-800 text-[14px] font-bold" transform="rotate(-90 25 240)">PROBABILIDADE</text>
+      
+      {/* Labels de probabilidade (lado esquerdo) - vertical */}
+      <text x="50" y="60" textAnchor="end" className="fill-slate-700 text-[11px] font-semibold" transform="rotate(-90 50 60)">Extremo</text>
+      <text x="50" y="154" textAnchor="end" className="fill-slate-700 text-[11px] font-semibold" transform="rotate(-90 50 154)">Alto</text>
+      <text x="50" y="248" textAnchor="end" className="fill-slate-700 text-[11px] font-semibold" transform="rotate(-90 50 248)">Moderado</text>
+      <text x="50" y="342" textAnchor="end" className="fill-slate-700 text-[11px] font-semibold" transform="rotate(-90 50 342)">Baixo</text>
+      <text x="50" y="436" textAnchor="end" className="fill-slate-700 text-[11px] font-semibold" transform="rotate(-90 50 436)">Irrelevante</text>
       
       {Array.from({ length: 5 }).map((_, row) =>
         Array.from({ length: 5 }).map((__, col) => (
@@ -399,9 +415,6 @@ export const RiskMatrix: React.FC = () => {
           />
         ))
       )}
-
-      <text x="430" y="450" textAnchor="middle" className="fill-slate-500 text-[14px] font-bold">IMPACTO</text>
-      <text x="28" y="245" textAnchor="middle" className="fill-slate-500 text-[14px] font-bold" transform="rotate(-90 28 245)">PROBABILIDADE</text>
 
       {records.filter(r => selectedCodes.has(r.code)).map((record) => {
         const ix = 90 + normalize(record.inherentImpact) * 700;
