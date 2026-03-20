@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as XLSX from 'xlsx';
-import { Shield, Lock, Info, RefreshCcw, Save, Filter, Upload, FileSpreadsheet, X, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Shield, Lock, Info, RefreshCcw, Save, Filter, Upload, FileSpreadsheet, X, AlertCircle, ChevronDown, ChevronUp, Maximize, Minimize } from 'lucide-react';
 import { RiskMatrixRecord } from '../types';
 import { store } from '../services/store';
 
@@ -24,6 +24,14 @@ const formatRiskCode = (value: string) => {
   if (!digits) return normalized;
 
   return `R${digits.slice(-3).padStart(3, '0')}`;
+};
+
+// Formata apenas o número na bolinha (sem R e sem zeros iniciais)
+const formatRiskCodeForDisplay = (value: string) => {
+  const normalized = String(value || '').trim().toUpperCase();
+  const digits = normalized.replace(/\D/g, '');
+  if (!digits) return normalized;
+  return String(Number(digits.slice(-3)));
 };
 
 const splitRiskTitle = (value: string, lineLength = 26) => {
@@ -81,6 +89,7 @@ export const RiskMatrix: React.FC = () => {
   const [staging, setStaging] = useState<StagingRow[]>([]);
   const [importError, setImportError] = useState<string | null>(null);
   const [importSaving, setImportSaving] = useState(false);
+  const [isFullScreen, setIsFullScreen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const access = store.getRiskMatrixAccessForCurrentUser();
@@ -118,6 +127,15 @@ export const RiskMatrix: React.FC = () => {
   }, [records]);
 
   const normalize = (value: number) => (value - axis.min) / axis.span;
+
+  // Ordena riscos por score residual (descendente)
+  const sortedRecordsByRisk = useMemo(() => {
+    return [...records].sort((a, b) => {
+      const scoreA = a.residualImpact * a.residualProbability;
+      const scoreB = b.residualImpact * b.residualProbability;
+      return scoreB - scoreA; // descendente
+    });
+  }, [records]);
 
   // Tooltip SVG renderizado sobre a bolinha em hover
   const tooltipEl = useMemo(() => {
@@ -346,6 +364,84 @@ export const RiskMatrix: React.FC = () => {
     );
   }
 
+  // Renderizador de matriz reutilizável
+  const renderMatrixSVG = (className = "w-full min-w-[700px] h-auto") => (
+    <svg viewBox="0 0 860 470" className={className}>
+      <rect x="0" y="0" width="860" height="470" fill="#ffffff" />
+      
+      {/* Labels de impacto (embaixo) */}
+      <text x="130" y="460" textAnchor="middle" className="fill-slate-600 text-[11px] font-semibold">Irrelevante</text>
+      <text x="270" y="460" textAnchor="middle" className="fill-slate-600 text-[11px] font-semibold">Baixo</text>
+      <text x="410" y="460" textAnchor="middle" className="fill-slate-600 text-[11px] font-semibold">Moderado</text>
+      <text x="550" y="460" textAnchor="middle" className="fill-slate-600 text-[11px] font-semibold">Alto</text>
+      <text x="690" y="460" textAnchor="middle" className="fill-slate-600 text-[11px] font-semibold">Extremo</text>
+
+      {/* Labels de probabilidade (lado esquerdo) */}
+      <text x="25" y="432" textAnchor="end" className="fill-slate-600 text-[11px] font-semibold">Extremo</text>
+      <text x="25" y="351" textAnchor="end" className="fill-slate-600 text-[11px] font-semibold">Alto</text>
+      <text x="25" y="270" textAnchor="end" className="fill-slate-600 text-[11px] font-semibold">Moderado</text>
+      <text x="25" y="189" textAnchor="end" className="fill-slate-600 text-[11px] font-semibold">Baixo</text>
+      <text x="25" y="108" textAnchor="end" className="fill-slate-600 text-[11px] font-semibold">Irrelevante</text>
+      
+      {Array.from({ length: 5 }).map((_, row) =>
+        Array.from({ length: 5 }).map((__, col) => (
+          <rect
+            key={`${row}-${col}`}
+            x={90 + col * 140}
+            y={40 + row * 78}
+            width={140}
+            height={78}
+            fill={getCellColor(col, row)}
+            stroke="#ffffff"
+            strokeWidth={3}
+          />
+        ))
+      )}
+
+      <text x="430" y="450" textAnchor="middle" className="fill-slate-500 text-[14px] font-bold">IMPACTO</text>
+      <text x="28" y="245" textAnchor="middle" className="fill-slate-500 text-[14px] font-bold" transform="rotate(-90 28 245)">PROBABILIDADE</text>
+
+      {records.filter(r => selectedCodes.has(r.code)).map((record) => {
+        const ix = 90 + normalize(record.inherentImpact) * 700;
+        const iy = 430 - normalize(record.inherentProbability) * 390;
+        const rx = 90 + normalize(record.residualImpact) * 700;
+        const ry = 430 - normalize(record.residualProbability) * 390;
+
+        if (view === 'MOVEMENT') {
+          return (
+            <g key={record.id} style={{ cursor: 'pointer' }}
+              onMouseEnter={() => setHoveredRisk({ record, x: rx, y: ry })}
+              onMouseLeave={() => setHoveredRisk(null)}
+            >
+              <line x1={ix} y1={iy} x2={rx} y2={ry} stroke="#64748b" strokeDasharray="5 5" strokeWidth={1.5} />
+              <circle cx={ix} cy={iy} r={8} fill="#e2e8f0" stroke="#94a3b8" strokeWidth={1.5} />
+              <circle cx={rx} cy={ry} r={16} fill="#facc15" opacity={0.22} />
+              <circle cx={rx} cy={ry} r={13} fill="#facc15" stroke="#ffffff" strokeWidth={2} />
+              <text x={rx} y={ry + 3} textAnchor="middle" className="fill-slate-900 text-[7.5px] font-bold">{formatRiskCodeForDisplay(record.code)}</text>
+            </g>
+          );
+        }
+
+        const x = view === 'INHERENT' ? ix : rx;
+        const y = view === 'INHERENT' ? iy : ry;
+        const pointColor = view === 'INHERENT' ? '#0ea5e9' : '#f59e0b';
+
+        return (
+          <g key={record.id} style={{ cursor: 'pointer' }}
+            onMouseEnter={() => setHoveredRisk({ record, x, y })}
+            onMouseLeave={() => setHoveredRisk(null)}
+          >
+            <circle cx={x} cy={y} r={16} fill={pointColor} opacity={0.18} />
+            <circle cx={x} cy={y} r={13} fill={pointColor} stroke="#ffffff" strokeWidth={2} />
+            <text x={x} y={y + 3} textAnchor="middle" className="fill-white text-[7.5px] font-bold">{formatRiskCodeForDisplay(record.code)}</text>
+          </g>
+        );
+      })}
+
+      {tooltipEl}
+    </svg>
+  );
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
@@ -385,14 +481,25 @@ export const RiskMatrix: React.FC = () => {
             </button>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setShowFilter(f => !f)}
-            className="inline-flex items-center gap-2 self-start px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-sm font-semibold text-slate-700 hover:bg-slate-50 lg:self-auto"
-          >
-            <Filter size={13} />
-            Filtrar riscos no gráfico ({selectedCodes.size}/{records.length})
-          </button>
+          <div className="flex gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={() => setIsFullScreen(!isFullScreen)}
+              className="inline-flex items-center gap-2 self-start px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-sm font-semibold text-slate-700 hover:bg-slate-50 lg:self-auto"
+            >
+              {isFullScreen ? <Minimize size={13} /> : <Maximize size={13} />}
+              {isFullScreen ? 'Sair do fullscreen' : 'Fullscreen'}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowFilter(f => !f)}
+              className="inline-flex items-center gap-2 self-start px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-sm font-semibold text-slate-700 hover:bg-slate-50 lg:self-auto"
+            >
+              <Filter size={13} />
+              Filtrar riscos no gráfico ({selectedCodes.size}/{records.length})
+            </button>
+          </div>
 
           {showFilter && (
             <div className="lg:basis-full p-3 rounded-xl border border-slate-200 bg-slate-50">
@@ -402,7 +509,7 @@ export const RiskMatrix: React.FC = () => {
                 <button type="button" onClick={() => setSelectedCodes(new Set())} className="text-xs text-slate-500 font-semibold hover:underline">Limpar</button>
               </div>
               <div className="flex flex-wrap gap-1.5">
-                {records.map(r => (
+                {sortedRecordsByRisk.map(r => (
                   <button
                     key={r.code}
                     type="button"
@@ -427,67 +534,52 @@ export const RiskMatrix: React.FC = () => {
         </div>
 
         <div className="rounded-xl border border-slate-200 p-4 overflow-x-auto">
-          <svg viewBox="0 0 860 470" className="w-full min-w-[700px] h-auto">
-            <rect x="0" y="0" width="860" height="470" fill="#ffffff" />
-            {Array.from({ length: 5 }).map((_, row) =>
-              Array.from({ length: 5 }).map((__, col) => (
-                <rect
-                  key={`${row}-${col}`}
-                  x={90 + col * 140}
-                  y={40 + row * 78}
-                  width={140}
-                  height={78}
-                  fill={getCellColor(col, row)}
-                  stroke="#ffffff"
-                  strokeWidth={3}
-                />
-              ))
-            )}
-
-            <text x="430" y="450" textAnchor="middle" className="fill-slate-500 text-[14px] font-bold">IMPACTO</text>
-            <text x="28" y="245" textAnchor="middle" className="fill-slate-500 text-[14px] font-bold" transform="rotate(-90 28 245)">PROBABILIDADE</text>
-
-            {records.filter(r => selectedCodes.has(r.code)).map((record) => {
-              const ix = 90 + normalize(record.inherentImpact) * 700;
-              const iy = 430 - normalize(record.inherentProbability) * 390;
-              const rx = 90 + normalize(record.residualImpact) * 700;
-              const ry = 430 - normalize(record.residualProbability) * 390;
-
-              if (view === 'MOVEMENT') {
-                return (
-                  <g key={record.id} style={{ cursor: 'pointer' }}
-                    onMouseEnter={() => setHoveredRisk({ record, x: rx, y: ry })}
-                    onMouseLeave={() => setHoveredRisk(null)}
-                  >
-                    <line x1={ix} y1={iy} x2={rx} y2={ry} stroke="#64748b" strokeDasharray="5 5" strokeWidth={1.5} />
-                    <circle cx={ix} cy={iy} r={8} fill="#e2e8f0" stroke="#94a3b8" strokeWidth={1.5} />
-                    <circle cx={rx} cy={ry} r={16} fill="#facc15" opacity={0.22} />
-                    <circle cx={rx} cy={ry} r={13} fill="#facc15" stroke="#ffffff" strokeWidth={2} />
-                    <text x={rx} y={ry + 3} textAnchor="middle" className="fill-slate-900 text-[7.5px] font-bold">{formatRiskCode(record.code)}</text>
-                  </g>
-                );
-              }
-
-              const x = view === 'INHERENT' ? ix : rx;
-              const y = view === 'INHERENT' ? iy : ry;
-              const pointColor = view === 'INHERENT' ? '#0ea5e9' : '#f59e0b';
-
-              return (
-                <g key={record.id} style={{ cursor: 'pointer' }}
-                  onMouseEnter={() => setHoveredRisk({ record, x, y })}
-                  onMouseLeave={() => setHoveredRisk(null)}
-                >
-                  <circle cx={x} cy={y} r={16} fill={pointColor} opacity={0.18} />
-                  <circle cx={x} cy={y} r={13} fill={pointColor} stroke="#ffffff" strokeWidth={2} />
-                  <text x={x} y={y + 3} textAnchor="middle" className="fill-white text-[7.5px] font-bold">{formatRiskCode(record.code)}</text>
-                </g>
-              );
-            })}
-
-            {tooltipEl}
-          </svg>
+          {renderMatrixSVG()}
         </div>
       </div>
+
+      {isFullScreen && (
+        <div className="fixed inset-0 z-50 bg-black/10 flex flex-col items-center justify-center p-4">
+          <div className="w-full h-full bg-white rounded-2xl border border-slate-100 flex flex-col p-4">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setView('INHERENT')}
+                  className={`px-3 py-2 rounded-lg text-sm font-semibold ${view === 'INHERENT' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-700'}`}
+                >
+                  Risco inerente
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setView('RESIDUAL')}
+                  className={`px-3 py-2 rounded-lg text-sm font-semibold ${view === 'RESIDUAL' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-700'}`}
+                >
+                  Risco residual
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setView('MOVEMENT')}
+                  className={`px-3 py-2 rounded-lg text-sm font-semibold ${view === 'MOVEMENT' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-700'}`}
+                >
+                  Movimentacao dos riscos
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsFullScreen(false)}
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                <Minimize size={13} />
+                Sair do fullscreen
+              </button>
+            </div>
+            <div className="flex-1 overflow-x-auto overflow-y-auto">
+              {renderMatrixSVG("w-full h-full")}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="bg-white rounded-2xl border border-slate-100 p-4">
         <button
@@ -555,7 +647,7 @@ export const RiskMatrix: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {records.map((record) => {
+                  {sortedRecordsByRisk.map((record) => {
                     const draft = drafts[record.id] || record;
                     return (
                       <tr key={record.id} className="border-b border-slate-100">
