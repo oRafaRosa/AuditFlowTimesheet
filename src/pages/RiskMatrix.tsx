@@ -91,8 +91,8 @@ export const RiskMatrix: React.FC = () => {
   const [importSaving, setImportSaving] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [showMatrixSizeControls, setShowMatrixSizeControls] = useState(false);
-  const [matrixWidth, setMatrixWidth] = useState(980);
-  const [matrixHeight, setMatrixHeight] = useState(780);
+  const [matrixWidth, setMatrixWidth] = useState(80);
+  const [matrixHeight, setMatrixHeight] = useState(80);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const access = store.getRiskMatrixAccessForCurrentUser();
@@ -148,6 +148,46 @@ export const RiskMatrix: React.FC = () => {
 
   const normalize = (value: number) => (value - axis.min) / axis.span;
 
+  const matrixLayout = useMemo(() => {
+    const cellWidth = isFullScreen ? matrixWidth : 80;
+    const cellHeight = isFullScreen ? matrixHeight : 80;
+    const matrixLeft = 88;
+    const matrixTop = 40;
+    const columnCount = 5;
+    const rowCount = 5;
+    const matrixPixelWidth = columnCount * cellWidth;
+    const matrixPixelHeight = rowCount * cellHeight;
+    const matrixRight = matrixLeft + matrixPixelWidth;
+    const matrixBottom = matrixTop + matrixPixelHeight;
+
+    return {
+      cellWidth,
+      cellHeight,
+      matrixLeft,
+      matrixTop,
+      matrixPixelWidth,
+      matrixPixelHeight,
+      matrixRight,
+      matrixBottom,
+      svgWidth: matrixRight + 102,
+      svgHeight: matrixBottom + 70,
+      separatorBottom: matrixBottom + 2,
+      impactLabelsY: matrixBottom + 7,
+      impactLabelsTextY: matrixBottom + 19,
+      impactTitleY: matrixBottom + 42,
+      verticalTitleY: matrixTop + matrixPixelHeight / 2,
+      horizontalTitleX: matrixLeft + matrixPixelWidth / 2,
+      probabilityLabelCenters: ['Extremo', 'Alto', 'Moderado', 'Baixo', 'Irrelevante'].map((label, index) => ({
+        label,
+        cy: matrixTop + index * cellHeight + cellHeight / 2,
+      })),
+      impactLabelCenters: ['Irrelevante', 'Baixo', 'Moderado', 'Alto', 'Extremo'].map((label, index) => ({
+        label,
+        cx: matrixLeft + index * cellWidth + cellWidth / 2,
+      })),
+    };
+  }, [isFullScreen, matrixWidth, matrixHeight]);
+
   // Ordena riscos por score residual (descendente)
   const sortedRecordsByRisk = useMemo(() => {
     return [...records].sort((a, b) => {
@@ -170,8 +210,9 @@ export const RiskMatrix: React.FC = () => {
     const titleLines = splitRiskTitle(record.title, 28);
     const tw = 278;
     const th = 108;
-    const tx = x > 320 ? x - tw - 18 : x + 18;
-    const ty = Math.min(Math.max(y - 42, 8), 450 - th - 8);
+    const txBase = x > matrixLayout.matrixLeft + matrixLayout.matrixPixelWidth / 2 ? x - tw - 18 : x + 18;
+    const tx = Math.min(Math.max(txBase, 8), matrixLayout.svgWidth - tw - 8);
+    const ty = Math.min(Math.max(y - 42, 8), matrixLayout.svgHeight - th - 8);
 
     return (
       <g style={{ pointerEvents: 'none' }}>
@@ -200,7 +241,7 @@ export const RiskMatrix: React.FC = () => {
         <text x={tx + tw - 14} y={ty + 101} textAnchor="end" fontSize={8} fontWeight="700" fill="#4ade80">{mitigation.toFixed(1)}%</text>
       </g>
     );
-  }, [hoveredRisk]);
+  }, [hoveredRisk, matrixLayout]);
 
   const handleDraftChange = (recordId: string, key: keyof RiskMatrixRecord, value: string) => {
     setDrafts((prev) => {
@@ -385,36 +426,40 @@ export const RiskMatrix: React.FC = () => {
   }
 
   // Renderizador de matriz reutilizável
-  const renderMatrixSVG = (className?: string) => {
-    const svgClass = className || (isFullScreen ? "w-full h-full" : "mx-auto h-auto w-full max-w-[760px] min-w-[520px]");
+  const renderMatrixSVG = (mode: 'default' | 'fullscreen' = 'default') => {
+    const svgClass = mode === 'fullscreen' ? 'block' : 'mx-auto h-auto w-full max-w-[760px] min-w-[520px]';
     return (
-    <svg viewBox="0 0 590 510" className={svgClass}>
-      <rect x="0" y="0" width="590" height="510" fill="#ffffff" />
+    <svg
+      viewBox={`0 0 ${matrixLayout.svgWidth} ${matrixLayout.svgHeight}`}
+      className={svgClass}
+      style={mode === 'fullscreen' ? { width: `${matrixLayout.svgWidth}px`, height: `${matrixLayout.svgHeight}px` } : undefined}
+    >
+      <rect x="0" y="0" width={matrixLayout.svgWidth} height={matrixLayout.svgHeight} fill="#ffffff" />
 
       {/* Separadores sutis entre labels e células */}
-      <line x1="86" y1="38" x2="86" y2="442" stroke="#e2e8f0" strokeWidth={1} />
-      <line x1="88" y1="442" x2="490" y2="442" stroke="#e2e8f0" strokeWidth={1} />
+      <line x1="86" y1="38" x2="86" y2={matrixLayout.separatorBottom} stroke="#e2e8f0" strokeWidth={1} />
+      <line x1={matrixLayout.matrixLeft} y1={matrixLayout.separatorBottom} x2={matrixLayout.matrixRight + 2} y2={matrixLayout.separatorBottom} stroke="#e2e8f0" strokeWidth={1} />
 
       {/* Título PROBABILIDADE - vertical, extremo esquerdo */}
-      <text x="11" y="240" textAnchor="middle" fontSize="10" fontWeight="700" fill="#64748b" letterSpacing="1" transform="rotate(-90 11 240)">PROBABILIDADE</text>
+      <text x="11" y={matrixLayout.verticalTitleY} textAnchor="middle" fontSize="10" fontWeight="700" fill="#64748b" letterSpacing="1" transform={`rotate(-90 11 ${matrixLayout.verticalTitleY})`}>PROBABILIDADE</text>
 
-      {/* Labels de probabilidade com fundo quadrado - cy = 40 + row*80 + 40 → 80, 160, 240, 320, 400 */}
-      {([['Extremo',80],['Alto',160],['Moderado',240],['Baixo',320],['Irrelevante',400]] as [string,number][]).map(([label, cy]) => (
+      {/* Labels de probabilidade */}
+      {matrixLayout.probabilityLabelCenters.map(({ label, cy }) => (
         <g key={label}>
           <rect x={28} y={cy - 9} width={72} height={18} rx={5} fill="#f1f5f9" transform={`rotate(-90 64 ${cy})`} />
           <text x={64} y={cy + 3.5} textAnchor="middle" fontSize="9.5" fill="#475569" fontWeight="500" transform={`rotate(-90 64 ${cy})`}>{label}</text>
         </g>
       ))}
 
-      {/* Células da matriz - 80x80 (quadradas) */}
+      {/* Células da matriz */}
       {Array.from({ length: 5 }).map((_, row) =>
         Array.from({ length: 5 }).map((__, col) => (
           <rect
             key={`${row}-${col}`}
-            x={88 + col * 80}
-            y={40 + row * 80}
-            width={80}
-            height={80}
+            x={matrixLayout.matrixLeft + col * matrixLayout.cellWidth}
+            y={matrixLayout.matrixTop + row * matrixLayout.cellHeight}
+            width={matrixLayout.cellWidth}
+            height={matrixLayout.cellHeight}
             fill={getCellColor(col, row)}
             stroke="#ffffff"
             strokeWidth={3}
@@ -422,22 +467,22 @@ export const RiskMatrix: React.FC = () => {
         ))
       )}
 
-      {/* Labels de impacto com fundo - cx = 88 + col*80 + 40 → 128, 208, 288, 368, 448 */}
-      {([['Irrelevante',128],['Baixo',208],['Moderado',288],['Alto',368],['Extremo',448]] as [string,number][]).map(([label, cx]) => (
+      {/* Labels de impacto */}
+      {matrixLayout.impactLabelCenters.map(({ label, cx }) => (
         <g key={label}>
-          <rect x={cx - 37} y={447} width={74} height={17} rx={5} fill="#f1f5f9" />
-          <text x={cx} y={459} textAnchor="middle" fontSize="9.5" fill="#475569" fontWeight="500">{label}</text>
+          <rect x={cx - 37} y={matrixLayout.impactLabelsY} width={74} height={17} rx={5} fill="#f1f5f9" />
+          <text x={cx} y={matrixLayout.impactLabelsTextY} textAnchor="middle" fontSize="9.5" fill="#475569" fontWeight="500">{label}</text>
         </g>
       ))}
 
       {/* Título IMPACTO - embaixo, centralizado */}
-      <text x="288" y="482" textAnchor="middle" fontSize="10" fontWeight="700" fill="#64748b" letterSpacing="1">IMPACTO</text>
+      <text x={matrixLayout.horizontalTitleX} y={matrixLayout.impactTitleY} textAnchor="middle" fontSize="10" fontWeight="700" fill="#64748b" letterSpacing="1">IMPACTO</text>
 
       {records.filter(r => selectedCodes.has(r.code)).map((record) => {
-        const ix = 88 + normalize(record.inherentImpact) * 400;
-        const iy = 440 - normalize(record.inherentProbability) * 400;
-        const rx = 88 + normalize(record.residualImpact) * 400;
-        const ry = 440 - normalize(record.residualProbability) * 400;
+        const ix = matrixLayout.matrixLeft + normalize(record.inherentImpact) * matrixLayout.matrixPixelWidth;
+        const iy = matrixLayout.matrixBottom - normalize(record.inherentProbability) * matrixLayout.matrixPixelHeight;
+        const rx = matrixLayout.matrixLeft + normalize(record.residualImpact) * matrixLayout.matrixPixelWidth;
+        const ry = matrixLayout.matrixBottom - normalize(record.residualProbability) * matrixLayout.matrixPixelHeight;
 
         if (view === 'MOVEMENT') {
           return (
@@ -620,12 +665,12 @@ export const RiskMatrix: React.FC = () => {
             <div className="border-b border-slate-200 bg-white px-6 py-3">
               <div className="ml-auto flex w-full max-w-md flex-wrap items-end gap-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
                 <label className="flex-1">
-                  <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-500">Largura</span>
+                  <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-500">Largura da celula</span>
                   <input
                     type="range"
-                    min={700}
-                    max={1400}
-                    step={20}
+                    min={60}
+                    max={140}
+                    step={4}
                     value={matrixWidth}
                     onChange={(e) => setMatrixWidth(Number(e.target.value))}
                     className="w-full accent-brand-600"
@@ -633,12 +678,12 @@ export const RiskMatrix: React.FC = () => {
                   <span className="mt-1 block text-xs text-slate-500">{matrixWidth}px</span>
                 </label>
                 <label className="flex-1">
-                  <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-500">Altura</span>
+                  <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-500">Altura da celula</span>
                   <input
                     type="range"
-                    min={560}
-                    max={1100}
-                    step={20}
+                    min={60}
+                    max={140}
+                    step={4}
                     value={matrixHeight}
                     onChange={(e) => setMatrixHeight(Number(e.target.value))}
                     className="w-full accent-brand-600"
@@ -648,8 +693,8 @@ export const RiskMatrix: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => {
-                    setMatrixWidth(980);
-                    setMatrixHeight(780);
+                    setMatrixWidth(80);
+                    setMatrixHeight(80);
                   }}
                   className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100"
                 >
@@ -660,9 +705,7 @@ export const RiskMatrix: React.FC = () => {
           )}
           <div className="flex-1 min-h-0 overflow-auto bg-slate-50 p-4">
             <div className="flex min-h-full min-w-full items-center justify-center">
-              <div className="shrink-0" style={{ width: `${matrixWidth}px`, height: `${matrixHeight}px` }}>
-                {renderMatrixSVG("w-full h-full")}
-              </div>
+              {renderMatrixSVG('fullscreen')}
             </div>
           </div>
         </div>
