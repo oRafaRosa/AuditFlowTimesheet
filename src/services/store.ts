@@ -30,6 +30,11 @@ const normalizeRiskMatrixAccess = (value: any): RiskMatrixAccess => {
   return 'NONE';
 };
 
+const isUuid = (value?: string): boolean => {
+  if (!value) return false;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+};
+
 const toBase64 = (bytes: Uint8Array): string => {
   let binary = '';
   bytes.forEach((byte) => {
@@ -1250,13 +1255,12 @@ class StoreService {
     const { error } = await supabase
       .from('risk_matrix_records')
       .upsert({
-        id: record.id,
         risk_code: record.code,
         payload_encrypted: encrypted,
-        updated_by: currentUser.id,
+        updated_by: isUuid(currentUser.id) ? currentUser.id : null,
         updated_at: new Date().toISOString()
       }, {
-        onConflict: 'id'
+        onConflict: 'risk_code'
       });
 
     if (error) {
