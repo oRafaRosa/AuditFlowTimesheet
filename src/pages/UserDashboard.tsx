@@ -219,8 +219,8 @@ export const UserDashboard: React.FC = () => {
             const entD = parseDateOnly(e.date);
             return entD.getMonth() === d.getMonth() && entD.getFullYear() === d.getFullYear();
         });
-        const mTotal = monthEntries.reduce((acc, curr) => acc + curr.hours, 0);
-        const mExpected = await store.getExpectedHours(d.getFullYear(), d.getMonth());
+        const mTotal = Math.round(monthEntries.reduce((acc, curr) => acc + curr.hours, 0) * 100) / 100;
+        const mExpected = Math.round(await store.getExpectedHours(d.getFullYear(), d.getMonth()) * 100) / 100;
         
         // importante: salva ano/mes pra clicar e navegar depois
         chartData.push({ 
@@ -659,7 +659,7 @@ export const UserDashboard: React.FC = () => {
                     <BarChart data={monthlyData} onClick={handleChartClick} style={{cursor: 'pointer'}}>
                         <XAxis dataKey="name" axisLine={false} tickLine={false} />
                         <YAxis axisLine={false} tickLine={false} />
-                        <Tooltip cursor={{fill: '#F0EFEA'}} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
+                        <Tooltip cursor={{fill: '#F0EFEA'}} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} formatter={(value: number) => [`${Math.round(value * 10) / 10}`]} />
                         <Bar dataKey="expected" name="Esperado" fill="#D1D0CB" radius={[4, 4, 0, 0]} />
                         <Bar dataKey="hours" name="Realizado" fill="#0033C6" radius={[4, 4, 0, 0]} />
                     </BarChart>

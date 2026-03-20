@@ -201,7 +201,7 @@ export const ManagerDashboard: React.FC = () => {
           return entry.userId === member.id && date.getMonth() === month && date.getFullYear() === year;
         });
 
-        const total = memberEntries.reduce((acc, curr) => acc + curr.hours, 0);
+        const total = Math.round(memberEntries.reduce((acc, curr) => acc + curr.hours, 0) * 100) / 100;
         return {
           id: member.id,
           name: member.name,
@@ -231,7 +231,7 @@ export const ManagerDashboard: React.FC = () => {
     // stats de budget (só projetos filtrados)
     const projStats = projs.filter(p => p.budgetedHours > 0).map(p => {
         const projEntries = entries.filter(e => e.projectId === p.id);
-        const consumed = projEntries.reduce((acc, curr) => acc + curr.hours, 0);
+        const consumed = Math.round(projEntries.reduce((acc, curr) => acc + curr.hours, 0) * 100) / 100;
         return {
             id: p.id,
             name: p.code,
@@ -712,7 +712,7 @@ export const ManagerDashboard: React.FC = () => {
                                 if(user) navigate(`/manager/reports?userId=${user.id}`);
                             }}
                         />
-                        <Tooltip cursor={{fill: '#F0EFEA'}} />
+                        <Tooltip cursor={{fill: '#F0EFEA'}} formatter={(value: number) => [`${Math.round(value * 10) / 10}`]} />
                         <Legend />
                         <Bar dataKey="expected" name="Esperado" fill="#D1D0CB" barSize={24} radius={[0, 4, 4, 0]} />
                         <Bar dataKey="actual" name="Realizado" barSize={24} radius={[0, 4, 4, 0]}>
