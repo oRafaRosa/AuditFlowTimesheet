@@ -48,6 +48,9 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const [pwdSuccess, setPwdSuccess] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // permissão de Matriz de Riscos (memoized pra evitar re-render)
+  const riskMatrixAccess = React.useMemo(() => store.getRiskMatrixAccessForCurrentUser(), [user?.id]);
+
   // estado das notificações
   const [notifications, setNotifications] = useState<string[]>([]);
   const [showNotificationPanel, setShowNotificationPanel] = useState(false);
@@ -646,7 +649,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           <NavItem to="/dashboard" icon={LayoutDashboard} label="Meu Dashboard" />
           <NavItem to="/timesheet" icon={Clock} label="Meus Lançamentos" />
           <NavItem to="/reports" icon={TableProperties} label="Relatórios Detalhados" />
-          <NavItem to="/risk-matrix" icon={TrendingUp} label="Matriz de Riscos" locked={store.getRiskMatrixAccessForCurrentUser() === 'NONE'} />
+          <NavItem to="/risk-matrix" icon={TrendingUp} label="Matriz de Riscos" locked={riskMatrixAccess === 'NONE'} />
           <NavItem to="/achievements" icon={Trophy} label="Ranking & Conquistas" locked={!GAMIFICATION_ENABLED} />
 
           <div className="px-4 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider mt-4">Nossos Apps</div>
