@@ -351,7 +351,7 @@ export const RiskMatrix: React.FC = () => {
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Matriz de Riscos</h1>
-          <p className="text-sm text-slate-500 mt-1">Visualizacao de risco inerente, residual e movimentacao por evento de risco.</p>
+          <p className="text-sm text-slate-500 mt-1">Visualizacao de risco inerente, residual e movimentacao por risco.</p>
         </div>
         <div className="inline-flex items-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600">
           <Shield size={14} className="mr-2 text-emerald-600" />
@@ -360,41 +360,42 @@ export const RiskMatrix: React.FC = () => {
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-100 p-4">
-        <div className="flex flex-wrap gap-2 mb-4">
-          <button
-            type="button"
-            onClick={() => setView('INHERENT')}
-            className={`px-3 py-2 rounded-lg text-sm font-semibold ${view === 'INHERENT' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-700'}`}
-          >
-            Risco inerente
-          </button>
-          <button
-            type="button"
-            onClick={() => setView('RESIDUAL')}
-            className={`px-3 py-2 rounded-lg text-sm font-semibold ${view === 'RESIDUAL' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-700'}`}
-          >
-            Risco residual
-          </button>
-          <button
-            type="button"
-            onClick={() => setView('MOVEMENT')}
-            className={`px-3 py-2 rounded-lg text-sm font-semibold ${view === 'MOVEMENT' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-700'}`}
-          >
-            Movimentacao dos riscos
-          </button>
-        </div>
+        <div className="mb-2 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setView('INHERENT')}
+              className={`px-3 py-2 rounded-lg text-sm font-semibold ${view === 'INHERENT' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-700'}`}
+            >
+              Risco inerente
+            </button>
+            <button
+              type="button"
+              onClick={() => setView('RESIDUAL')}
+              className={`px-3 py-2 rounded-lg text-sm font-semibold ${view === 'RESIDUAL' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-700'}`}
+            >
+              Risco residual
+            </button>
+            <button
+              type="button"
+              onClick={() => setView('MOVEMENT')}
+              className={`px-3 py-2 rounded-lg text-sm font-semibold ${view === 'MOVEMENT' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-700'}`}
+            >
+              Movimentacao dos riscos
+            </button>
+          </div>
 
-        <div className="mb-2">
           <button
             type="button"
             onClick={() => setShowFilter(f => !f)}
-            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            className="inline-flex items-center gap-2 self-start px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-sm font-semibold text-slate-700 hover:bg-slate-50 lg:self-auto"
           >
             <Filter size={13} />
             Filtrar riscos no gráfico ({selectedCodes.size}/{records.length})
           </button>
+
           {showFilter && (
-            <div className="mt-2 p-3 rounded-xl border border-slate-200 bg-slate-50">
+            <div className="lg:basis-full p-3 rounded-xl border border-slate-200 bg-slate-50">
               <div className="flex gap-3 mb-2">
                 <button type="button" onClick={() => setSelectedCodes(new Set(records.map(r => r.code)))} className="text-xs text-brand-600 font-semibold hover:underline">Selecionar todos</button>
                 <span className="text-slate-300">|</span>
