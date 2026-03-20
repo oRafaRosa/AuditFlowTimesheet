@@ -121,9 +121,9 @@ class StoreService {
       const iv = fromBase64(ivBase64);
       const encryptedBytes = fromBase64(cipherBase64);
       const decrypted = await crypto.subtle.decrypt(
-        { name: 'AES-GCM', iv } as AesGcmParams,
+        { name: 'AES-GCM', iv: new Uint8Array(iv) },
         key,
-        encryptedBytes as BufferSource
+        new Uint8Array(encryptedBytes)
       );
       const json = new TextDecoder().decode(new Uint8Array(decrypted));
       return JSON.parse(json);
