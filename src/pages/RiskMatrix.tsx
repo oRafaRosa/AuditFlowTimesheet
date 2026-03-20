@@ -148,6 +148,16 @@ export const RiskMatrix: React.FC = () => {
 
   const normalize = (value: number) => (value - axis.min) / axis.span;
 
+  const clampMatrixCoordinate = (value: number, axis: 'x' | 'y', padding = 12) => {
+    const min = axis === 'x'
+      ? matrixLayout.matrixLeft + padding
+      : matrixLayout.matrixTop + padding;
+    const max = axis === 'x'
+      ? matrixLayout.matrixRight - padding
+      : matrixLayout.matrixBottom - padding;
+    return Math.min(Math.max(value, min), max);
+  };
+
   const matrixLayout = useMemo(() => {
     const cellWidth = isFullScreen ? matrixWidth : 80;
     const cellHeight = isFullScreen ? matrixHeight : 80;
@@ -479,10 +489,10 @@ export const RiskMatrix: React.FC = () => {
       <text x={matrixLayout.horizontalTitleX} y={matrixLayout.impactTitleY} textAnchor="middle" fontSize="10" fontWeight="700" fill="#64748b" letterSpacing="1">IMPACTO</text>
 
       {records.filter(r => selectedCodes.has(r.code)).map((record) => {
-        const ix = matrixLayout.matrixLeft + normalize(record.inherentImpact) * matrixLayout.matrixPixelWidth;
-        const iy = matrixLayout.matrixBottom - normalize(record.inherentProbability) * matrixLayout.matrixPixelHeight;
-        const rx = matrixLayout.matrixLeft + normalize(record.residualImpact) * matrixLayout.matrixPixelWidth;
-        const ry = matrixLayout.matrixBottom - normalize(record.residualProbability) * matrixLayout.matrixPixelHeight;
+        const ix = clampMatrixCoordinate(matrixLayout.matrixLeft + normalize(record.inherentImpact) * matrixLayout.matrixPixelWidth, 'x');
+        const iy = clampMatrixCoordinate(matrixLayout.matrixBottom - normalize(record.inherentProbability) * matrixLayout.matrixPixelHeight, 'y');
+        const rx = clampMatrixCoordinate(matrixLayout.matrixLeft + normalize(record.residualImpact) * matrixLayout.matrixPixelWidth, 'x');
+        const ry = clampMatrixCoordinate(matrixLayout.matrixBottom - normalize(record.residualProbability) * matrixLayout.matrixPixelHeight, 'y');
 
         if (view === 'MOVEMENT') {
           return (
