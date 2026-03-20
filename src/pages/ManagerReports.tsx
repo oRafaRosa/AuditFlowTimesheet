@@ -3,15 +3,18 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { store } from '../services/store';
-import { User, Project, TimesheetEntry, formatHours } from '../types';
-import { Filter, Loader2, Download } from 'lucide-react';
+import { CalendarException, Holiday, User, Project, TimesheetEntry, HOURS_PER_DAY, formatHours } from '../types';
+import { Filter, Loader2, Download, AlertTriangle, AlertOctagon, Copy } from 'lucide-react';
 import { formatDateForDisplay, formatLocalDate } from '../utils/date';
+import { buildCalendarMaps, isExpectedWorkingDay } from '../utils/workCalendar';
 
 export const ManagerReports: React.FC = () => {
   const location = useLocation();
   const [entries, setEntries] = useState<TimesheetEntry[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
+    const [holidays, setHolidays] = useState<Holiday[]>([]);
+    const [exceptions, setExceptions] = useState<CalendarException[]>([]);
   const [filteredEntries, setFilteredEntries] = useState<TimesheetEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -81,9 +84,11 @@ export const ManagerReports: React.FC = () => {
     }
     setUsers(myTeam);
 
-    const [allEntries, allProjects] = await Promise.all([
+    const [allEntries, allProjects, allHolidays, allExceptions] = await Promise.all([
         store.getEntries(),
-        store.getProjects()
+        store.getProjects(),
+        store.getHolidays(),
+        store.getExceptions()
     ]);
     
     // pré-filtro das entradas só da minha equipe
@@ -98,6 +103,8 @@ export const ManagerReports: React.FC = () => {
         : allProjects.filter(p => !p.allowedManagerIds?.length || p.allowedManagerIds.includes(currentUser.id));
     
     setProjects(visibleProjects);
+    setHolidays(allHolidays);
+    setExceptions(allExceptions);
     setLoading(false);
   };
 
@@ -124,6 +131,23 @@ export const ManagerReports: React.FC = () => {
       setFilteredEntries(result);
   };
 
+    const getDailyTotalForUser = (userId: string, date: string) => {
+        return entries
+            .filter((entry) => entry.userId === userId && entry.date === date)
+            .reduce((acc, curr) => acc + curr.hours, 0);
+    };
+
+    const isDuplicate = (entry: TimesheetEntry) => {
+        return entries.filter(e =>
+            e.id !== entry.id &&
+            e.userId === entry.userId &&
+            e.date === entry.date &&
+            e.projectId === entry.projectId &&
+            e.hours === entry.hours &&
+            e.description === entry.description
+        ).length > 0;
+    };
+
   const handleExport = () => {
     const header = ['Data', 'Usuário', 'Projeto', 'Horas', 'Descrição'];
     const rows = filteredEntries.map(e => {
@@ -144,6 +168,7 @@ export const ManagerReports: React.FC = () => {
 
   const getUserName = (id: string) => users.find(u => u.id === id)?.name || id;
   const getProjectName = (id: string) => projects.find(p => p.id === id)?.name || id;
+    const calendarMaps = buildCalendarMaps(holidays, exceptions);
 
   if (loading) return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin text-brand-600" size={48} /></div>;
 
@@ -202,15 +227,45 @@ export const ManagerReports: React.FC = () => {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                        {filteredEntries.map(e => (
-                            <tr key={e.id} className="hover:bg-slate-50">
+                        {filteredEntries.map(e => {
+                            const user = users.find(u => u.id === e.userId);
+                            const requiresTimesheet = user?.requiresTimesheet !== false;
+                            const totalDayHours = getDailyTotalForUser(e.userId, e.date);
+                            const isWorkingDay = isExpectedWorkingDay(e.date, calendarMaps);
+                            const isOverLimit = requiresTimesheet && totalDayHours > HOURS_PER_DAY;
+                            const isUnderLimit = requiresTimesheet && isWorkingDay && totalDayHours < HOURS_PER_DAY;
+                            const hasDuplicate = isDuplicate(e);
+                            const hasAlert = isOverLimit || isUnderLimit || hasDuplicate;
+
+                            return (
+                            <tr key={e.id} className={`${hasAlert ? 'bg-amber-50 hover:bg-amber-100' : 'hover:bg-slate-50'}`}>
                                 <td className="px-6 py-3 whitespace-nowrap">{formatDateForDisplay(e.date)}</td>
-                                <td className="px-6 py-3">{getUserName(e.userId)}</td>
+                                <td className="px-6 py-3">
+                                    <div className="flex items-center gap-2">
+                                        <span>{getUserName(e.userId)}</span>
+                                        {hasAlert && (
+                                            <div className="group relative">
+                                                <AlertTriangle size={14} className="text-amber-600 cursor-help" />
+                                                <span className="hidden group-hover:block absolute left-5 top-0 bg-slate-800 text-white text-xs p-1.5 rounded z-50 w-64">
+                                                    {isOverLimit && `Dia com ${formatHours(totalDayHours)}h (acima de ${formatHours(HOURS_PER_DAY)}h). `}
+                                                    {isUnderLimit && `Dia com ${formatHours(totalDayHours)}h (abaixo de ${formatHours(HOURS_PER_DAY)}h em dia útil). `}
+                                                    {hasDuplicate && 'Possível lançamento duplicado detectado.'}
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </td>
                                 <td className="px-6 py-3">{getProjectName(e.projectId)}</td>
                                 <td className="px-6 py-3 text-slate-500 truncate max-w-xs">{e.description}</td>
-                                <td className="px-6 py-3 text-right font-medium">{formatHours(e.hours)}</td>
+                                <td className={`px-6 py-3 text-right font-medium ${isOverLimit || isUnderLimit ? 'text-amber-700' : ''}`}>
+                                    <div className="flex items-center justify-end gap-2">
+                                        {(isOverLimit || isUnderLimit) && <AlertOctagon size={14} className="text-amber-600" />}
+                                        {hasDuplicate && <Copy size={14} className="text-red-500" />}
+                                        <span>{formatHours(e.hours)}</span>
+                                    </div>
+                                </td>
                             </tr>
-                        ))}
+                        )})}
                         {filteredEntries.length === 0 && (
                             <tr><td colSpan={5} className="p-8 text-center text-slate-400">Nenhum registro encontrado.</td></tr>
                         )}
