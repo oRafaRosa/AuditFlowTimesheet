@@ -233,7 +233,8 @@ export const ManagerReports: React.FC = () => {
                         {filteredEntries.map(e => {
                             const user = users.find(u => u.id === e.userId);
                             const requiresTimesheet = user?.requiresTimesheet !== false;
-                            const totalDayHours = getDailyTotalForUser(e.userId, e.date);
+                            // arredonda pra 1 decimal pra ficar consistente com o que é exibido
+                            const totalDayHours = Math.round(getDailyTotalForUser(e.userId, e.date) * 10) / 10;
                             const isWorkingDay = isExpectedWorkingDay(e.date, calendarMaps);
                             const isOverConfiguredLimit = requiresTimesheet && totalDayHours > dailyHourLimit;
                             const isOverLimit = requiresTimesheet && totalDayHours > HOURS_PER_DAY;
