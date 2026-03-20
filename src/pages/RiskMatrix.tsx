@@ -145,10 +145,15 @@ export const RiskMatrix: React.FC = () => {
       const current = prev[recordId];
       if (!current) return prev;
 
+      const isNumericField = key.includes('Impact') || key.includes('Probability');
+      const normalizedNumericValue = Number(String(value).replace(',', '.'));
+
       const next: RiskMatrixRecord = {
         ...current,
-        [key]: key.includes('Impact') || key.includes('Probability')
-          ? Number(value)
+        [key]: isNumericField
+          ? (Number.isFinite(normalizedNumericValue)
+            ? normalizedNumericValue
+            : (current[key] as number))
           : value
       } as RiskMatrixRecord;
 
@@ -324,6 +329,7 @@ export const RiskMatrix: React.FC = () => {
               if (view === 'MOVEMENT') {
                 return (
                   <g key={record.id}>
+                    <title>{`${record.code} - ${record.title}`}</title>
                     <line x1={ix} y1={iy} x2={rx} y2={ry} stroke="#64748b" strokeDasharray="5 5" strokeWidth={1.5} />
                     <circle cx={ix} cy={iy} r={6} fill="#e2e8f0" stroke="#94a3b8" />
                     <circle cx={rx} cy={ry} r={10} fill="#f59e0b" opacity={0.22} />
@@ -339,6 +345,7 @@ export const RiskMatrix: React.FC = () => {
 
               return (
                 <g key={record.id}>
+                  <title>{`${record.code} - ${record.title}`}</title>
                   <circle cx={x} cy={y} r={8} fill={pointColor} />
                   <text x={x + 9} y={y + 3} className="fill-slate-700 text-[11px] font-bold">{record.code}</text>
                 </g>
@@ -418,10 +425,10 @@ export const RiskMatrix: React.FC = () => {
                     <td className="p-2">
                       {canEdit ? (
                         <input
-                          type="number"
-                          step="0.00001"
+                          type="text"
+                          inputMode="decimal"
                           className="w-28 border border-slate-300 rounded p-1.5"
-                          value={draft.inherentImpact}
+                          value={toFive(draft.inherentImpact)}
                           onChange={(e) => handleDraftChange(record.id, 'inherentImpact', e.target.value)}
                         />
                       ) : toFive(draft.inherentImpact)}
@@ -429,10 +436,10 @@ export const RiskMatrix: React.FC = () => {
                     <td className="p-2">
                       {canEdit ? (
                         <input
-                          type="number"
-                          step="0.00001"
+                          type="text"
+                          inputMode="decimal"
                           className="w-28 border border-slate-300 rounded p-1.5"
-                          value={draft.inherentProbability}
+                          value={toFive(draft.inherentProbability)}
                           onChange={(e) => handleDraftChange(record.id, 'inherentProbability', e.target.value)}
                         />
                       ) : toFive(draft.inherentProbability)}
@@ -440,10 +447,10 @@ export const RiskMatrix: React.FC = () => {
                     <td className="p-2">
                       {canEdit ? (
                         <input
-                          type="number"
-                          step="0.00001"
+                          type="text"
+                          inputMode="decimal"
                           className="w-28 border border-slate-300 rounded p-1.5"
-                          value={draft.residualImpact}
+                          value={toFive(draft.residualImpact)}
                           onChange={(e) => handleDraftChange(record.id, 'residualImpact', e.target.value)}
                         />
                       ) : toFive(draft.residualImpact)}
@@ -451,10 +458,10 @@ export const RiskMatrix: React.FC = () => {
                     <td className="p-2">
                       {canEdit ? (
                         <input
-                          type="number"
-                          step="0.00001"
+                          type="text"
+                          inputMode="decimal"
                           className="w-28 border border-slate-300 rounded p-1.5"
-                          value={draft.residualProbability}
+                          value={toFive(draft.residualProbability)}
                           onChange={(e) => handleDraftChange(record.id, 'residualProbability', e.target.value)}
                         />
                       ) : toFive(draft.residualProbability)}
