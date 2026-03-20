@@ -1,5 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { User, Project, TimesheetEntry, Holiday, CalendarException, HOURS_PER_DAY, TimesheetPeriod, PeriodStatus, FrequentEntryTemplate, TimesheetPeriodEvent, UserActivityEvent, UserActivityType, UserLoginActivity } from '../types';
+import { User, Project, TimesheetEntry, Holiday, CalendarException, HOURS_PER_DAY, TimesheetPeriod, PeriodStatus, FrequentEntryTemplate, TimesheetPeriodEvent, UserActivityEvent, UserActivityType, UserLoginActivity, RiskMatrixAccess, RiskMatrixRecord } from '../types';
 import { formatLocalDate, normalizeDateValue } from '../utils/date';
 import { loadingState } from './loadingState';
 
@@ -8,6 +8,7 @@ import { loadingState } from './loadingState';
 // em prod, sempre trocar essas credenciais antes de deployar
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://odynsxzfuctvqurtrwhz.supabase.co';
 const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_KEY || 'sb_publishable_kWDnXvgjYwU7sc4Ypb9SWA_n48HTGgV';
+const RISK_MATRIX_ENCRYPTION_KEY = import.meta.env.VITE_RISK_MATRIX_ENCRYPTION_KEY || '';
 
 export const supabase: SupabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -23,6 +24,28 @@ const DEFAULT_DAILY_HOUR_LIMIT = 10;
 
 // hash sha-256 de 'AuditFlow@2025'
 const DEFAULT_PASSWORD_HASH = '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918';
+
+const normalizeRiskMatrixAccess = (value: any): RiskMatrixAccess => {
+  if (value === 'READ' || value === 'EDIT') return value;
+  return 'NONE';
+};
+
+const toBase64 = (bytes: Uint8Array): string => {
+  let binary = '';
+  bytes.forEach((byte) => {
+    binary += String.fromCharCode(byte);
+  });
+  return btoa(binary);
+};
+
+const fromBase64 = (value: string): Uint8Array => {
+  const binary = atob(value);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+};
 
 class StoreService {
   constructor() {
@@ -63,6 +86,50 @@ class StoreService {
     } catch (e) {
         console.warn("Erro ao gerar hash da senha:", e);
         return '';
+    }
+  }
+
+  private async getRiskMatrixCryptoKey(): Promise<CryptoKey | null> {
+    if (!RISK_MATRIX_ENCRYPTION_KEY || RISK_MATRIX_ENCRYPTION_KEY.trim().length < 16) {
+      console.warn('VITE_RISK_MATRIX_ENCRYPTION_KEY ausente ou muito curta. Defina no .env para liberar criptografia da matriz.');
+      return null;
+    }
+
+    const rawKey = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(RISK_MATRIX_ENCRYPTION_KEY));
+    return crypto.subtle.importKey('raw', rawKey, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
+  }
+
+  private async encryptRiskPayload(payload: unknown): Promise<string> {
+    const key = await this.getRiskMatrixCryptoKey();
+    if (!key) throw new Error('Chave de criptografia da matriz de riscos nao configurada.');
+
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const plainBytes = new TextEncoder().encode(JSON.stringify(payload));
+    const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, plainBytes);
+
+    return `${toBase64(iv)}:${toBase64(new Uint8Array(encrypted))}`;
+  }
+
+  private async decryptRiskPayload(payloadCipher: string): Promise<any | null> {
+    try {
+      const key = await this.getRiskMatrixCryptoKey();
+      if (!key) return null;
+
+      const [ivBase64, cipherBase64] = payloadCipher.split(':');
+      if (!ivBase64 || !cipherBase64) return null;
+
+      const iv = fromBase64(ivBase64);
+      const encryptedBytes = fromBase64(cipherBase64);
+      const decrypted = await crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv } as AesGcmParams,
+        key,
+        encryptedBytes as BufferSource
+      );
+      const json = new TextDecoder().decode(new Uint8Array(decrypted));
+      return JSON.parse(json);
+    } catch (error) {
+      console.warn('Falha ao descriptografar payload de risco:', error);
+      return null;
     }
   }
 
@@ -126,6 +193,7 @@ class StoreService {
             name: data.full_name,
             email: data.email,
             role: data.role,
+          riskMatrixAccess: normalizeRiskMatrixAccess(data.risk_matrix_access),
           area: data.area || undefined,
           admissionDate: data.admission_date || '2020-01-01',
           terminationDate: data.termination_date || undefined,
@@ -361,6 +429,7 @@ class StoreService {
           name: d.full_name,
           email: d.email,
           role: d.role,
+          riskMatrixAccess: normalizeRiskMatrixAccess(d.risk_matrix_access),
           area: d.area || undefined,
           admissionDate: d.admission_date || '2020-01-01',
           terminationDate: d.termination_date || undefined,
@@ -381,6 +450,7 @@ class StoreService {
           full_name: user.name,
           email: user.email.trim(),
           role: user.role,
+          risk_matrix_access: normalizeRiskMatrixAccess(user.riskMatrixAccess),
           area: user.area || null,
           admission_date: user.admissionDate || '2020-01-01',
           termination_date: user.terminationDate || null,
@@ -401,6 +471,7 @@ class StoreService {
           name: data.full_name,
           email: data.email,
           role: data.role,
+          riskMatrixAccess: normalizeRiskMatrixAccess(data.risk_matrix_access),
           area: data.area || undefined,
           admissionDate: data.admission_date || '2020-01-01',
           terminationDate: data.termination_date || undefined,
@@ -417,6 +488,7 @@ class StoreService {
     if (data.name) dbUpdate.full_name = data.name;
     if (data.email) dbUpdate.email = data.email.trim();
     if (data.role) dbUpdate.role = data.role;
+    if (data.riskMatrixAccess !== undefined) dbUpdate.risk_matrix_access = normalizeRiskMatrixAccess(data.riskMatrixAccess);
     if (data.area !== undefined) dbUpdate.area = data.area || null;
     if (data.admissionDate !== undefined) dbUpdate.admission_date = data.admissionDate || '2020-01-01';
     if (data.terminationDate !== undefined) dbUpdate.termination_date = data.terminationDate || null;
@@ -431,6 +503,18 @@ class StoreService {
     if (error) {
       console.error('Erro ao atualizar usuário:', error);
       throw error;
+    }
+
+    const currentUser = this.getCurrentUser();
+    if (currentUser && currentUser.id === id) {
+      const updatedUser = {
+        ...currentUser,
+        ...data,
+        riskMatrixAccess: data.riskMatrixAccess !== undefined
+          ? normalizeRiskMatrixAccess(data.riskMatrixAccess)
+          : currentUser.riskMatrixAccess
+      };
+      localStorage.setItem(KEYS.CURRENT_USER, JSON.stringify(updatedUser));
     }
   }
 
@@ -1088,6 +1172,101 @@ class StoreService {
     );
   }
 
+  // --- matriz de riscos ---
+
+  getRiskMatrixAccessForCurrentUser(): RiskMatrixAccess {
+    const currentUser = this.getCurrentUser();
+    if (!currentUser) return 'NONE';
+    if (currentUser.role === 'ADMIN') return 'EDIT';
+    return normalizeRiskMatrixAccess(currentUser.riskMatrixAccess);
+  }
+
+  async getRiskMatrixRecords(): Promise<RiskMatrixRecord[]> {
+    const access = this.getRiskMatrixAccessForCurrentUser();
+    if (access === 'NONE') return [];
+
+    const { data, error } = await supabase
+      .from('risk_matrix_records')
+      .select('*')
+      .order('risk_code', { ascending: true });
+
+    if (error) {
+      console.warn('Erro ao buscar registros da matriz de riscos:', error);
+      return [];
+    }
+
+    const decrypted = await Promise.all((data || []).map(async (row: any) => {
+      const payload = await this.decryptRiskPayload(row.payload_encrypted);
+      if (!payload) return null;
+
+      const normalizedRecord: RiskMatrixRecord = {
+        id: row.id,
+        code: row.risk_code,
+        title: String(payload.title || row.risk_code),
+        category: payload.category || undefined,
+        ownerArea: payload.ownerArea || undefined,
+        inherentImpact: Number(payload.inherentImpact || 0),
+        inherentProbability: Number(payload.inherentProbability || 0),
+        residualImpact: Number(payload.residualImpact || 0),
+        residualProbability: Number(payload.residualProbability || 0),
+        updatedAt: row.updated_at,
+        updatedBy: row.updated_by || undefined
+      };
+
+      if (
+        !Number.isFinite(normalizedRecord.inherentImpact) ||
+        !Number.isFinite(normalizedRecord.inherentProbability) ||
+        !Number.isFinite(normalizedRecord.residualImpact) ||
+        !Number.isFinite(normalizedRecord.residualProbability)
+      ) {
+        return null;
+      }
+
+      return normalizedRecord;
+    }));
+
+    return decrypted.filter((item): item is RiskMatrixRecord => item !== null);
+  }
+
+  async saveRiskMatrixRecord(record: Omit<RiskMatrixRecord, 'updatedAt' | 'updatedBy'>): Promise<boolean> {
+    const access = this.getRiskMatrixAccessForCurrentUser();
+    if (access !== 'EDIT') return false;
+
+    const currentUser = this.getCurrentUser();
+    if (!currentUser) return false;
+
+    const payload = {
+      title: record.title,
+      category: record.category || null,
+      ownerArea: record.ownerArea || null,
+      inherentImpact: record.inherentImpact,
+      inherentProbability: record.inherentProbability,
+      residualImpact: record.residualImpact,
+      residualProbability: record.residualProbability
+    };
+
+    const encrypted = await this.encryptRiskPayload(payload);
+
+    const { error } = await supabase
+      .from('risk_matrix_records')
+      .upsert({
+        id: record.id,
+        risk_code: record.code,
+        payload_encrypted: encrypted,
+        updated_by: currentUser.id,
+        updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'id'
+      });
+
+    if (error) {
+      console.warn('Erro ao salvar registro da matriz de riscos:', error);
+      return false;
+    }
+
+    return true;
+  }
+
   // --- configurações globais ---
 
   async getDailyHourLimit(): Promise<number> {
@@ -1213,6 +1392,7 @@ create table if not exists profiles (
   id uuid default gen_random_uuid() primary key,
   full_name text not null,
   role text default 'USER' check (role in ('ADMIN', 'MANAGER', 'USER')),
+  risk_matrix_access text default 'NONE' check (risk_matrix_access in ('NONE', 'READ', 'EDIT')),
   area text,
   admission_date date default '2020-01-01',
   termination_date date,
@@ -1225,10 +1405,15 @@ create table if not exists profiles (
 
 -- coluna para ambientes já existentes
 alter table profiles add column if not exists requires_timesheet boolean default true;
+alter table profiles add column if not exists risk_matrix_access text default 'NONE';
 alter table profiles add column if not exists area text;
 alter table profiles add column if not exists admission_date date default '2020-01-01';
 alter table profiles add column if not exists termination_date date;
 alter table profiles drop constraint if exists profiles_area_check;
+alter table profiles drop constraint if exists profiles_risk_matrix_access_check;
+alter table profiles
+  add constraint profiles_risk_matrix_access_check
+  check (risk_matrix_access in ('NONE', 'READ', 'EDIT'));
 alter table profiles
   add constraint profiles_area_check
   check (
@@ -1345,12 +1530,21 @@ create table if not exists app_settings (
   updated_at timestamp with time zone default timezone('utc'::text, now())
 );
 
--- 9. CRIAR USUÁRIO ADMIN (Senha padrão AuditFlow@2025 já no hash)
+-- 9. Matriz de Riscos (payload criptografado no app)
+create table if not exists risk_matrix_records (
+  id uuid default gen_random_uuid() primary key,
+  risk_code text unique not null,
+  payload_encrypted text not null,
+  updated_by uuid references profiles(id),
+  updated_at timestamp with time zone default timezone('utc'::text, now())
+);
+
+-- 10. CRIAR USUÁRIO ADMIN (Senha padrão AuditFlow@2025 já no hash)
 insert into profiles (full_name, email, role, password)
 values ('Administrador', 'admin@auditflow.com', 'ADMIN', '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918')
 on conflict (email) do nothing;
 
--- 10. GARANTIR PERMISSÕES E RECARREGAR CACHE (Fix para erros de 'table not found')
+-- 11. GARANTIR PERMISSÕES E RECARREGAR CACHE (Fix para erros de 'table not found')
 grant all on all tables in schema public to postgres, anon, authenticated, service_role;
 NOTIFY pgrst, 'reload schema';
 `;
