@@ -628,7 +628,7 @@ export const RiskMatrix: React.FC = () => {
 
       {isFullScreen && (
         <div className="fixed inset-0 z-[120] flex flex-col overflow-hidden bg-white">
-          <div className="border-b border-slate-200 bg-white px-6 py-3 shadow-sm flex flex-wrap items-center justify-between gap-4 flex-shrink-0">
+          <div className="relative border-b border-slate-200 bg-white px-6 py-3 shadow-sm flex flex-wrap items-center justify-between gap-4 flex-shrink-0">
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
@@ -670,49 +670,50 @@ export const RiskMatrix: React.FC = () => {
                 Sair
               </button>
             </div>
-          </div>
-          {showMatrixSizeControls && (
-            <div className="border-b border-slate-200 bg-white px-6 py-3">
-              <div className="ml-auto flex w-full max-w-md flex-wrap items-end gap-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <label className="flex-1">
-                  <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-500">Largura da celula</span>
-                  <input
-                    type="range"
-                    min={60}
-                    max={520}
-                    step={4}
-                    value={matrixWidth}
-                    onChange={(e) => setMatrixWidth(Number(e.target.value))}
-                    className="w-full accent-brand-600"
-                  />
-                  <span className="mt-1 block text-xs text-slate-500">{matrixWidth}px</span>
-                </label>
-                <label className="flex-1">
-                  <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-500">Altura da celula</span>
-                  <input
-                    type="range"
-                    min={60}
-                    max={520}
-                    step={4}
-                    value={matrixHeight}
-                    onChange={(e) => setMatrixHeight(Number(e.target.value))}
-                    className="w-full accent-brand-600"
-                  />
-                  <span className="mt-1 block text-xs text-slate-500">{matrixHeight}px</span>
-                </label>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMatrixWidth(80);
-                    setMatrixHeight(80);
-                  }}
-                  className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100"
-                >
-                  Resetar
-                </button>
+
+            {showMatrixSizeControls && (
+              <div className="absolute right-6 top-full z-30 mt-2 w-full max-w-md rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 shadow-lg">
+                <div className="flex flex-wrap items-end gap-4">
+                  <label className="flex-1 min-w-[170px]">
+                    <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-500">Largura da celula</span>
+                    <input
+                      type="range"
+                      min={60}
+                      max={520}
+                      step={4}
+                      value={matrixWidth}
+                      onChange={(e) => setMatrixWidth(Number(e.target.value))}
+                      className="w-full accent-brand-600"
+                    />
+                    <span className="mt-1 block text-xs text-slate-500">{matrixWidth}px</span>
+                  </label>
+                  <label className="flex-1 min-w-[170px]">
+                    <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-500">Altura da celula</span>
+                    <input
+                      type="range"
+                      min={60}
+                      max={520}
+                      step={4}
+                      value={matrixHeight}
+                      onChange={(e) => setMatrixHeight(Number(e.target.value))}
+                      className="w-full accent-brand-600"
+                    />
+                    <span className="mt-1 block text-xs text-slate-500">{matrixHeight}px</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMatrixWidth(80);
+                      setMatrixHeight(80);
+                    }}
+                    className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100"
+                  >
+                    Resetar
+                  </button>
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
           <div className="flex-1 min-h-0 overflow-auto bg-slate-50 p-4">
             <div className="flex min-h-full min-w-full items-center justify-center">
               {renderMatrixSVG('fullscreen')}
