@@ -125,7 +125,6 @@ export const ManagerCapacity: React.FC = () => {
   const [selectedManagerId, setSelectedManagerId] = useState('');
   const [selectedArea, setSelectedArea] = useState<AreaFilterValue>('');
   const [nameFilter, setNameFilter] = useState('');
-  const [includeWithoutTimesheet, setIncludeWithoutTimesheet] = useState(false);
   const [showTimesheetGapDetails, setShowTimesheetGapDetails] = useState(false);
   const [sortColumn, setSortColumn] = useState<CapacitySortColumn>('utilizationPct');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
@@ -223,13 +222,8 @@ export const ManagerCapacity: React.FC = () => {
 
     const filteredRows = scopedUsers
       .filter((u) => {
-        // Quem está marcado como "sem timesheet" não entra no capacity.
-        if (u.requiresTimesheet === false) return false;
-
-        // Checkbox mantém o comportamento de incluir lideranças no recorte.
-        if (includeWithoutTimesheet) return true;
-
-        return u.role !== 'MANAGER' && u.role !== 'ADMIN';
+        // Só exclui quem está marcado como "sem timesheet".
+        return u.requiresTimesheet !== false;
       })
       .filter((u) => {
         if (u.isActive !== false) return true;
@@ -345,7 +339,6 @@ export const ManagerCapacity: React.FC = () => {
     selectedManagerId,
     selectedArea,
     nameFilter,
-    includeWithoutTimesheet,
     managerMap,
     sortColumn,
     sortDirection
@@ -366,7 +359,6 @@ export const ManagerCapacity: React.FC = () => {
     setSelectedManagerId('');
     setSelectedArea('');
     setNameFilter('');
-    setIncludeWithoutTimesheet(false);
     setShowTimesheetGapDetails(false);
   };
 
@@ -576,7 +568,7 @@ export const ManagerCapacity: React.FC = () => {
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3">
           <div>
             <label className="block text-xs text-slate-500 font-bold mb-1">Ano</label>
             <input
@@ -626,18 +618,6 @@ export const ManagerCapacity: React.FC = () => {
               value={nameFilter}
               onChange={(e) => setNameFilter(e.target.value)}
             />
-          </div>
-
-          <div className="flex flex-col justify-end gap-2">
-            <label className="flex items-center gap-2 text-xs text-slate-600">
-              <input
-                type="checkbox"
-                checked={includeWithoutTimesheet}
-                onChange={(e) => setIncludeWithoutTimesheet(e.target.checked)}
-                className="rounded text-brand-600"
-              />
-              Incluir gestores
-            </label>
           </div>
         </div>
       </section>
