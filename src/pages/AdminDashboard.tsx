@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { store, SUPABASE_SCHEMA_SQL } from '../services/store';
-import { User, Project, TimesheetEntry, CalendarException, UserArea, formatHours } from '../types';
+import { User, Project, TimesheetEntry, CalendarException, UserArea, RiskMatrixAccess, formatHours } from '../types';
 import { Database, Edit, Filter, Calendar, Trash2, Loader2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { formatDateForDisplay } from '../utils/date';
 
@@ -35,6 +35,8 @@ export const AdminDashboard: React.FC = () => {
   const [managerApprovalBacklog, setManagerApprovalBacklog] = useState<ManagerApprovalBacklogGroup[]>([]);
   const [showSqlModal, setShowSqlModal] = useState(false);
   const [loading, setLoading] = useState(false);
+    const [riskAccessByUser, setRiskAccessByUser] = useState<Record<string, RiskMatrixAccess>>({});
+    const [savingRiskAccess, setSavingRiskAccess] = useState(false);
     const [dailyHourLimit, setDailyHourLimit] = useState(10);
     const [savingDailyHourLimit, setSavingDailyHourLimit] = useState(false);
     const [userSortColumn, setUserSortColumn] = useState<'name' | 'manager' | 'role'>('name');
@@ -117,6 +119,16 @@ export const AdminDashboard: React.FC = () => {
     setEntries(e);
     setExceptions(ex);
     setDailyHourLimit(configuredDailyLimit);
+        setRiskAccessByUser(
+            u.reduce<Record<string, RiskMatrixAccess>>((acc, item) => {
+                if (item.role === 'ADMIN') {
+                    acc[item.id] = 'EDIT';
+                } else {
+                    acc[item.id] = item.riskMatrixAccess || 'NONE';
+                }
+                return acc;
+            }, {})
+        );
 
     const activeUsers = u.filter((item) => item.isActive !== false);
     const userMap = new Map(activeUsers.map((item) => [item.id, item]));
@@ -199,6 +211,29 @@ export const AdminDashboard: React.FC = () => {
             alert('Limite diário salvo com sucesso.');
         } else {
             alert('Não foi possível salvar no banco agora. O valor foi salvo localmente neste navegador.');
+        }
+    };
+
+    const handleSaveRiskAccess = async () => {
+        setSavingRiskAccess(true);
+        try {
+            const updates = users
+                .filter(user => user.role !== 'ADMIN')
+                .filter(user => (user.riskMatrixAccess || 'NONE') !== (riskAccessByUser[user.id] || 'NONE'));
+
+            for (const user of updates) {
+                await store.updateUser(user.id, { riskMatrixAccess: riskAccessByUser[user.id] || 'NONE' });
+            }
+
+            if (updates.length > 0) {
+                alert('Permissões da Matriz de Riscos atualizadas com sucesso.');
+            } else {
+                alert('Nenhuma alteração de permissão para salvar.');
+            }
+
+            await refreshData();
+        } finally {
+            setSavingRiskAccess(false);
         }
     };
 
@@ -994,6 +1029,50 @@ export const AdminDashboard: React.FC = () => {
                                             {savingDailyHourLimit ? 'Salvando...' : 'Salvar limite diário'}
                                         </button>
                                     </div>
+                                </div>
+
+                                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 h-fit">
+                                    <h3 className="font-bold text-slate-800 mb-4">Permissões - Matriz de Riscos</h3>
+                                    <p className="text-xs text-slate-500 mb-4">
+                                        Defina quem pode acessar a Matriz de Riscos e o nivel de permissao.
+                                        Administradores sempre possuem permissao de edicao.
+                                    </p>
+
+                                    <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                                        {users.map((user) => (
+                                            <div key={user.id} className="rounded-lg border border-slate-200 p-3 flex items-center gap-3">
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-sm font-semibold text-slate-800 truncate">{user.name}</p>
+                                                    <p className="text-xs text-slate-500 truncate">{user.email}</p>
+                                                </div>
+                                                {user.role === 'ADMIN' ? (
+                                                    <span className="text-xs font-bold bg-brand-50 text-brand-700 px-2 py-1 rounded">EDIT (ADMIN)</span>
+                                                ) : (
+                                                    <select
+                                                        className="border border-gray-300 rounded-lg p-2 text-xs"
+                                                        value={riskAccessByUser[user.id] || 'NONE'}
+                                                        onChange={(e) => setRiskAccessByUser((prev) => ({
+                                                            ...prev,
+                                                            [user.id]: e.target.value as RiskMatrixAccess
+                                                        }))}
+                                                    >
+                                                        <option value="NONE">Sem acesso</option>
+                                                        <option value="READ">Apenas leitura</option>
+                                                        <option value="EDIT">Leitura + edicao</option>
+                                                    </select>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    <button
+                                        type="button"
+                                        onClick={handleSaveRiskAccess}
+                                        disabled={savingRiskAccess}
+                                        className="mt-4 w-full bg-brand-600 text-white p-2 rounded-lg font-bold hover:bg-brand-700 disabled:opacity-60"
+                                    >
+                                        {savingRiskAccess ? 'Salvando permissoes...' : 'Salvar permissoes da Matriz'}
+                                    </button>
                                 </div>
 
                                 <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 h-fit">

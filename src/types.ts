@@ -14,6 +14,8 @@ export const formatPercentage = (value: number): string => {
 
 export type Role = 'ADMIN' | 'MANAGER' | 'USER';
 
+export type RiskMatrixAccess = 'NONE' | 'READ' | 'EDIT';
+
 export type UserArea =
   | 'AUDITORIA_INTERNA'
   | 'CONTROLES_INTERNOS'
@@ -27,6 +29,7 @@ export interface User {
   name: string;
   email: string;
   role: Role;
+  riskMatrixAccess?: RiskMatrixAccess;
   area?: UserArea;
   admissionDate?: string; // yyyy-mm-dd
   terminationDate?: string; // yyyy-mm-dd (vazio quando ativo)
@@ -182,4 +185,18 @@ export interface KPI {
   value: string | number;
   change?: string;
   status: 'positive' | 'negative' | 'neutral';
+}
+
+export interface RiskMatrixRecord {
+  id: string;
+  code: string;
+  title: string;
+  category?: string;
+  ownerArea?: UserArea;
+  inherentImpact: number;
+  inherentProbability: number;
+  residualImpact: number;
+  residualProbability: number;
+  updatedAt: string;
+  updatedBy?: string;
 }

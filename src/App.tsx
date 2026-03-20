@@ -11,6 +11,7 @@ import { ManagerCapacity } from './pages/ManagerCapacity';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { HelpCenter } from './pages/HelpCenter'; 
 import { AchievementsHub } from './pages/AchievementsHub';
+import { RiskMatrix } from './pages/RiskMatrix';
 import { store } from './services/store';
 
 // Protected Route Wrapper
@@ -29,6 +30,23 @@ const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
   if (allowedRoles && !allowedRoles.includes(user.role)) {
     // Redirect based on role if trying to access unauthorized area
     if (user.role === 'ADMIN') return <Navigate to="/admin" replace />;
+    if (user.role === 'MANAGER') return <Navigate to="/manager" replace />;
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return <Layout>{children}</Layout>;
+};
+
+const ProtectedRiskMatrixRoute = ({ children }: { children?: React.ReactNode }) => {
+  const user = store.getCurrentUser();
+
+  if (!user) {
+    return <Navigate to="/" replace />;
+  }
+
+  const access = store.getRiskMatrixAccessForCurrentUser();
+  if (access === 'NONE') {
+    if (user.role === 'ADMIN') return <Navigate to="/admin/settings" replace />;
     if (user.role === 'MANAGER') return <Navigate to="/manager" replace />;
     return <Navigate to="/dashboard" replace />;
   }
@@ -73,6 +91,14 @@ const App: React.FC = () => {
             <ProtectedRoute>
               <AchievementsHub />
             </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/risk-matrix"
+          element={
+            <ProtectedRiskMatrixRoute>
+              <RiskMatrix />
+            </ProtectedRiskMatrixRoute>
           }
         />
 
