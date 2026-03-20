@@ -250,6 +250,42 @@ class StoreService {
     return stored ? JSON.parse(stored) : null;
   }
 
+  async syncCurrentUserFromDatabase(): Promise<User | null> {
+    const currentUser = this.getCurrentUser();
+    if (!currentUser?.id) return null;
+
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', currentUser.id)
+        .maybeSingle();
+
+      if (error || !data) return currentUser;
+
+      const syncedUser: User = {
+        ...currentUser,
+        name: data.full_name,
+        email: data.email,
+        role: data.role,
+        riskMatrixAccess: normalizeRiskMatrixAccess(data.risk_matrix_access),
+        area: data.area || undefined,
+        admissionDate: data.admission_date || currentUser.admissionDate || '2020-01-01',
+        terminationDate: data.termination_date || undefined,
+        isActive: data.is_active !== false,
+        requiresTimesheet: data.requires_timesheet !== false,
+        managerId: data.manager_id,
+        delegatedManagerId: data.delegated_manager_id,
+        avatarUrl: `https://ui-avatars.com/api/?name=${data.full_name}`
+      };
+
+      localStorage.setItem(KEYS.CURRENT_USER, JSON.stringify(syncedUser));
+      return syncedUser;
+    } catch {
+      return currentUser;
+    }
+  }
+
   async recordLoginActivity(userId: string, activityDate = formatLocalDate()): Promise<boolean> {
     try {
       const { error } = await supabase

@@ -38,13 +38,39 @@ const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
 };
 
 const ProtectedRiskMatrixRoute = ({ children }: { children?: React.ReactNode }) => {
-  const user = store.getCurrentUser();
+  const [isCheckingAccess, setIsCheckingAccess] = React.useState(true);
+  const [resolvedUser, setResolvedUser] = React.useState(store.getCurrentUser());
+  const [resolvedAccess, setResolvedAccess] = React.useState(store.getRiskMatrixAccessForCurrentUser());
+
+  React.useEffect(() => {
+    let mounted = true;
+
+    const syncAccess = async () => {
+      const syncedUser = await store.syncCurrentUserFromDatabase();
+      if (!mounted) return;
+      setResolvedUser(syncedUser);
+      setResolvedAccess(store.getRiskMatrixAccessForCurrentUser());
+      setIsCheckingAccess(false);
+    };
+
+    syncAccess();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  if (isCheckingAccess) {
+    return null;
+  }
+
+  const user = resolvedUser;
 
   if (!user) {
     return <Navigate to="/" replace />;
   }
 
-  const access = store.getRiskMatrixAccessForCurrentUser();
+  const access = resolvedAccess;
   if (access === 'NONE') {
     if (user.role === 'ADMIN') return <Navigate to="/admin/settings" replace />;
     if (user.role === 'MANAGER') return <Navigate to="/manager" replace />;
