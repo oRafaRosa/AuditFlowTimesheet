@@ -186,6 +186,26 @@ export const ManagerCapacity: React.FC = () => {
     return scopedUsers.filter((u) => u.role === 'MANAGER' || u.role === 'ADMIN');
   }, [scopedUsers]);
 
+  const selectedManagerScopeIds = useMemo(() => {
+    if (!selectedManagerId || selectedManagerId === NO_MANAGER_FILTER) return new Set<string>();
+
+    const scope = new Set<string>([selectedManagerId]);
+    let changed = true;
+
+    while (changed) {
+      changed = false;
+
+      scopedUsers.forEach((user) => {
+        if (user.managerId && scope.has(user.managerId) && !scope.has(user.id)) {
+          scope.add(user.id);
+          changed = true;
+        }
+      });
+    }
+
+    return scope;
+  }, [selectedManagerId, scopedUsers]);
+
   const visibleProjects = useMemo(() => {
     if (!currentUser) return [] as Project[];
 
@@ -200,13 +220,13 @@ export const ManagerCapacity: React.FC = () => {
       .filter((project) => {
         if (!selectedManagerId) return true;
         if (selectedManagerId === NO_MANAGER_FILTER) return !project.allowedManagerIds?.length;
-        return !project.allowedManagerIds?.length || project.allowedManagerIds.includes(selectedManagerId);
+        return !project.allowedManagerIds?.length || project.allowedManagerIds.some((managerId) => selectedManagerScopeIds.has(managerId));
       })
       .filter((project) => {
         if (!selectedArea) return true;
         return project.area === selectedArea;
       });
-  }, [visibleProjects, selectedManagerId, selectedArea]);
+  }, [visibleProjects, selectedManagerId, selectedArea, selectedManagerScopeIds]);
 
   const rows = useMemo(() => {
     const today = parseDateOnly(formatLocalDate());
@@ -234,7 +254,7 @@ export const ManagerCapacity: React.FC = () => {
       .filter((u) => {
         if (!selectedManagerId) return true;
         if (selectedManagerId === NO_MANAGER_FILTER) return !u.managerId;
-        return u.id === selectedManagerId || u.managerId === selectedManagerId;
+        return selectedManagerScopeIds.has(u.id);
       })
       .filter((u) => {
         if (!selectedArea) return true;
@@ -337,6 +357,7 @@ export const ManagerCapacity: React.FC = () => {
     exceptions,
     selectedYear,
     selectedManagerId,
+    selectedManagerScopeIds,
     selectedArea,
     nameFilter,
     managerMap,
