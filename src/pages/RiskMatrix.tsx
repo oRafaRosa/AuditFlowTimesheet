@@ -17,16 +17,28 @@ type StagingRow = {
 
 const toFive = (value: number) => Number(value).toFixed(5);
 
+const formatRiskCode = (value: string) => {
+  const normalized = String(value || '').trim().toUpperCase();
+  const digits = normalized.replace(/\D/g, '');
+
+  if (!digits) return normalized;
+
+  return `R${digits.slice(-3).padStart(3, '0')}`;
+};
 
 
-// Cor de cada celula baseada em score = impacto × probabilidade (escala 1–5)
+
+// Paleta fixa da matriz: somente os 3 primeiros quadrinhos usam azul.
 const getCellColor = (col: number, row: number) => {
-  const score = (col + 1) * (5 - row);
-  if (score >= 20) return 'rgba(239, 68, 68, 0.22)';
-  if (score >= 15) return 'rgba(249, 115, 22, 0.22)';
-  if (score >= 9)  return 'rgba(234, 179, 8, 0.20)';
-  if (score >= 5)  return 'rgba(34, 197, 94, 0.18)';
-  return 'rgba(59, 130, 246, 0.20)';
+  const colorMap = [
+    ['rgba(209, 250, 229, 0.65)', 'rgba(254, 243, 199, 0.72)', 'rgba(254, 215, 170, 0.72)', 'rgba(254, 202, 202, 0.75)', 'rgba(254, 202, 202, 0.82)'],
+    ['rgba(209, 250, 229, 0.65)', 'rgba(209, 250, 229, 0.65)', 'rgba(254, 243, 199, 0.72)', 'rgba(254, 215, 170, 0.72)', 'rgba(254, 202, 202, 0.75)'],
+    ['rgba(209, 250, 229, 0.65)', 'rgba(209, 250, 229, 0.65)', 'rgba(254, 243, 199, 0.72)', 'rgba(254, 243, 199, 0.72)', 'rgba(254, 215, 170, 0.72)'],
+    ['rgba(209, 250, 229, 0.65)', 'rgba(209, 250, 229, 0.65)', 'rgba(209, 250, 229, 0.65)', 'rgba(209, 250, 229, 0.65)', 'rgba(254, 243, 199, 0.72)'],
+    ['rgba(191, 219, 254, 0.72)', 'rgba(191, 219, 254, 0.72)', 'rgba(191, 219, 254, 0.72)', 'rgba(209, 250, 229, 0.65)', 'rgba(209, 250, 229, 0.65)']
+  ];
+
+  return colorMap[row]?.[col] ?? 'rgba(255, 255, 255, 1)';
 };
 
 export const RiskMatrix: React.FC = () => {
@@ -85,23 +97,39 @@ export const RiskMatrix: React.FC = () => {
   const tooltipEl = useMemo(() => {
     if (!hoveredRisk) return null;
     const { record, x, y } = hoveredRisk;
-    const iScore = (record.inherentImpact * record.inherentProbability).toFixed(3);
-    const rScore = (record.residualImpact * record.residualProbability).toFixed(3);
-    const title = record.title.length > 24 ? record.title.substring(0, 24) + '\u2026' : record.title;
-    const tw = 242; const th = 68;
-    const tx = x > 640 ? x - tw - 10 : x + 14;
-    const ty = Math.min(Math.max(y - 34, 5), 395);
+    const formattedCode = formatRiskCode(record.code);
+    const inherentScore = record.inherentImpact * record.inherentProbability;
+    const residualScore = record.residualImpact * record.residualProbability;
+    const mitigation = inherentScore > 0
+      ? Math.max(0, ((inherentScore - residualScore) / inherentScore) * 100)
+      : 0;
+    const title = record.title.length > 26 ? record.title.substring(0, 26) + '...' : record.title;
+    const tw = 290;
+    const th = 116;
+    const tx = x > 560 ? x - tw - 18 : x + 18;
+    const ty = Math.min(Math.max(y - 42, 8), 470 - th - 8);
+
     return (
       <g style={{ pointerEvents: 'none' }}>
-        <rect x={tx + 3} y={ty + 3} width={tw} height={th} rx={7} fill="rgba(0,0,0,0.10)" />
-        <rect x={tx} y={ty} width={tw} height={th} rx={7} fill="white" stroke="#e2e8f0" strokeWidth={1.5} />
-        <text x={tx + 10} y={ty + 18} fontSize={11} fontWeight="bold" fill="#1e293b">{record.code} \u2013 {title}</text>
-        <text x={tx + 10} y={ty + 36} fontSize={10} fill="#64748b">
-          {`Inerente: I\u00a0${record.inherentImpact.toFixed(3)} \u00d7 P\u00a0${record.inherentProbability.toFixed(3)} = `}<tspan fontWeight="bold" fill="#1e293b">{iScore}</tspan>
-        </text>
-        <text x={tx + 10} y={ty + 54} fontSize={10} fill="#64748b">
-          {`Residual:\u00a0\u00a0 I\u00a0${record.residualImpact.toFixed(3)} \u00d7 P\u00a0${record.residualProbability.toFixed(3)} = `}<tspan fontWeight="bold" fill="#b45309">{rScore}</tspan>
-        </text>
+        <rect x={tx + 5} y={ty + 5} width={tw} height={th} rx={14} fill="rgba(15, 23, 42, 0.18)" />
+        <rect x={tx} y={ty} width={tw} height={th} rx={14} fill="#111827" stroke="rgba(255,255,255,0.08)" strokeWidth={1} />
+
+        <text x={tx + 14} y={ty + 24} fontSize={15} fontWeight="700" fill="#f8fafc">{formattedCode}</text>
+        <text x={tx + tw - 14} y={ty + 24} textAnchor="end" fontSize={13} fill="#cbd5e1">{title}</text>
+
+        <rect x={tx + 12} y={ty + 34} width="126" height="40" rx="6" fill="#1f2937" />
+        <rect x={tx + 152} y={ty + 34} width="126" height="40" rx="6" fill="#1f2937" />
+
+        <text x={tx + 75} y={ty + 50} textAnchor="middle" fontSize={10} fill="#94a3b8">Inerente</text>
+        <text x={tx + 75} y={ty + 66} textAnchor="middle" fontSize={16} fontWeight="700" fill="#f8fafc">{record.inherentImpact.toFixed(0)} x {record.inherentProbability.toFixed(0)}</text>
+        <text x={tx + 75} y={ty + 82} textAnchor="middle" fontSize={10} fill="#cbd5e1">Score: {inherentScore.toFixed(3)}</text>
+
+        <text x={tx + 215} y={ty + 50} textAnchor="middle" fontSize={10} fill="#60a5fa">Residual</text>
+        <text x={tx + 215} y={ty + 66} textAnchor="middle" fontSize={16} fontWeight="700" fill="#f8fafc">{record.residualImpact.toFixed(0)} x {record.residualProbability.toFixed(0)}</text>
+        <text x={tx + 215} y={ty + 82} textAnchor="middle" fontSize={10} fill="#cbd5e1">Score: {residualScore.toFixed(3)}</text>
+
+        <text x={tx + 12} y={ty + 103} fontSize={12} fontWeight="600" fill="#94a3b8">Mitigacao</text>
+        <text x={tx + tw - 12} y={ty + 103} textAnchor="end" fontSize={12} fontWeight="700" fill="#4ade80">{mitigation.toFixed(1)}%</text>
       </g>
     );
   }, [hoveredRisk]);
@@ -210,7 +238,7 @@ export const RiskMatrix: React.FC = () => {
 
       const ok = await store.saveRiskMatrixRecord({
         id: crypto.randomUUID(),
-        code: row.code,
+        code: formatRiskCode(row.code),
         title: row.title,
         category: 'Risco',
         ownerArea: 'OUTROS',
@@ -244,7 +272,7 @@ export const RiskMatrix: React.FC = () => {
     for (const item of Object.values(drafts)) {
       const ok = await store.saveRiskMatrixRecord({
         id: item.id,
-        code: item.code,
+        code: formatRiskCode(item.code),
         title: item.title,
         category: item.category,
         ownerArea: item.ownerArea,
@@ -376,7 +404,7 @@ export const RiskMatrix: React.FC = () => {
                         : 'bg-white text-slate-400 border-slate-300'
                     }`}
                   >
-                    {r.code}
+                    {formatRiskCode(r.code)}
                   </button>
                 ))}
               </div>
@@ -418,10 +446,10 @@ export const RiskMatrix: React.FC = () => {
                     onMouseLeave={() => setHoveredRisk(null)}
                   >
                     <line x1={ix} y1={iy} x2={rx} y2={ry} stroke="#64748b" strokeDasharray="5 5" strokeWidth={1.5} />
-                    <circle cx={ix} cy={iy} r={6} fill="#e2e8f0" stroke="#94a3b8" />
-                    <circle cx={rx} cy={ry} r={10} fill="#f59e0b" opacity={0.22} />
-                    <circle cx={rx} cy={ry} r={6.5} fill="#f59e0b" />
-                    <text x={rx + 10} y={ry + 4} className="fill-slate-700 text-[11px] font-bold">{record.code}</text>
+                    <circle cx={ix} cy={iy} r={8} fill="#e2e8f0" stroke="#94a3b8" strokeWidth={1.5} />
+                    <circle cx={rx} cy={ry} r={16} fill="#facc15" opacity={0.22} />
+                    <circle cx={rx} cy={ry} r={13} fill="#facc15" stroke="#ffffff" strokeWidth={2} />
+                    <text x={rx} y={ry + 3} textAnchor="middle" className="fill-slate-900 text-[7.5px] font-bold">{formatRiskCode(record.code)}</text>
                   </g>
                 );
               }
@@ -435,13 +463,13 @@ export const RiskMatrix: React.FC = () => {
                   onMouseEnter={() => setHoveredRisk({ record, x, y })}
                   onMouseLeave={() => setHoveredRisk(null)}
                 >
-                  <circle cx={x} cy={y} r={8} fill={pointColor} />
-                  <text x={x + 9} y={y + 3} className="fill-slate-700 text-[11px] font-bold">{record.code}</text>
+                  <circle cx={x} cy={y} r={16} fill={pointColor} opacity={0.18} />
+                  <circle cx={x} cy={y} r={13} fill={pointColor} stroke="#ffffff" strokeWidth={2} />
+                  <text x={x} y={y + 3} textAnchor="middle" className="fill-white text-[7.5px] font-bold">{formatRiskCode(record.code)}</text>
                 </g>
               );
             })}
 
-            <text x="90" y="22" className="fill-slate-400 text-[11px]">Escala continua: min {toFive(axis.min)} | max {toFive(axis.max)}</text>
             {tooltipEl}
           </svg>
         </div>
@@ -501,7 +529,7 @@ export const RiskMatrix: React.FC = () => {
                 const draft = drafts[record.id] || record;
                 return (
                   <tr key={record.id} className="border-b border-slate-100">
-                    <td className="p-2 font-bold text-slate-700">{record.code}</td>
+                    <td className="p-2 font-bold text-slate-700">{formatRiskCode(record.code)}</td>
                     <td className="p-2">
                       {canEdit ? (
                         <input
