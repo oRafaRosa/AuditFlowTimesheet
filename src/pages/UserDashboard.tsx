@@ -55,6 +55,7 @@ export const UserDashboard: React.FC = () => {
   });
   const [monthlyData, setMonthlyData] = useState<any[]>([]);
   const [holidayMarkers, setHolidayMarkers] = useState<Record<string, HolidayMarker>>({});
+  const [dailyHourLimit, setDailyHourLimit] = useState(10);
   const [pendingDaysByPeriod, setPendingDaysByPeriod] = useState<Record<DashboardPeriodKey, PendingPeriodSummary>>({
     current: { days: [], totalMissingHours: 0 },
     previous: { days: [], totalMissingHours: 0 }
@@ -92,12 +93,13 @@ export const UserDashboard: React.FC = () => {
     const currentYear = today.getFullYear();
     const currentMonth = today.getMonth();
 
-    const [allEntries, allProjects, status, holidays, exceptions] = await Promise.all([
+    const [allEntries, allProjects, status, holidays, exceptions, configuredDailyHourLimit] = await Promise.all([
         store.getEntries(user.id),
         store.getProjects(),
         store.getPeriodStatus(user.id, currentYear, currentMonth),
         store.getHolidays(),
-        store.getExceptions()
+      store.getExceptions(),
+      store.getDailyHourLimit()
     ]);
 
     setPeriodStatus(status);
@@ -137,6 +139,7 @@ export const UserDashboard: React.FC = () => {
       });
     setHolidayMarkers(markers);
     setFrequentTemplates(store.getFrequentEntryTemplates(user.id).slice(0, 6));
+    setDailyHourLimit(configuredDailyHourLimit);
 
     // calcula kpis do mês atual e anterior
     const previousDate = new Date(currentYear, currentMonth - 1, 1);
@@ -319,6 +322,43 @@ export const UserDashboard: React.FC = () => {
 
       if (!window.confirm(message)) {
         return;
+      }
+    }
+
+    const requestedHours = Number(formData.hours);
+    const limitMessage = `O limite de horas trabalhadas por dia é ${formatHours(dailyHourLimit)} horas. Converse com seu gestor para mais informações.`;
+    const getHoursAlreadyLogged = (date: string, excludeEntryId?: string) => {
+      return entries
+        .filter((entry) => entry.date === date && (!excludeEntryId || entry.id !== excludeEntryId))
+        .reduce((acc, curr) => acc + curr.hours, 0);
+    };
+
+    if (editingId) {
+      const currentDayTotal = getHoursAlreadyLogged(formData.date, editingId) + requestedHours;
+      if (currentDayTotal > dailyHourLimit) {
+        alert(limitMessage);
+        return;
+      }
+    } else if (formMode === 'single') {
+      const currentDayTotal = getHoursAlreadyLogged(formData.date) + requestedHours;
+      if (currentDayTotal > dailyHourLimit) {
+        alert(limitMessage);
+        return;
+      }
+    } else {
+      const start = parseDateOnly(formData.date);
+      const end = parseDateOnly(formData.endDate);
+
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        const dayOfWeek = d.getDay();
+        if (dayOfWeek === 0 || dayOfWeek === 6) continue;
+
+        const dateStr = formatLocalDate(d);
+        const currentDayTotal = getHoursAlreadyLogged(dateStr) + requestedHours;
+        if (currentDayTotal > dailyHourLimit) {
+          alert(limitMessage);
+          return;
+        }
       }
     }
 

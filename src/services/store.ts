@@ -16,7 +16,10 @@ const KEYS = {
   CURRENT_USER: 'grc_current_user',
   HOLIDAYS: 'grc_holidays', // fallback se não tiver no banco
   FREQUENT_TEMPLATES: 'grc_frequent_templates',
+  DAILY_HOUR_LIMIT: 'grc_daily_hour_limit'
 };
+
+const DEFAULT_DAILY_HOUR_LIMIT = 10;
 
 // hash sha-256 de 'AuditFlow@2025'
 const DEFAULT_PASSWORD_HASH = '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918';
@@ -1085,6 +1088,61 @@ class StoreService {
     );
   }
 
+  // --- configurações globais ---
+
+  async getDailyHourLimit(): Promise<number> {
+    try {
+      const { data, error } = await supabase
+        .from('app_settings')
+        .select('setting_value')
+        .eq('setting_key', 'daily_hour_limit')
+        .maybeSingle();
+
+      if (error) throw error;
+
+      const parsed = Number(data?.setting_value);
+      if (Number.isFinite(parsed) && parsed > 0) {
+        localStorage.setItem(KEYS.DAILY_HOUR_LIMIT, String(parsed));
+        return parsed;
+      }
+    } catch (error) {
+      if (!this.isMissingRelationError(error)) {
+        console.warn('Erro ao buscar limite diário de horas:', error);
+      }
+    }
+
+    const localLimit = Number(localStorage.getItem(KEYS.DAILY_HOUR_LIMIT));
+    if (Number.isFinite(localLimit) && localLimit > 0) return localLimit;
+
+    return DEFAULT_DAILY_HOUR_LIMIT;
+  }
+
+  async updateDailyHourLimit(limit: number): Promise<boolean> {
+    const normalized = Number.isFinite(limit) && limit > 0 ? limit : DEFAULT_DAILY_HOUR_LIMIT;
+
+    localStorage.setItem(KEYS.DAILY_HOUR_LIMIT, String(normalized));
+
+    try {
+      const { error } = await supabase
+        .from('app_settings')
+        .upsert({
+          setting_key: 'daily_hour_limit',
+          setting_value: String(normalized),
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'setting_key'
+        });
+
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      if (!this.isMissingRelationError(error)) {
+        console.warn('Erro ao salvar limite diário de horas:', error);
+      }
+      return false;
+    }
+  }
+
   // --- helpers de analytics ---
   
   private isWorkingDay(d: Date, holidays: Holiday[], exceptions: CalendarException[]): boolean {
@@ -1280,12 +1338,19 @@ create table if not exists user_activity_events (
   unique(user_id, activity_type, activity_date)
 );
 
--- 8. CRIAR USUÁRIO ADMIN (Senha padrão AuditFlow@2025 já no hash)
+-- 8. Configurações globais
+create table if not exists app_settings (
+  setting_key text primary key,
+  setting_value text,
+  updated_at timestamp with time zone default timezone('utc'::text, now())
+);
+
+-- 9. CRIAR USUÁRIO ADMIN (Senha padrão AuditFlow@2025 já no hash)
 insert into profiles (full_name, email, role, password)
 values ('Administrador', 'admin@auditflow.com', 'ADMIN', '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918')
 on conflict (email) do nothing;
 
--- 9. GARANTIR PERMISSÕES E RECARREGAR CACHE (Fix para erros de 'table not found')
+-- 10. GARANTIR PERMISSÕES E RECARREGAR CACHE (Fix para erros de 'table not found')
 grant all on all tables in schema public to postgres, anon, authenticated, service_role;
 NOTIFY pgrst, 'reload schema';
 `;

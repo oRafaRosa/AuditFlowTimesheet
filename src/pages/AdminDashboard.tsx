@@ -35,6 +35,8 @@ export const AdminDashboard: React.FC = () => {
   const [managerApprovalBacklog, setManagerApprovalBacklog] = useState<ManagerApprovalBacklogGroup[]>([]);
   const [showSqlModal, setShowSqlModal] = useState(false);
   const [loading, setLoading] = useState(false);
+    const [dailyHourLimit, setDailyHourLimit] = useState(10);
+    const [savingDailyHourLimit, setSavingDailyHourLimit] = useState(false);
     const [userSortColumn, setUserSortColumn] = useState<'name' | 'manager' | 'role'>('name');
     const [userSortDirection, setUserSortDirection] = useState<'asc' | 'desc'>('asc');
 
@@ -102,17 +104,19 @@ export const AdminDashboard: React.FC = () => {
     const user = store.getCurrentUser();
     setCurrentUser(user);
 
-    const [u, p, e, ex, periods] = await Promise.all([
+    const [u, p, e, ex, periods, configuredDailyLimit] = await Promise.all([
         store.getUsers(),
         store.getProjects(),
         store.getEntries(),
         store.getExceptions(),
-        store.getTimesheetPeriods()
+        store.getTimesheetPeriods(),
+        store.getDailyHourLimit()
     ]);
     setUsers(u);
     setProjects(p);
     setEntries(e);
     setExceptions(ex);
+    setDailyHourLimit(configuredDailyLimit);
 
     const activeUsers = u.filter((item) => item.isActive !== false);
     const userMap = new Map(activeUsers.map((item) => [item.id, item]));
@@ -179,6 +183,24 @@ export const AdminDashboard: React.FC = () => {
 
     setLoading(false);
   };
+
+    const handleSaveDailyHourLimit = async () => {
+        const normalizedLimit = Number(dailyHourLimit);
+        if (!Number.isFinite(normalizedLimit) || normalizedLimit <= 0) {
+            alert('Informe um limite diário válido (maior que zero).');
+            return;
+        }
+
+        setSavingDailyHourLimit(true);
+        const ok = await store.updateDailyHourLimit(normalizedLimit);
+        setSavingDailyHourLimit(false);
+
+        if (ok) {
+            alert('Limite diário salvo com sucesso.');
+        } else {
+            alert('Não foi possível salvar no banco agora. O valor foi salvo localmente neste navegador.');
+        }
+    };
 
     // --- handlers de usuário ---
   const handleEditUserClick = (u: User) => {
@@ -947,7 +969,34 @@ export const AdminDashboard: React.FC = () => {
               </div>
 
               {/* form de adicionar calendário */}
-              <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 h-fit">
+                            <div className="space-y-6">
+                                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 h-fit">
+                                    <h3 className="font-bold text-slate-800 mb-4">Parâmetros de Lançamento</h3>
+                                    <p className="text-xs text-slate-500 mb-4">Defina o limite máximo de horas que cada usuário pode lançar por dia.</p>
+                                    <div className="space-y-3">
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-500 mb-1">Limite diário de horas</label>
+                                            <input
+                                                type="number"
+                                                min={1}
+                                                step={0.1}
+                                                className="w-full border border-gray-300 p-2 rounded-lg text-sm"
+                                                value={dailyHourLimit}
+                                                onChange={(e) => setDailyHourLimit(Number(e.target.value) || 0)}
+                                            />
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={handleSaveDailyHourLimit}
+                                            disabled={savingDailyHourLimit}
+                                            className="w-full bg-brand-600 text-white p-2 rounded-lg font-bold hover:bg-brand-700 disabled:opacity-60"
+                                        >
+                                            {savingDailyHourLimit ? 'Salvando...' : 'Salvar limite diário'}
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 h-fit">
                   <h3 className="font-bold text-slate-800 mb-4">Gerenciar Calendário</h3>
                   <p className="text-xs text-slate-500 mb-4">Adicione feriados, emendas (pontes) ou dias úteis extras (sábados trabalhados) para ajustar o cálculo automático de horas esperadas.</p>
                   <form onSubmit={handleAddException} className="space-y-4">
@@ -971,6 +1020,7 @@ export const AdminDashboard: React.FC = () => {
                           Adicionar ao Calendário
                       </button>
                   </form>
+                </div>
               </div>
           </div>
         )}

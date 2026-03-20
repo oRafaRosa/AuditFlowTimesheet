@@ -15,6 +15,7 @@ export const ManagerReports: React.FC = () => {
   const [projects, setProjects] = useState<Project[]>([]);
     const [holidays, setHolidays] = useState<Holiday[]>([]);
     const [exceptions, setExceptions] = useState<CalendarException[]>([]);
+    const [dailyHourLimit, setDailyHourLimit] = useState(10);
   const [filteredEntries, setFilteredEntries] = useState<TimesheetEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -84,11 +85,12 @@ export const ManagerReports: React.FC = () => {
     }
     setUsers(myTeam);
 
-    const [allEntries, allProjects, allHolidays, allExceptions] = await Promise.all([
+    const [allEntries, allProjects, allHolidays, allExceptions, configuredDailyHourLimit] = await Promise.all([
         store.getEntries(),
         store.getProjects(),
         store.getHolidays(),
-        store.getExceptions()
+        store.getExceptions(),
+        store.getDailyHourLimit()
     ]);
     
     // pré-filtro das entradas só da minha equipe
@@ -105,6 +107,7 @@ export const ManagerReports: React.FC = () => {
     setProjects(visibleProjects);
     setHolidays(allHolidays);
     setExceptions(allExceptions);
+        setDailyHourLimit(configuredDailyHourLimit);
     setLoading(false);
   };
 
@@ -232,13 +235,14 @@ export const ManagerReports: React.FC = () => {
                             const requiresTimesheet = user?.requiresTimesheet !== false;
                             const totalDayHours = getDailyTotalForUser(e.userId, e.date);
                             const isWorkingDay = isExpectedWorkingDay(e.date, calendarMaps);
+                            const isOverConfiguredLimit = requiresTimesheet && totalDayHours > dailyHourLimit;
                             const isOverLimit = requiresTimesheet && totalDayHours > HOURS_PER_DAY;
                             const isUnderLimit = requiresTimesheet && isWorkingDay && totalDayHours < HOURS_PER_DAY;
                             const hasDuplicate = isDuplicate(e);
                             const hasAlert = isOverLimit || isUnderLimit || hasDuplicate;
 
                             return (
-                            <tr key={e.id} className={`${hasAlert ? 'bg-amber-50 hover:bg-amber-100' : 'hover:bg-slate-50'}`}>
+                            <tr key={e.id} className={`${isOverConfiguredLimit ? 'bg-red-100 hover:bg-red-200' : hasAlert ? 'bg-amber-50 hover:bg-amber-100' : 'hover:bg-slate-50'}`}>
                                 <td className="px-6 py-3 whitespace-nowrap">{formatDateForDisplay(e.date)}</td>
                                 <td className="px-6 py-3">
                                     <div className="flex items-center gap-2">
@@ -247,6 +251,7 @@ export const ManagerReports: React.FC = () => {
                                             <div className="group relative">
                                                 <AlertTriangle size={14} className="text-amber-600 cursor-help" />
                                                 <span className="hidden group-hover:block absolute left-5 top-0 bg-slate-800 text-white text-xs p-1.5 rounded z-50 w-64">
+                                                    {isOverConfiguredLimit && `Dia com ${formatHours(totalDayHours)}h (acima do limite diário de ${formatHours(dailyHourLimit)}h). `}
                                                     {isOverLimit && `Dia com ${formatHours(totalDayHours)}h (acima de ${formatHours(HOURS_PER_DAY)}h). `}
                                                     {isUnderLimit && `Dia com ${formatHours(totalDayHours)}h (abaixo de ${formatHours(HOURS_PER_DAY)}h em dia útil). `}
                                                     {hasDuplicate && 'Possível lançamento duplicado detectado.'}
@@ -257,9 +262,10 @@ export const ManagerReports: React.FC = () => {
                                 </td>
                                 <td className="px-6 py-3">{getProjectName(e.projectId)}</td>
                                 <td className="px-6 py-3 text-slate-500 truncate max-w-xs">{e.description}</td>
-                                <td className={`px-6 py-3 text-right font-medium ${isOverLimit || isUnderLimit ? 'text-amber-700' : ''}`}>
+                                <td className={`px-6 py-3 text-right font-medium ${isOverConfiguredLimit ? 'text-red-700' : (isOverLimit || isUnderLimit) ? 'text-amber-700' : ''}`}>
                                     <div className="flex items-center justify-end gap-2">
-                                        {(isOverLimit || isUnderLimit) && <AlertOctagon size={14} className="text-amber-600" />}
+                                        {isOverConfiguredLimit && <AlertOctagon size={14} className="text-red-600" />}
+                                        {!isOverConfiguredLimit && (isOverLimit || isUnderLimit) && <AlertOctagon size={14} className="text-amber-600" />}
                                         {hasDuplicate && <Copy size={14} className="text-red-500" />}
                                         <span>{formatHours(e.hours)}</span>
                                     </div>
