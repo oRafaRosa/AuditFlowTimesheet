@@ -1,51 +1,32 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Shield, Lock, Info, RefreshCcw, Save } from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import * as XLSX from 'xlsx';
+import { Shield, Lock, Info, RefreshCcw, Save, Filter, Upload, FileSpreadsheet, X, AlertCircle } from 'lucide-react';
 import { RiskMatrixRecord } from '../types';
 import { store } from '../services/store';
 
 type MatrixView = 'RESIDUAL' | 'INHERENT' | 'MOVEMENT';
 
+type StagingRow = {
+  code: string;
+  title: string;
+  inherentImpact: string;
+  inherentProbability: string;
+  residualImpact: string;
+  residualProbability: string;
+};
+
 const toFive = (value: number) => Number(value).toFixed(5);
 
-const DEFAULT_SAMPLE_RISKS: Omit<RiskMatrixRecord, 'id' | 'updatedAt' | 'updatedBy'>[] = [
-  { code: 'R001', title: 'Dificuldade de atracao e retencao de talentos', category: 'Risco', ownerArea: 'OUTROS', inherentImpact: 4.11765, inherentProbability: 5.00000, residualImpact: 3.82353, residualProbability: 4.00000 },
-  { code: 'R002', title: 'Desalinhamento com a cultura organizacional', category: 'Risco', ownerArea: 'OUTROS', inherentImpact: 2.88235, inherentProbability: 5.00000, residualImpact: 2.52941, residualProbability: 3.85714 },
-  { code: 'R003', title: 'Tomada de decisao sem analise de impacto estruturada', category: 'Risco', ownerArea: 'OUTROS', inherentImpact: 4.05882, inherentProbability: 4.00000, residualImpact: 3.70588, residualProbability: 4.00000 },
-  { code: 'R004', title: 'Nao conformidade em licenciamentos', category: 'Risco', ownerArea: 'OUTROS', inherentImpact: 4.88235, inherentProbability: 5.00000, residualImpact: 4.52941, residualProbability: 4.57143 },
-  { code: 'R005', title: 'Defasagem / Inadequacao Tecnologica', category: 'Risco', ownerArea: 'OUTROS', inherentImpact: 3.64706, inherentProbability: 5.00000, residualImpact: 3.29412, residualProbability: 4.42857 },
-  { code: 'R006', title: 'Dados imprecisos ou indisponiveis', category: 'Risco', ownerArea: 'OUTROS', inherentImpact: 3.94118, inherentProbability: 4.50000, residualImpact: 3.00000, residualProbability: 4.00000 },
-  { code: 'R007', title: 'Descontinuidade do negocio', category: 'Risco', ownerArea: 'OUTROS', inherentImpact: 5.00000, inherentProbability: 5.00000, residualImpact: 5.00000, residualProbability: 4.71429 },
-  { code: 'R008', title: 'Ataques ciberneticos', category: 'Risco', ownerArea: 'OUTROS', inherentImpact: 5.00000, inherentProbability: 4.50000, residualImpact: 4.17647, residualProbability: 3.57143 },
-  { code: 'R009', title: 'Oferta inadequada de produtos e servicos', category: 'Risco', ownerArea: 'OUTROS', inherentImpact: 4.64706, inherentProbability: 5.00000, residualImpact: 3.76471, residualProbability: 3.57143 },
-  { code: 'R010', title: 'Insuficiencia de caixa', category: 'Risco', ownerArea: 'OUTROS', inherentImpact: 4.70588, inherentProbability: 5.00000, residualImpact: 4.47059, residualProbability: 4.57143 },
-  { code: 'R011', title: 'Experiencia negativa do cliente', category: 'Risco', ownerArea: 'OUTROS', inherentImpact: 4.88235, inherentProbability: 5.00000, residualImpact: 3.35294, residualProbability: 3.85714 },
-  { code: 'R012', title: 'Processos judiciais trabalhistas', category: 'Risco', ownerArea: 'OUTROS', inherentImpact: 4.64706, inherentProbability: 5.00000, residualImpact: 3.88235, residualProbability: 4.28571 },
-  { code: 'R013', title: 'Riscos de terceiros', category: 'Risco', ownerArea: 'OUTROS', inherentImpact: 4.82353, inherentProbability: 5.00000, residualImpact: 4.17647, residualProbability: 4.00000 },
-  { code: 'R014', title: 'Baixa competitividade digital', category: 'Risco', ownerArea: 'OUTROS', inherentImpact: 3.41176, inherentProbability: 5.00000, residualImpact: 2.76471, residualProbability: 3.57143 },
-  { code: 'R015', title: 'Fraude Interna / Externa', category: 'Risco', ownerArea: 'OUTROS', inherentImpact: 4.88235, inherentProbability: 5.00000, residualImpact: 4.00000, residualProbability: 3.71429 },
-  { code: 'R016', title: 'Processos judiciais consumeristas', category: 'Risco', ownerArea: 'OUTROS', inherentImpact: 4.88235, inherentProbability: 5.00000, residualImpact: 3.52941, residualProbability: 3.57143 },
-  { code: 'R017', title: 'Distorcao em demonstracoes financeiras', category: 'Risco', ownerArea: 'OUTROS', inherentImpact: 4.70588, inherentProbability: 4.50000, residualImpact: 4.17647, residualProbability: 4.28571 },
-  { code: 'R018', title: 'Perda de market share', category: 'Risco', ownerArea: 'OUTROS', inherentImpact: 3.05882, inherentProbability: 4.00000, residualImpact: 2.88235, residualProbability: 3.28571 },
-  { code: 'R019', title: 'Risco de Credito Direto ao Consumidor', category: 'Risco', ownerArea: 'OUTROS', inherentImpact: 4.64706, inherentProbability: 4.50000, residualImpact: 4.35294, residualProbability: 3.85714 },
-  { code: 'R020', title: 'Mudancas regulatorias emergentes', category: 'Risco', ownerArea: 'OUTROS', inherentImpact: 5.00000, inherentProbability: 4.00000, residualImpact: 4.58824, residualProbability: 2.71429 },
-  { code: 'R021', title: 'Exposicao negativa da marca', category: 'Risco', ownerArea: 'OUTROS', inherentImpact: 4.58824, inherentProbability: 5.00000, residualImpact: 3.76471, residualProbability: 4.28571 },
-  { code: 'R022', title: 'Obsolescencia do modelo de negocio', category: 'Risco', ownerArea: 'OUTROS', inherentImpact: 3.82353, inherentProbability: 4.00000, residualImpact: 2.94118, residualProbability: 3.42857 },
-  { code: 'R023', title: 'Perdas, Avarias, Roubo e Furto', category: 'Risco', ownerArea: 'OUTROS', inherentImpact: 3.88235, inherentProbability: 5.00000, residualImpact: 3.29412, residualProbability: 4.28571 },
-  { code: 'R024', title: 'Tratamento inadequado de dados pessoais', category: 'Risco', ownerArea: 'OUTROS', inherentImpact: 4.88235, inherentProbability: 3.50000, residualImpact: 3.41176, residualProbability: 3.00000 },
-  { code: 'R025', title: 'Ocorrencia de acidentes', category: 'Risco', ownerArea: 'OUTROS', inherentImpact: 4.88235, inherentProbability: 4.50000, residualImpact: 3.47059, residualProbability: 3.28571 },
-  { code: 'R026', title: 'Obsolescencia do servico de credito', category: 'Risco', ownerArea: 'OUTROS', inherentImpact: 3.29412, inherentProbability: 3.50000, residualImpact: 2.64706, residualProbability: 3.42857 },
-  { code: 'R027', title: 'Risco de contagio', category: 'Risco', ownerArea: 'OUTROS', inherentImpact: 4.17647, inherentProbability: 4.50000, residualImpact: 3.64706, residualProbability: 3.71429 },
-  { code: 'R028', title: 'Descontinuidade da estrategia', category: 'Risco', ownerArea: 'OUTROS', inherentImpact: 3.88235, inherentProbability: 4.00000, residualImpact: 3.17647, residualProbability: 3.00000 },
-  { code: 'R029', title: 'Processos judiciais tributarios', category: 'Risco', ownerArea: 'OUTROS', inherentImpact: 4.17647, inherentProbability: 3.50000, residualImpact: 3.64706, residualProbability: 2.42857 },
-  { code: 'R030', title: 'Gestao ineficiente de estoque', category: 'Risco', ownerArea: 'OUTROS', inherentImpact: 4.17647, inherentProbability: 5.00000, residualImpact: 3.88235, residualProbability: 4.28571 },
-  { code: 'R031', title: 'Vazamento de informacao', category: 'Risco', ownerArea: 'OUTROS', inherentImpact: 4.17647, inherentProbability: 4.50000, residualImpact: 3.35294, residualProbability: 3.28571 }
-];
 
-const getBackgroundTone = (xRatio: number, yRatio: number) => {
-  const severity = (xRatio + yRatio) / 2;
-  if (severity > 0.78) return 'rgba(248, 113, 113, 0.18)';
-  if (severity > 0.58) return 'rgba(251, 191, 36, 0.18)';
-  return 'rgba(52, 211, 153, 0.15)';
+
+// Cor de cada celula baseada em score = impacto × probabilidade (escala 1–5)
+const getCellColor = (col: number, row: number) => {
+  const score = (col + 1) * (5 - row);
+  if (score >= 20) return 'rgba(239, 68, 68, 0.22)';
+  if (score >= 15) return 'rgba(249, 115, 22, 0.22)';
+  if (score >= 9)  return 'rgba(234, 179, 8, 0.20)';
+  if (score >= 5)  return 'rgba(34, 197, 94, 0.18)';
+  return 'rgba(59, 130, 246, 0.20)';
 };
 
 export const RiskMatrix: React.FC = () => {
@@ -55,6 +36,14 @@ export const RiskMatrix: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [showSecurityDetails, setShowSecurityDetails] = useState(false);
   const [view, setView] = useState<MatrixView>('MOVEMENT');
+  const [hoveredRisk, setHoveredRisk] = useState<{ record: RiskMatrixRecord; x: number; y: number } | null>(null);
+  const [selectedCodes, setSelectedCodes] = useState<Set<string>>(new Set());
+  const [showFilter, setShowFilter] = useState(false);
+  const [showImport, setShowImport] = useState(false);
+  const [staging, setStaging] = useState<StagingRow[]>([]);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [importSaving, setImportSaving] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const access = store.getRiskMatrixAccessForCurrentUser();
   const canEdit = access === 'EDIT';
@@ -63,6 +52,7 @@ export const RiskMatrix: React.FC = () => {
     setLoading(true);
     const loaded = await store.getRiskMatrixRecords();
     setRecords(loaded);
+    setSelectedCodes(new Set(loaded.map(r => r.code)));
     setDrafts(loaded.reduce<Record<string, RiskMatrixRecord>>((acc, item) => {
       acc[item.id] = { ...item };
       return acc;
@@ -91,6 +81,31 @@ export const RiskMatrix: React.FC = () => {
 
   const normalize = (value: number) => (value - axis.min) / axis.span;
 
+  // Tooltip SVG renderizado sobre a bolinha em hover
+  const tooltipEl = useMemo(() => {
+    if (!hoveredRisk) return null;
+    const { record, x, y } = hoveredRisk;
+    const iScore = (record.inherentImpact * record.inherentProbability).toFixed(3);
+    const rScore = (record.residualImpact * record.residualProbability).toFixed(3);
+    const title = record.title.length > 24 ? record.title.substring(0, 24) + '\u2026' : record.title;
+    const tw = 242; const th = 68;
+    const tx = x > 640 ? x - tw - 10 : x + 14;
+    const ty = Math.min(Math.max(y - 34, 5), 395);
+    return (
+      <g style={{ pointerEvents: 'none' }}>
+        <rect x={tx + 3} y={ty + 3} width={tw} height={th} rx={7} fill="rgba(0,0,0,0.10)" />
+        <rect x={tx} y={ty} width={tw} height={th} rx={7} fill="white" stroke="#e2e8f0" strokeWidth={1.5} />
+        <text x={tx + 10} y={ty + 18} fontSize={11} fontWeight="bold" fill="#1e293b">{record.code} \u2013 {title}</text>
+        <text x={tx + 10} y={ty + 36} fontSize={10} fill="#64748b">
+          {`Inerente: I\u00a0${record.inherentImpact.toFixed(3)} \u00d7 P\u00a0${record.inherentProbability.toFixed(3)} = `}<tspan fontWeight="bold" fill="#1e293b">{iScore}</tspan>
+        </text>
+        <text x={tx + 10} y={ty + 54} fontSize={10} fill="#64748b">
+          {`Residual:\u00a0\u00a0 I\u00a0${record.residualImpact.toFixed(3)} \u00d7 P\u00a0${record.residualProbability.toFixed(3)} = `}<tspan fontWeight="bold" fill="#b45309">{rScore}</tspan>
+        </text>
+      </g>
+    );
+  }, [hoveredRisk]);
+
   const handleDraftChange = (recordId: string, key: keyof RiskMatrixRecord, value: string) => {
     setDrafts((prev) => {
       const current = prev[recordId];
@@ -113,6 +128,111 @@ export const RiskMatrix: React.FC = () => {
         [recordId]: next
       };
     });
+  };
+
+  // Faz a leitura do Excel e popula o staging para revisao antes de salvar
+  const handleExcelFile = async (file: File) => {
+    setImportError(null);
+    try {
+      const buffer = await file.arrayBuffer();
+      const wb = XLSX.read(buffer, { type: 'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1 });
+
+      // Tenta mapear pelos cabecalhos da primeira linha (case-insensitive)
+      const headers = (rows[0] as string[]).map((h) => String(h || '').toLowerCase());
+
+      const colIndex = (keywords: string[]) =>
+        headers.findIndex((h) => keywords.some((kw) => h.includes(kw)));
+
+      const idxId    = colIndex(['id']);
+      const idxTitle = colIndex(['risco', 'descri', 'titulo', 'title']);
+      const idxII    = colIndex(['impacto_nota_iner', 'imp.*iner', 'inherentimpact']);
+      const idxIP    = colIndex(['probabilidade_nota_iner', 'prob.*iner', 'inherentprob']);
+      const idxRI    = colIndex(['impacto_nota_res', 'imp.*res', 'residualimpact']);
+      const idxRP    = colIndex(['probabilidade_nota_r', 'prob.*res', 'residualprob']);
+
+      if ([idxId, idxTitle, idxII, idxIP, idxRI, idxRP].some((i) => i === -1)) {
+        // Fallback: tenta por posicao fixa (A=0, B=1, D=3, E=4, F=5, G=6)
+        const dataRows = rows.slice(1).filter((r) => (r as unknown[])[0]);
+        const parsed = dataRows.map((r) => {
+          const row = r as unknown[];
+          return {
+            code:                String(row[0] ?? '').trim(),
+            title:               String(row[1] ?? '').trim(),
+            inherentImpact:      String(row[3] ?? '').replace(',', '.'),
+            inherentProbability: String(row[4] ?? '').replace(',', '.'),
+            residualImpact:      String(row[5] ?? '').replace(',', '.'),
+            residualProbability: String(row[6] ?? '').replace(',', '.'),
+          } as StagingRow;
+        });
+        if (parsed.length === 0) throw new Error('Nenhum dado encontrado no arquivo.');
+        setStaging(parsed);
+        return;
+      }
+
+      const dataRows = rows.slice(1).filter((r) => (r as unknown[])[idxId]);
+      const parsed = dataRows.map((r) => {
+        const row = r as unknown[];
+        return {
+          code:                String(row[idxId]    ?? '').trim(),
+          title:               String(row[idxTitle] ?? '').trim(),
+          inherentImpact:      String(row[idxII]    ?? '').replace(',', '.'),
+          inherentProbability: String(row[idxIP]    ?? '').replace(',', '.'),
+          residualImpact:      String(row[idxRI]    ?? '').replace(',', '.'),
+          residualProbability: String(row[idxRP]    ?? '').replace(',', '.'),
+        } as StagingRow;
+      });
+
+      if (parsed.length === 0) throw new Error('Nenhum dado encontrado no arquivo.');
+      setStaging(parsed);
+    } catch (err) {
+      setImportError(err instanceof Error ? err.message : 'Erro ao ler o arquivo.');
+    }
+  };
+
+  // Salva o staging no Supabase (criptografado)
+  const handleImportSave = async () => {
+    if (!canEdit) return;
+    setImportSaving(true);
+    let failures = 0;
+
+    for (const row of staging) {
+      const iI = parseFloat(row.inherentImpact);
+      const iP = parseFloat(row.inherentProbability);
+      const rI = parseFloat(row.residualImpact);
+      const rP = parseFloat(row.residualProbability);
+
+      if (!row.code || isNaN(iI) || isNaN(iP) || isNaN(rI) || isNaN(rP)) {
+        failures++;
+        continue;
+      }
+
+      const ok = await store.saveRiskMatrixRecord({
+        id: crypto.randomUUID(),
+        code: row.code,
+        title: row.title,
+        category: 'Risco',
+        ownerArea: 'OUTROS',
+        inherentImpact: iI,
+        inherentProbability: iP,
+        residualImpact: rI,
+        residualProbability: rP,
+      });
+      if (!ok) failures++;
+    }
+
+    setImportSaving(false);
+
+    if (failures > 0) {
+      setImportError(`${failures} linha(s) nao puderam ser salvas. Verifique a chave de criptografia.`);
+      return;
+    }
+
+    setShowImport(false);
+    setStaging([]);
+    await loadRecords();
+    alert(`${staging.length} riscos importados com sucesso.`);
   };
 
   const handleSaveAll = async () => {
@@ -148,30 +268,7 @@ export const RiskMatrix: React.FC = () => {
     loadRecords();
   };
 
-  const handleBootstrap = async () => {
-    if (!canEdit) return;
 
-    setSaving(true);
-    let failures = 0;
-
-    for (const sample of DEFAULT_SAMPLE_RISKS) {
-      const ok = await store.saveRiskMatrixRecord({
-        id: crypto.randomUUID(),
-        ...sample
-      });
-      if (!ok) failures += 1;
-    }
-
-    setSaving(false);
-
-    if (failures > 0) {
-      alert('Nao foi possivel carregar a base inicial. Verifique a chave de criptografia e o schema no Supabase.');
-      return;
-    }
-
-    await loadRecords();
-    alert('Base inicial da matriz carregada com sucesso.');
-  };
 
   if (loading) {
     return <div className="p-6 text-slate-500">Carregando Matriz de Riscos...</div>;
@@ -246,32 +343,69 @@ export const RiskMatrix: React.FC = () => {
           </button>
         </div>
 
+        <div className="mb-2">
+          <button
+            type="button"
+            onClick={() => setShowFilter(f => !f)}
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-sm font-semibold text-slate-700 hover:bg-slate-50"
+          >
+            <Filter size={13} />
+            Filtrar riscos no gráfico ({selectedCodes.size}/{records.length})
+          </button>
+          {showFilter && (
+            <div className="mt-2 p-3 rounded-xl border border-slate-200 bg-slate-50">
+              <div className="flex gap-3 mb-2">
+                <button type="button" onClick={() => setSelectedCodes(new Set(records.map(r => r.code)))} className="text-xs text-brand-600 font-semibold hover:underline">Selecionar todos</button>
+                <span className="text-slate-300">|</span>
+                <button type="button" onClick={() => setSelectedCodes(new Set())} className="text-xs text-slate-500 font-semibold hover:underline">Limpar</button>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {records.map(r => (
+                  <button
+                    key={r.code}
+                    type="button"
+                    title={r.title}
+                    onClick={() => setSelectedCodes(prev => {
+                      const next = new Set(prev);
+                      if (next.has(r.code)) next.delete(r.code); else next.add(r.code);
+                      return next;
+                    })}
+                    className={`px-2 py-0.5 rounded text-xs font-bold border transition-colors ${
+                      selectedCodes.has(r.code)
+                        ? 'bg-brand-600 text-white border-brand-600'
+                        : 'bg-white text-slate-400 border-slate-300'
+                    }`}
+                  >
+                    {r.code}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
         <div className="rounded-xl border border-slate-200 p-4 overflow-x-auto">
           <svg viewBox="0 0 860 470" className="w-full min-w-[700px] h-auto">
             <rect x="0" y="0" width="860" height="470" fill="#ffffff" />
             {Array.from({ length: 5 }).map((_, row) =>
-              Array.from({ length: 5 }).map((__, col) => {
-                const xRatio = col / 4;
-                const yRatio = 1 - (row / 4);
-                return (
-                  <rect
-                    key={`${row}-${col}`}
-                    x={90 + col * 140}
-                    y={40 + row * 78}
-                    width={140}
-                    height={78}
-                    fill={getBackgroundTone(xRatio, yRatio)}
-                    stroke="#ffffff"
-                    strokeWidth={3}
-                  />
-                );
-              })
+              Array.from({ length: 5 }).map((__, col) => (
+                <rect
+                  key={`${row}-${col}`}
+                  x={90 + col * 140}
+                  y={40 + row * 78}
+                  width={140}
+                  height={78}
+                  fill={getCellColor(col, row)}
+                  stroke="#ffffff"
+                  strokeWidth={3}
+                />
+              ))
             )}
 
             <text x="430" y="450" textAnchor="middle" className="fill-slate-500 text-[14px] font-bold">IMPACTO</text>
             <text x="28" y="245" textAnchor="middle" className="fill-slate-500 text-[14px] font-bold" transform="rotate(-90 28 245)">PROBABILIDADE</text>
 
-            {records.map((record) => {
+            {records.filter(r => selectedCodes.has(r.code)).map((record) => {
               const ix = 90 + normalize(record.inherentImpact) * 700;
               const iy = 430 - normalize(record.inherentProbability) * 390;
               const rx = 90 + normalize(record.residualImpact) * 700;
@@ -279,8 +413,10 @@ export const RiskMatrix: React.FC = () => {
 
               if (view === 'MOVEMENT') {
                 return (
-                  <g key={record.id}>
-                    <title>{`${record.code} - ${record.title}`}</title>
+                  <g key={record.id} style={{ cursor: 'pointer' }}
+                    onMouseEnter={() => setHoveredRisk({ record, x: rx, y: ry })}
+                    onMouseLeave={() => setHoveredRisk(null)}
+                  >
                     <line x1={ix} y1={iy} x2={rx} y2={ry} stroke="#64748b" strokeDasharray="5 5" strokeWidth={1.5} />
                     <circle cx={ix} cy={iy} r={6} fill="#e2e8f0" stroke="#94a3b8" />
                     <circle cx={rx} cy={ry} r={10} fill="#f59e0b" opacity={0.22} />
@@ -295,8 +431,10 @@ export const RiskMatrix: React.FC = () => {
               const pointColor = view === 'INHERENT' ? '#0ea5e9' : '#f59e0b';
 
               return (
-                <g key={record.id}>
-                  <title>{`${record.code} - ${record.title}`}</title>
+                <g key={record.id} style={{ cursor: 'pointer' }}
+                  onMouseEnter={() => setHoveredRisk({ record, x, y })}
+                  onMouseLeave={() => setHoveredRisk(null)}
+                >
                   <circle cx={x} cy={y} r={8} fill={pointColor} />
                   <text x={x + 9} y={y + 3} className="fill-slate-700 text-[11px] font-bold">{record.code}</text>
                 </g>
@@ -304,6 +442,7 @@ export const RiskMatrix: React.FC = () => {
             })}
 
             <text x="90" y="22" className="fill-slate-400 text-[11px]">Escala continua: min {toFive(axis.min)} | max {toFive(axis.max)}</text>
+            {tooltipEl}
           </svg>
         </div>
       </div>
@@ -320,26 +459,17 @@ export const RiskMatrix: React.FC = () => {
               <RefreshCcw size={14} />
               Recarregar
             </button>
-            {canEdit && records.length === 0 && (
+            {canEdit && (
               <button
                 type="button"
-                onClick={handleBootstrap}
-                disabled={saving}
-                className="px-3 py-2 rounded-lg bg-amber-500 text-white text-sm font-semibold hover:bg-amber-600 disabled:opacity-60"
+                onClick={() => { setStaging([]); setImportError(null); setShowImport(true); }}
+                className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700"
               >
-                Carregar base oficial (31 riscos)
+                <Upload size={14} />
+                Importar Excel
               </button>
             )}
-            {canEdit && records.length > 0 && (
-              <button
-                type="button"
-                onClick={handleBootstrap}
-                disabled={saving}
-                className="px-3 py-2 rounded-lg border border-amber-300 bg-amber-50 text-amber-700 text-sm font-semibold hover:bg-amber-100 disabled:opacity-60"
-              >
-                Reaplicar base oficial (31 riscos)
-              </button>
-            )}
+
             {canEdit && (
               <button
                 type="button"
@@ -432,8 +562,8 @@ export const RiskMatrix: React.FC = () => {
               })}
               {records.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="p-6 text-center text-slate-500">
-                    Nenhum risco cadastrado. Use "Carregar base inicial" ou execute o seed na migration.
+                  <td colSpan={6} className="p-6 text-center text-slate-400">
+                    Nenhum risco cadastrado. Use &ldquo;Importar Excel&rdquo; para carregar os dados.
                   </td>
                 </tr>
               )}
@@ -441,6 +571,173 @@ export const RiskMatrix: React.FC = () => {
           </table>
         </div>
       </div>
+
+      {/* Modal: importar Excel */}
+      {showImport && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-start justify-center p-4 overflow-y-auto" onClick={() => { if (!importSaving) { setShowImport(false); setStaging([]); setImportError(null); } }}>
+          <div className="w-full max-w-5xl bg-white rounded-2xl border border-slate-100 p-6 my-8" onClick={(e) => e.stopPropagation()}>
+
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-3">
+                <FileSpreadsheet size={22} className="text-emerald-600" />
+                <h3 className="text-lg font-bold text-slate-800">Importar Matriz de Riscos via Excel</h3>
+              </div>
+              {!importSaving && (
+                <button type="button" onClick={() => { setShowImport(false); setStaging([]); setImportError(null); }} className="text-slate-400 hover:text-slate-700">
+                  <X size={20} />
+                </button>
+              )}
+            </div>
+
+            {staging.length === 0 ? (
+              <>
+                <p className="text-sm text-slate-500 mb-4">
+                  Selecione o arquivo Excel (.xlsx / .xls). A primeira linha deve ser o cabeçalho. Colunas esperadas:
+                  <strong> ID, Risco, Impacto Inerente, Probabilidade Inerente, Impacto Residual, Probabilidade Residual.</strong>
+                </p>
+                <div
+                  className="border-2 border-dashed border-slate-300 rounded-xl p-10 text-center cursor-pointer hover:border-emerald-400 hover:bg-emerald-50 transition-colors"
+                  onClick={() => fileInputRef.current?.click()}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleExcelFile(f); }}
+                >
+                  <Upload size={32} className="mx-auto text-slate-400 mb-3" />
+                  <p className="text-sm font-semibold text-slate-600">Arraste o arquivo aqui ou clique para selecionar</p>
+                  <p className="text-xs text-slate-400 mt-1">.xlsx ou .xls</p>
+                </div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".xlsx,.xls"
+                  className="hidden"
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handleExcelFile(f); e.target.value = ''; }}
+                />
+                {importError && (
+                  <div className="mt-3 flex items-center gap-2 text-sm text-red-600">
+                    <AlertCircle size={15} /> {importError}
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-sm text-slate-600">
+                    <strong>{staging.length} riscos</strong> lidos. Revise e edite antes de salvar.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => { setStaging([]); setImportError(null); }}
+                    className="text-xs text-slate-500 hover:text-slate-800 underline"
+                  >
+                    Trocar arquivo
+                  </button>
+                </div>
+
+                <div className="overflow-x-auto max-h-[55vh] overflow-y-auto rounded-xl border border-slate-200">
+                  <table className="w-full text-sm">
+                    <thead className="sticky top-0 bg-slate-50">
+                      <tr className="border-b border-slate-200 text-left text-slate-500">
+                        <th className="p-2 w-20">#</th>
+                        <th className="p-2 w-24">ID</th>
+                        <th className="p-2">Descrição do Risco</th>
+                        <th className="p-2 w-32">Imp. Inerente</th>
+                        <th className="p-2 w-32">Prob. Inerente</th>
+                        <th className="p-2 w-32">Imp. Residual</th>
+                        <th className="p-2 w-32">Prob. Residual</th>
+                        <th className="p-2 w-10"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {staging.map((row, idx) => (
+                        <tr key={idx} className="border-b border-slate-100 hover:bg-slate-50">
+                          <td className="p-2 text-slate-400 text-xs">{idx + 1}</td>
+                          <td className="p-2">
+                            <input
+                              className="w-20 border border-slate-300 rounded p-1 text-xs font-bold"
+                              value={row.code}
+                              onChange={(e) => setStaging(prev => prev.map((r, i) => i === idx ? { ...r, code: e.target.value } : r))}
+                            />
+                          </td>
+                          <td className="p-2">
+                            <input
+                              className="w-full border border-slate-300 rounded p-1 text-xs"
+                              value={row.title}
+                              onChange={(e) => setStaging(prev => prev.map((r, i) => i === idx ? { ...r, title: e.target.value } : r))}
+                            />
+                          </td>
+                          <td className="p-2">
+                            <input
+                              className="w-28 border border-slate-300 rounded p-1 text-xs"
+                              value={row.inherentImpact}
+                              onChange={(e) => setStaging(prev => prev.map((r, i) => i === idx ? { ...r, inherentImpact: e.target.value } : r))}
+                            />
+                          </td>
+                          <td className="p-2">
+                            <input
+                              className="w-28 border border-slate-300 rounded p-1 text-xs"
+                              value={row.inherentProbability}
+                              onChange={(e) => setStaging(prev => prev.map((r, i) => i === idx ? { ...r, inherentProbability: e.target.value } : r))}
+                            />
+                          </td>
+                          <td className="p-2">
+                            <input
+                              className="w-28 border border-slate-300 rounded p-1 text-xs"
+                              value={row.residualImpact}
+                              onChange={(e) => setStaging(prev => prev.map((r, i) => i === idx ? { ...r, residualImpact: e.target.value } : r))}
+                            />
+                          </td>
+                          <td className="p-2">
+                            <input
+                              className="w-28 border border-slate-300 rounded p-1 text-xs"
+                              value={row.residualProbability}
+                              onChange={(e) => setStaging(prev => prev.map((r, i) => i === idx ? { ...r, residualProbability: e.target.value } : r))}
+                            />
+                          </td>
+                          <td className="p-2">
+                            <button
+                              type="button"
+                              onClick={() => setStaging(prev => prev.filter((_, i) => i !== idx))}
+                              className="text-slate-400 hover:text-red-500"
+                            >
+                              <X size={14} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {importError && (
+                  <div className="mt-3 flex items-center gap-2 text-sm text-red-600">
+                    <AlertCircle size={15} /> {importError}
+                  </div>
+                )}
+
+                <div className="mt-5 flex justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => { setShowImport(false); setStaging([]); setImportError(null); }}
+                    disabled={importSaving}
+                    className="px-4 py-2 rounded-lg border border-slate-300 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleImportSave}
+                    disabled={importSaving || staging.length === 0}
+                    className="inline-flex items-center gap-2 px-5 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 disabled:opacity-60"
+                  >
+                    <Save size={14} />
+                    {importSaving ? 'Salvando...' : `Salvar ${staging.length} riscos`}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {showSecurityDetails && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setShowSecurityDetails(false)}>
