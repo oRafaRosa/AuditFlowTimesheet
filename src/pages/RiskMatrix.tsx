@@ -90,6 +90,9 @@ export const RiskMatrix: React.FC = () => {
   const [importError, setImportError] = useState<string | null>(null);
   const [importSaving, setImportSaving] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
+  const [showMatrixSizeControls, setShowMatrixSizeControls] = useState(false);
+  const [matrixWidth, setMatrixWidth] = useState(980);
+  const [matrixHeight, setMatrixHeight] = useState(780);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const access = store.getRiskMatrixAccessForCurrentUser();
@@ -110,6 +113,23 @@ export const RiskMatrix: React.FC = () => {
   useEffect(() => {
     loadRecords();
   }, []);
+
+  useEffect(() => {
+    if (!isFullScreen) {
+      setShowMatrixSizeControls(false);
+    }
+  }, [isFullScreen]);
+
+  useEffect(() => {
+    if (!isFullScreen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isFullScreen]);
 
   const axis = useMemo(() => {
     const allValues = records.flatMap((r) => [
@@ -366,7 +386,7 @@ export const RiskMatrix: React.FC = () => {
 
   // Renderizador de matriz reutilizável
   const renderMatrixSVG = (className?: string) => {
-    const svgClass = className || (isFullScreen ? "w-full h-full" : "w-full min-w-[700px] h-auto");
+    const svgClass = className || (isFullScreen ? "w-full h-full" : "mx-auto h-auto w-full max-w-[760px] min-w-[520px]");
     return (
     <svg viewBox="0 0 590 510" className={svgClass}>
       <rect x="0" y="0" width="590" height="510" fill="#ffffff" />
@@ -552,9 +572,9 @@ export const RiskMatrix: React.FC = () => {
       </div>
 
       {isFullScreen && (
-        <div className="fixed inset-0 z-50 bg-black/5 flex flex-col p-0">
-          <div className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between flex-shrink-0">
-            <div className="flex gap-2">
+        <div className="fixed inset-0 z-[120] flex flex-col overflow-hidden bg-white">
+          <div className="border-b border-slate-200 bg-white px-6 py-3 shadow-sm flex flex-wrap items-center justify-between gap-4 flex-shrink-0">
+            <div className="flex flex-wrap gap-2">
               <button
                 type="button"
                 onClick={() => setView('INHERENT')}
@@ -577,17 +597,73 @@ export const RiskMatrix: React.FC = () => {
                 Movimentacao dos riscos
               </button>
             </div>
-            <button
-              type="button"
-              onClick={() => setIsFullScreen(false)}
-              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-sm font-semibold text-slate-700 hover:bg-slate-50"
-            >
-              <Minimize size={13} />
-              Sair
-            </button>
+            <div className="ml-auto flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowMatrixSizeControls((prev) => !prev)}
+                className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-500 hover:bg-slate-100"
+              >
+                Tamanho
+                <span className="text-[11px] text-slate-400">{matrixWidth}×{matrixHeight}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsFullScreen(false)}
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                <Minimize size={13} />
+                Sair
+              </button>
+            </div>
           </div>
-          <div className="flex-1 min-h-0 overflow-hidden p-4">
-            {renderMatrixSVG("w-full h-full")}
+          {showMatrixSizeControls && (
+            <div className="border-b border-slate-200 bg-white px-6 py-3">
+              <div className="ml-auto flex w-full max-w-md flex-wrap items-end gap-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <label className="flex-1">
+                  <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-500">Largura</span>
+                  <input
+                    type="range"
+                    min={700}
+                    max={1400}
+                    step={20}
+                    value={matrixWidth}
+                    onChange={(e) => setMatrixWidth(Number(e.target.value))}
+                    className="w-full accent-brand-600"
+                  />
+                  <span className="mt-1 block text-xs text-slate-500">{matrixWidth}px</span>
+                </label>
+                <label className="flex-1">
+                  <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-500">Altura</span>
+                  <input
+                    type="range"
+                    min={560}
+                    max={1100}
+                    step={20}
+                    value={matrixHeight}
+                    onChange={(e) => setMatrixHeight(Number(e.target.value))}
+                    className="w-full accent-brand-600"
+                  />
+                  <span className="mt-1 block text-xs text-slate-500">{matrixHeight}px</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMatrixWidth(980);
+                    setMatrixHeight(780);
+                  }}
+                  className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100"
+                >
+                  Resetar
+                </button>
+              </div>
+            </div>
+          )}
+          <div className="flex-1 min-h-0 overflow-auto bg-slate-50 p-4">
+            <div className="flex min-h-full min-w-full items-center justify-center">
+              <div className="shrink-0" style={{ width: `${matrixWidth}px`, height: `${matrixHeight}px` }}>
+                {renderMatrixSVG("w-full h-full")}
+              </div>
+            </div>
           </div>
         </div>
       )}
