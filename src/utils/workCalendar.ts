@@ -63,7 +63,7 @@ export const listPendingDaysForMonth = ({
   entries.forEach((entry) => {
     const entryDate = parseDateOnly(entry.date);
     if (entryDate.getFullYear() !== year || entryDate.getMonth() !== month) return;
-    totalsByDate[entry.date] = (totalsByDate[entry.date] || 0) + entry.hours;
+    totalsByDate[entry.date] = Math.round(((totalsByDate[entry.date] || 0) + entry.hours) * 100) / 100;
   });
 
   const pendingDays: PendingDay[] = [];

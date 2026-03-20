@@ -328,9 +328,9 @@ export const UserDashboard: React.FC = () => {
     const requestedHours = Number(formData.hours);
     const limitMessage = `O limite de horas trabalhadas por dia é ${formatHours(dailyHourLimit)} horas. Converse com seu gestor para mais informações.`;
     const getHoursAlreadyLogged = (date: string, excludeEntryId?: string) => {
-      return entries
+      return Math.round(entries
         .filter((entry) => entry.date === date && (!excludeEntryId || entry.id !== excludeEntryId))
-        .reduce((acc, curr) => acc + curr.hours, 0);
+        .reduce((acc, curr) => acc + curr.hours, 0) * 100) / 100;
     };
 
     if (editingId) {

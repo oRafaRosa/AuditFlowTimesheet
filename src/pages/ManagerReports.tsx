@@ -135,9 +135,9 @@ export const ManagerReports: React.FC = () => {
   };
 
     const getDailyTotalForUser = (userId: string, date: string) => {
-        return entries
+        return Math.round(entries
             .filter((entry) => entry.userId === userId && entry.date === date)
-            .reduce((acc, curr) => acc + curr.hours, 0);
+            .reduce((acc, curr) => acc + curr.hours, 0) * 100) / 100;
     };
 
     const isDuplicate = (entry: TimesheetEntry) => {

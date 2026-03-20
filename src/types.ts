@@ -4,6 +4,9 @@ export const formatHours = (hours: number, decimals: number = 1): string => {
   return hours.toFixed(decimals);
 };
 
+// evita acúmulo de erro de ponto flutuante em somas de horas (ex: 8.800000002)
+export const roundHours = (h: number): number => Math.round(h * 100) / 100;
+
 // utilzinha pra formatar percentual
 export const formatPercentage = (value: number): string => {
   return Math.round(value).toString();

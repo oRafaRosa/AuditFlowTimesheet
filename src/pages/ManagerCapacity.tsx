@@ -286,9 +286,9 @@ export const ManagerCapacity: React.FC = () => {
 
         const userEntries = entriesByUser.get(u.id) || [];
         const consumedToDateHours = activeInYear
-          ? userEntries
+          ? Math.round(userEntries
               .filter((entry) => entry.date >= consumedStartKey && entry.date <= consumedEndKey)
-              .reduce((sum, entry) => sum + entry.hours, 0)
+              .reduce((sum, entry) => sum + entry.hours, 0) * 100) / 100
           : 0;
 
         const remainingStart = maxDate(today, effectiveStart);
