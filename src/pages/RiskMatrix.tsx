@@ -8,86 +8,37 @@ type MatrixView = 'RESIDUAL' | 'INHERENT' | 'MOVEMENT';
 const toFive = (value: number) => Number(value).toFixed(5);
 
 const DEFAULT_SAMPLE_RISKS: Omit<RiskMatrixRecord, 'id' | 'updatedAt' | 'updatedBy'>[] = [
-  {
-    code: 'R11',
-    title: 'Risco de aderencia regulatoria',
-    category: 'Compliance',
-    ownerArea: 'COMPLIANCE',
-    inherentImpact: 2.00000,
-    inherentProbability: 3.60000,
-    residualImpact: 3.00000,
-    residualProbability: 4.60000
-  },
-  {
-    code: 'R8',
-    title: 'Risco de falha de controle chave',
-    category: 'Controles',
-    ownerArea: 'CONTROLES_INTERNOS',
-    inherentImpact: 3.00000,
-    inherentProbability: 2.60000,
-    residualImpact: 4.00000,
-    residualProbability: 3.60000
-  },
-  {
-    code: 'R6',
-    title: 'Risco operacional com alta exposicao',
-    category: 'Processos',
-    ownerArea: 'AUDITORIA_INTERNA',
-    inherentImpact: 2.00000,
-    inherentProbability: 1.70000,
-    residualImpact: 5.00000,
-    residualProbability: 3.60000
-  },
-  {
-    code: 'R5',
-    title: 'Risco de atraso em plano de acao',
-    category: 'Planos de acao',
-    ownerArea: 'AUDITORIA_INTERNA',
-    inherentImpact: 3.00000,
-    inherentProbability: 1.70000,
-    residualImpact: 5.00000,
-    residualProbability: 2.60000
-  },
-  {
-    code: 'R12',
-    title: 'Risco de monitoramento insuficiente',
-    category: 'Monitoramento',
-    ownerArea: 'GESTAO_RISCOS_DIGITAIS',
-    inherentImpact: 4.00000,
-    inherentProbability: 1.70000,
-    residualImpact: 5.00000,
-    residualProbability: 1.70000
-  },
-  {
-    code: 'R10',
-    title: 'Risco de indisponibilidade de processo critico',
-    category: 'Continuidade',
-    ownerArea: 'OUTROS',
-    inherentImpact: 5.00000,
-    inherentProbability: 2.60000,
-    residualImpact: 5.00000,
-    residualProbability: 2.60000
-  },
-  {
-    code: 'R9',
-    title: 'Risco de baixa cobertura de testes',
-    category: 'Qualidade',
-    ownerArea: 'GESTAO_RISCOS_DIGITAIS',
-    inherentImpact: 1.00000,
-    inherentProbability: 0.70000,
-    residualImpact: 5.00000,
-    residualProbability: 1.70000
-  },
-  {
-    code: 'R3',
-    title: 'Risco de fraude em processo sensivel',
-    category: 'Fraude',
-    ownerArea: 'COMPLIANCE',
-    inherentImpact: 4.00000,
-    inherentProbability: 3.60000,
-    residualImpact: 5.00000,
-    residualProbability: 4.60000
-  }
+  { code: 'R001', title: 'Dificuldade de atracao e retencao de talentos', category: 'Risco', ownerArea: 'OUTROS', inherentImpact: 4.11765, inherentProbability: 5.00000, residualImpact: 3.82353, residualProbability: 4.00000 },
+  { code: 'R002', title: 'Desalinhamento com a cultura organizacional', category: 'Risco', ownerArea: 'OUTROS', inherentImpact: 2.88235, inherentProbability: 5.00000, residualImpact: 2.52941, residualProbability: 3.85714 },
+  { code: 'R003', title: 'Tomada de decisao sem analise de impacto estruturada', category: 'Risco', ownerArea: 'OUTROS', inherentImpact: 4.05882, inherentProbability: 4.00000, residualImpact: 3.70588, residualProbability: 4.00000 },
+  { code: 'R004', title: 'Nao conformidade em licenciamentos', category: 'Risco', ownerArea: 'OUTROS', inherentImpact: 4.88235, inherentProbability: 5.00000, residualImpact: 4.52941, residualProbability: 4.57143 },
+  { code: 'R005', title: 'Defasagem / Inadequacao Tecnologica', category: 'Risco', ownerArea: 'OUTROS', inherentImpact: 3.64706, inherentProbability: 5.00000, residualImpact: 3.29412, residualProbability: 4.42857 },
+  { code: 'R006', title: 'Dados imprecisos ou indisponiveis', category: 'Risco', ownerArea: 'OUTROS', inherentImpact: 3.94118, inherentProbability: 4.50000, residualImpact: 3.00000, residualProbability: 4.00000 },
+  { code: 'R007', title: 'Descontinuidade do negocio', category: 'Risco', ownerArea: 'OUTROS', inherentImpact: 5.00000, inherentProbability: 5.00000, residualImpact: 5.00000, residualProbability: 4.71429 },
+  { code: 'R008', title: 'Ataques ciberneticos', category: 'Risco', ownerArea: 'OUTROS', inherentImpact: 5.00000, inherentProbability: 4.50000, residualImpact: 4.17647, residualProbability: 3.57143 },
+  { code: 'R009', title: 'Oferta inadequada de produtos e servicos', category: 'Risco', ownerArea: 'OUTROS', inherentImpact: 4.64706, inherentProbability: 5.00000, residualImpact: 3.76471, residualProbability: 3.57143 },
+  { code: 'R010', title: 'Insuficiencia de caixa', category: 'Risco', ownerArea: 'OUTROS', inherentImpact: 4.70588, inherentProbability: 5.00000, residualImpact: 4.47059, residualProbability: 4.57143 },
+  { code: 'R011', title: 'Experiencia negativa do cliente', category: 'Risco', ownerArea: 'OUTROS', inherentImpact: 4.88235, inherentProbability: 5.00000, residualImpact: 3.35294, residualProbability: 3.85714 },
+  { code: 'R012', title: 'Processos judiciais trabalhistas', category: 'Risco', ownerArea: 'OUTROS', inherentImpact: 4.64706, inherentProbability: 5.00000, residualImpact: 3.88235, residualProbability: 4.28571 },
+  { code: 'R013', title: 'Riscos de terceiros', category: 'Risco', ownerArea: 'OUTROS', inherentImpact: 4.82353, inherentProbability: 5.00000, residualImpact: 4.17647, residualProbability: 4.00000 },
+  { code: 'R014', title: 'Baixa competitividade digital', category: 'Risco', ownerArea: 'OUTROS', inherentImpact: 3.41176, inherentProbability: 5.00000, residualImpact: 2.76471, residualProbability: 3.57143 },
+  { code: 'R015', title: 'Fraude Interna / Externa', category: 'Risco', ownerArea: 'OUTROS', inherentImpact: 4.88235, inherentProbability: 5.00000, residualImpact: 4.00000, residualProbability: 3.71429 },
+  { code: 'R016', title: 'Processos judiciais consumeristas', category: 'Risco', ownerArea: 'OUTROS', inherentImpact: 4.88235, inherentProbability: 5.00000, residualImpact: 3.52941, residualProbability: 3.57143 },
+  { code: 'R017', title: 'Distorcao em demonstracoes financeiras', category: 'Risco', ownerArea: 'OUTROS', inherentImpact: 4.70588, inherentProbability: 4.50000, residualImpact: 4.17647, residualProbability: 4.28571 },
+  { code: 'R018', title: 'Perda de market share', category: 'Risco', ownerArea: 'OUTROS', inherentImpact: 3.05882, inherentProbability: 4.00000, residualImpact: 2.88235, residualProbability: 3.28571 },
+  { code: 'R019', title: 'Risco de Credito Direto ao Consumidor', category: 'Risco', ownerArea: 'OUTROS', inherentImpact: 4.64706, inherentProbability: 4.50000, residualImpact: 4.35294, residualProbability: 3.85714 },
+  { code: 'R020', title: 'Mudancas regulatorias emergentes', category: 'Risco', ownerArea: 'OUTROS', inherentImpact: 5.00000, inherentProbability: 4.00000, residualImpact: 4.58824, residualProbability: 2.71429 },
+  { code: 'R021', title: 'Exposicao negativa da marca', category: 'Risco', ownerArea: 'OUTROS', inherentImpact: 4.58824, inherentProbability: 5.00000, residualImpact: 3.76471, residualProbability: 4.28571 },
+  { code: 'R022', title: 'Obsolescencia do modelo de negocio', category: 'Risco', ownerArea: 'OUTROS', inherentImpact: 3.82353, inherentProbability: 4.00000, residualImpact: 2.94118, residualProbability: 3.42857 },
+  { code: 'R023', title: 'Perdas, Avarias, Roubo e Furto', category: 'Risco', ownerArea: 'OUTROS', inherentImpact: 3.88235, inherentProbability: 5.00000, residualImpact: 3.29412, residualProbability: 4.28571 },
+  { code: 'R024', title: 'Tratamento inadequado de dados pessoais', category: 'Risco', ownerArea: 'OUTROS', inherentImpact: 4.88235, inherentProbability: 3.50000, residualImpact: 3.41176, residualProbability: 3.00000 },
+  { code: 'R025', title: 'Ocorrencia de acidentes', category: 'Risco', ownerArea: 'OUTROS', inherentImpact: 4.88235, inherentProbability: 4.50000, residualImpact: 3.47059, residualProbability: 3.28571 },
+  { code: 'R026', title: 'Obsolescencia do servico de credito', category: 'Risco', ownerArea: 'OUTROS', inherentImpact: 3.29412, inherentProbability: 3.50000, residualImpact: 2.64706, residualProbability: 3.42857 },
+  { code: 'R027', title: 'Risco de contagio', category: 'Risco', ownerArea: 'OUTROS', inherentImpact: 4.17647, inherentProbability: 4.50000, residualImpact: 3.64706, residualProbability: 3.71429 },
+  { code: 'R028', title: 'Descontinuidade da estrategia', category: 'Risco', ownerArea: 'OUTROS', inherentImpact: 3.88235, inherentProbability: 4.00000, residualImpact: 3.17647, residualProbability: 3.00000 },
+  { code: 'R029', title: 'Processos judiciais tributarios', category: 'Risco', ownerArea: 'OUTROS', inherentImpact: 4.17647, inherentProbability: 3.50000, residualImpact: 3.64706, residualProbability: 2.42857 },
+  { code: 'R030', title: 'Gestao ineficiente de estoque', category: 'Risco', ownerArea: 'OUTROS', inherentImpact: 4.17647, inherentProbability: 5.00000, residualImpact: 3.88235, residualProbability: 4.28571 },
+  { code: 'R031', title: 'Vazamento de informacao', category: 'Risco', ownerArea: 'OUTROS', inherentImpact: 4.17647, inherentProbability: 4.50000, residualImpact: 3.35294, residualProbability: 3.28571 }
 ];
 
 const getBackgroundTone = (xRatio: number, yRatio: number) => {
@@ -376,7 +327,17 @@ export const RiskMatrix: React.FC = () => {
                 disabled={saving}
                 className="px-3 py-2 rounded-lg bg-amber-500 text-white text-sm font-semibold hover:bg-amber-600 disabled:opacity-60"
               >
-                Carregar base inicial
+                Carregar base oficial (31 riscos)
+              </button>
+            )}
+            {canEdit && records.length > 0 && (
+              <button
+                type="button"
+                onClick={handleBootstrap}
+                disabled={saving}
+                className="px-3 py-2 rounded-lg border border-amber-300 bg-amber-50 text-amber-700 text-sm font-semibold hover:bg-amber-100 disabled:opacity-60"
+              >
+                Reaplicar base oficial (31 riscos)
               </button>
             )}
             {canEdit && (
