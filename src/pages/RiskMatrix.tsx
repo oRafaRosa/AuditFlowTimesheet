@@ -382,24 +382,24 @@ export const RiskMatrix: React.FC = () => {
       <line x1="820" y1="35" x2="820" y2="435" stroke="#cbd5e1" strokeWidth="2" />
 
       {/* IMPACTO - título embaixo da moldura */}
-      <text x="450" y="465" textAnchor="middle" className="fill-slate-800 text-[14px] font-bold">IMPACTO</text>
+      <text x="450" y="465" textAnchor="middle" className="fill-slate-900 text-[13px] font-bold">IMPACTO</text>
       
       {/* Labels de impacto (embaixo) */}
-      <text x="130" y="490" textAnchor="middle" className="fill-slate-700 text-[11px] font-semibold">Irrelevante</text>
-      <text x="270" y="490" textAnchor="middle" className="fill-slate-700 text-[11px] font-semibold">Baixo</text>
-      <text x="410" y="490" textAnchor="middle" className="fill-slate-700 text-[11px] font-semibold">Moderado</text>
-      <text x="550" y="490" textAnchor="middle" className="fill-slate-700 text-[11px] font-semibold">Alto</text>
-      <text x="690" y="490" textAnchor="middle" className="fill-slate-700 text-[11px] font-semibold">Extremo</text>
+      <text x="150" y="490" textAnchor="middle" className="fill-slate-700 text-[10px] font-medium">Irrelevante</text>
+      <text x="290" y="490" textAnchor="middle" className="fill-slate-700 text-[10px] font-medium">Baixo</text>
+      <text x="430" y="490" textAnchor="middle" className="fill-slate-700 text-[10px] font-medium">Moderado</text>
+      <text x="570" y="490" textAnchor="middle" className="fill-slate-700 text-[10px] font-medium">Alto</text>
+      <text x="710" y="490" textAnchor="middle" className="fill-slate-700 text-[10px] font-medium">Extremo</text>
 
-      {/* PROBABILIDADE - título lado esquerdo da moldura (vertical) */}
-      <text x="25" y="240" textAnchor="middle" className="fill-slate-800 text-[14px] font-bold" transform="rotate(-90 25 240)">PROBABILIDADE</text>
+      {/* PROBABILIDADE - título lado esquerdo */}
+      <text x="8" y="240" textAnchor="middle" className="fill-slate-900 text-[13px] font-bold" transform="rotate(-90 8 240)">PROBABILIDADE</text>
       
-      {/* Labels de probabilidade (lado esquerdo) - vertical */}
-      <text x="50" y="60" textAnchor="end" className="fill-slate-700 text-[11px] font-semibold" transform="rotate(-90 50 60)">Extremo</text>
-      <text x="50" y="154" textAnchor="end" className="fill-slate-700 text-[11px] font-semibold" transform="rotate(-90 50 154)">Alto</text>
-      <text x="50" y="248" textAnchor="end" className="fill-slate-700 text-[11px] font-semibold" transform="rotate(-90 50 248)">Moderado</text>
-      <text x="50" y="342" textAnchor="end" className="fill-slate-700 text-[11px] font-semibold" transform="rotate(-90 50 342)">Baixo</text>
-      <text x="50" y="436" textAnchor="end" className="fill-slate-700 text-[11px] font-semibold" transform="rotate(-90 50 436)">Irrelevante</text>
+      {/* Labels de probabilidade - lado esquerdo (vertical, renderizados simples) */}
+      <text x="35" y="65" textAnchor="end" className="fill-slate-700 text-[10px] font-medium">Extremo</text>
+      <text x="35" y="159" textAnchor="end" className="fill-slate-700 text-[10px] font-medium">Alto</text>
+      <text x="35" y="253" textAnchor="end" className="fill-slate-700 text-[10px] font-medium">Moderado</text>
+      <text x="35" y="347" textAnchor="end" className="fill-slate-700 text-[10px] font-medium">Baixo</text>
+      <text x="35" y="430" textAnchor="end" className="fill-slate-700 text-[10px] font-medium">Irrelevante</text>
       
       {Array.from({ length: 5 }).map((_, row) =>
         Array.from({ length: 5 }).map((__, col) => (
@@ -428,11 +428,11 @@ export const RiskMatrix: React.FC = () => {
               onMouseEnter={() => setHoveredRisk({ record, x: rx, y: ry })}
               onMouseLeave={() => setHoveredRisk(null)}
             >
-              <line x1={ix} y1={iy} x2={rx} y2={ry} stroke="#64748b" strokeDasharray="5 5" strokeWidth={1.5} />
-              <circle cx={ix} cy={iy} r={8} fill="#e2e8f0" stroke="#94a3b8" strokeWidth={1.5} />
-              <circle cx={rx} cy={ry} r={16} fill="#facc15" opacity={0.22} />
-              <circle cx={rx} cy={ry} r={13} fill="#facc15" stroke="#ffffff" strokeWidth={2} />
-              <text x={rx} y={ry + 3} textAnchor="middle" className="fill-slate-900 text-[7.5px] font-bold">{formatRiskCodeForDisplay(record.code)}</text>
+              <line x1={ix} y1={iy} x2={rx} y2={ry} stroke="#64748b" strokeDasharray="5 5" strokeWidth={1} />
+              <circle cx={ix} cy={iy} r={6} fill="#e2e8f0" stroke="#94a3b8" strokeWidth={1.5} />
+              <circle cx={rx} cy={ry} r={12} fill="#facc15" opacity={0.18} />
+              <circle cx={rx} cy={ry} r={9} fill="#facc15" stroke="#ffffff" strokeWidth={1.5} />
+              <text x={rx} y={ry + 2.5} textAnchor="middle" className="fill-slate-900 text-[6px] font-bold">{formatRiskCodeForDisplay(record.code)}</text>
             </g>
           );
         }
@@ -446,9 +446,9 @@ export const RiskMatrix: React.FC = () => {
             onMouseEnter={() => setHoveredRisk({ record, x, y })}
             onMouseLeave={() => setHoveredRisk(null)}
           >
-            <circle cx={x} cy={y} r={16} fill={pointColor} opacity={0.18} />
-            <circle cx={x} cy={y} r={13} fill={pointColor} stroke="#ffffff" strokeWidth={2} />
-            <text x={x} y={y + 3} textAnchor="middle" className="fill-white text-[7.5px] font-bold">{formatRiskCodeForDisplay(record.code)}</text>
+            <circle cx={x} cy={y} r={12} fill={pointColor} opacity={0.15} />
+            <circle cx={x} cy={y} r={9} fill={pointColor} stroke="#ffffff" strokeWidth={1.5} />
+            <text x={x} y={y + 2.5} textAnchor="middle" className="fill-white text-[6px] font-bold">{formatRiskCodeForDisplay(record.code)}</text>
           </g>
         );
       })}
