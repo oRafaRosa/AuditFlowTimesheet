@@ -1,11 +1,13 @@
-# AuditFlow Timesheet
+# AuditFlow
 
 > desenvolvido por **[R² Solutions Group](https://orafarosa.github.io/R2-Solutions-Group/)** 🚀  
 > tech & consulting
 
-AuditFlow Timesheet é uma aplicação web moderna para gerenciamento de tempo e projetos, desenvolvida para facilitar o controle de horas trabalhadas em auditorias e projetos de consultoria. Construída com tecnologias de ponta, oferece uma interface intuitiva para usuários, gerentes e administradores.
+AuditFlow e uma plataforma web para apoiar as frentes de Auditoria Interna, Riscos, Compliance e Canal de Denuncias no Grupo Casas Bahia.
 
-## 🚀 Funcionalidades
+No estado atual, os modulos em producao estao focados em registro de horas (timesheet) e gestao de horas/planejamento. A evolucao do produto segue para consolidar uma suite GRC completa, mantendo o que ja funciona em producao com entregas incrementais.
+
+## 🚀 Funcionalidades Atuais (em Producao)
 
 ### Para Usuários
 - **Dashboard Pessoal**: Visualize suas horas trabalhadas, projetos ativos e alertas de limite diário.
@@ -21,6 +23,13 @@ AuditFlow Timesheet é uma aplicação web moderna para gerenciamento de tempo e
 ### Para Administradores
 - **Painel Administrativo**: Gerencie usuários, projetos e configurações do sistema.
 - **Centro de Ajuda**: Acesse documentação e suporte integrado.
+
+## 🧭 Roadmap de Evolucao (Plataforma GRC)
+
+- **Auditoria Interna**: plano anual, escopo, execucao, achados, recomendacoes e plano de acao.
+- **Riscos**: catalogo de riscos, avaliacao de impacto/probabilidade e monitoramento continuo.
+- **Compliance**: controles, evidencias e acompanhamento de obrigacoes regulatorias.
+- **Canal de Denuncias**: recebimento, triagem, investigacao e tratamento com trilha de auditoria.
 
 ## 🛠️ Tecnologias Utilizadas
 
