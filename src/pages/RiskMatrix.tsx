@@ -150,8 +150,8 @@ export const RiskMatrix: React.FC = () => {
     const titleLines = splitRiskTitle(record.title, 28);
     const tw = 278;
     const th = 108;
-    const tx = x > 560 ? x - tw - 18 : x + 18;
-    const ty = Math.min(Math.max(y - 42, 8), 470 - th - 8);
+    const tx = x > 320 ? x - tw - 18 : x + 18;
+    const ty = Math.min(Math.max(y - 42, 8), 450 - th - 8);
 
     return (
       <g style={{ pointerEvents: 'none' }}>
@@ -368,36 +368,33 @@ export const RiskMatrix: React.FC = () => {
   const renderMatrixSVG = (className?: string) => {
     const svgClass = className || (isFullScreen ? "w-full h-full" : "w-full min-w-[700px] h-auto");
     return (
-    <svg viewBox="0 0 900 510" className={svgClass}>
-      <rect x="0" y="0" width="900" height="510" fill="#ffffff" />
+    <svg viewBox="0 0 590 510" className={svgClass}>
+      <rect x="0" y="0" width="590" height="510" fill="#ffffff" />
 
       {/* Separadores sutis entre labels e células */}
-      <line x1="86" y1="38" x2="86" y2="432" stroke="#e2e8f0" strokeWidth={1} />
-      <line x1="88" y1="432" x2="832" y2="432" stroke="#e2e8f0" strokeWidth={1} />
+      <line x1="86" y1="38" x2="86" y2="442" stroke="#e2e8f0" strokeWidth={1} />
+      <line x1="88" y1="442" x2="490" y2="442" stroke="#e2e8f0" strokeWidth={1} />
 
       {/* Título PROBABILIDADE - vertical, extremo esquerdo */}
-      <text x="11" y="235" textAnchor="middle" fontSize="11" fontWeight="700" fill="#334155" transform="rotate(-90 11 235)">PROBABILIDADE</text>
+      <text x="11" y="240" textAnchor="middle" fontSize="10" fontWeight="700" fill="#64748b" letterSpacing="1" transform="rotate(-90 11 240)">PROBABILIDADE</text>
 
-      {/*
-        Labels de probabilidade - rotacionados no eixo Y
-        rowCenterY = 40 + row * 78 + 39 → 79, 157, 235, 313, 391
-        Rotação -90° ao redor do ponto (64, rowCenterY) centraliza o texto na linha
-      */}
-      <text x="64" y="79"  textAnchor="middle" fontSize="10" fill="#64748b" transform="rotate(-90 64 79)">Extremo</text>
-      <text x="64" y="157" textAnchor="middle" fontSize="10" fill="#64748b" transform="rotate(-90 64 157)">Alto</text>
-      <text x="64" y="235" textAnchor="middle" fontSize="10" fill="#64748b" transform="rotate(-90 64 235)">Moderado</text>
-      <text x="64" y="313" textAnchor="middle" fontSize="10" fill="#64748b" transform="rotate(-90 64 313)">Baixo</text>
-      <text x="64" y="391" textAnchor="middle" fontSize="10" fill="#64748b" transform="rotate(-90 64 391)">Irrelevante</text>
+      {/* Labels de probabilidade com fundo quadrado - cy = 40 + row*80 + 40 → 80, 160, 240, 320, 400 */}
+      {([['Extremo',80],['Alto',160],['Moderado',240],['Baixo',320],['Irrelevante',400]] as [string,number][]).map(([label, cy]) => (
+        <g key={label}>
+          <rect x={28} y={cy - 9} width={72} height={18} rx={5} fill="#f1f5f9" transform={`rotate(-90 64 ${cy})`} />
+          <text x={64} y={cy + 3.5} textAnchor="middle" fontSize="9.5" fill="#475569" fontWeight="500" transform={`rotate(-90 64 ${cy})`}>{label}</text>
+        </g>
+      ))}
 
-      {/* Células da matriz */}
+      {/* Células da matriz - 80x80 (quadradas) */}
       {Array.from({ length: 5 }).map((_, row) =>
         Array.from({ length: 5 }).map((__, col) => (
           <rect
             key={`${row}-${col}`}
-            x={90 + col * 140}
-            y={40 + row * 78}
-            width={140}
-            height={78}
+            x={88 + col * 80}
+            y={40 + row * 80}
+            width={80}
+            height={80}
             fill={getCellColor(col, row)}
             stroke="#ffffff"
             strokeWidth={3}
@@ -405,24 +402,22 @@ export const RiskMatrix: React.FC = () => {
         ))
       )}
 
-      {/*
-        Labels de impacto - centralizados em cada coluna
-        colCenterX = 90 + col * 140 + 70 → 160, 300, 440, 580, 720
-      */}
-      <text x="160" y="450" textAnchor="middle" fontSize="10" fill="#64748b">Irrelevante</text>
-      <text x="300" y="450" textAnchor="middle" fontSize="10" fill="#64748b">Baixo</text>
-      <text x="440" y="450" textAnchor="middle" fontSize="10" fill="#64748b">Moderado</text>
-      <text x="580" y="450" textAnchor="middle" fontSize="10" fill="#64748b">Alto</text>
-      <text x="720" y="450" textAnchor="middle" fontSize="10" fill="#64748b">Extremo</text>
+      {/* Labels de impacto com fundo - cx = 88 + col*80 + 40 → 128, 208, 288, 368, 448 */}
+      {([['Irrelevante',128],['Baixo',208],['Moderado',288],['Alto',368],['Extremo',448]] as [string,number][]).map(([label, cx]) => (
+        <g key={label}>
+          <rect x={cx - 37} y={447} width={74} height={17} rx={5} fill="#f1f5f9" />
+          <text x={cx} y={459} textAnchor="middle" fontSize="9.5" fill="#475569" fontWeight="500">{label}</text>
+        </g>
+      ))}
 
-      {/* Título IMPACTO - embaixo, centralizado na largura da matriz */}
-      <text x="460" y="478" textAnchor="middle" fontSize="11" fontWeight="700" fill="#334155">IMPACTO</text>
+      {/* Título IMPACTO - embaixo, centralizado */}
+      <text x="288" y="482" textAnchor="middle" fontSize="10" fontWeight="700" fill="#64748b" letterSpacing="1">IMPACTO</text>
 
       {records.filter(r => selectedCodes.has(r.code)).map((record) => {
-        const ix = 90 + normalize(record.inherentImpact) * 700;
-        const iy = 430 - normalize(record.inherentProbability) * 390;
-        const rx = 90 + normalize(record.residualImpact) * 700;
-        const ry = 430 - normalize(record.residualProbability) * 390;
+        const ix = 88 + normalize(record.inherentImpact) * 400;
+        const iy = 440 - normalize(record.inherentProbability) * 400;
+        const rx = 88 + normalize(record.residualImpact) * 400;
+        const ry = 440 - normalize(record.residualProbability) * 400;
 
         if (view === 'MOVEMENT') {
           return (
@@ -434,7 +429,7 @@ export const RiskMatrix: React.FC = () => {
               <circle cx={ix} cy={iy} r={6} fill="#e2e8f0" stroke="#94a3b8" strokeWidth={1.5} />
               <circle cx={rx} cy={ry} r={12} fill="#facc15" opacity={0.18} />
               <circle cx={rx} cy={ry} r={9} fill="#facc15" stroke="#ffffff" strokeWidth={1.5} />
-              <text x={rx} y={ry + 2.5} textAnchor="middle" className="fill-slate-900 text-[6px] font-bold">{formatRiskCodeForDisplay(record.code)}</text>
+              <text x={rx} y={ry + 3} textAnchor="middle" fontSize={8} fontWeight="700" fill="#1e293b">{formatRiskCodeForDisplay(record.code)}</text>
             </g>
           );
         }
@@ -450,7 +445,7 @@ export const RiskMatrix: React.FC = () => {
           >
             <circle cx={x} cy={y} r={12} fill={pointColor} opacity={0.15} />
             <circle cx={x} cy={y} r={9} fill={pointColor} stroke="#ffffff" strokeWidth={1.5} />
-            <text x={x} y={y + 2.5} textAnchor="middle" className="fill-white text-[6px] font-bold">{formatRiskCodeForDisplay(record.code)}</text>
+            <text x={x} y={y + 3} textAnchor="middle" fontSize={8} fontWeight="700" fill="#ffffff">{formatRiskCodeForDisplay(record.code)}</text>
           </g>
         );
       })}
@@ -591,8 +586,8 @@ export const RiskMatrix: React.FC = () => {
               Sair
             </button>
           </div>
-          <div className="flex-1 overflow-auto bg-white" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-            {renderMatrixSVG()}  
+          <div className="flex-1 min-h-0 overflow-hidden p-4">
+            {renderMatrixSVG("w-full h-full")}
           </div>
         </div>
       )}
