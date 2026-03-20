@@ -669,7 +669,7 @@ export const RiskMatrix: React.FC = () => {
                   <input
                     type="range"
                     min={60}
-                    max={260}
+                    max={520}
                     step={4}
                     value={matrixWidth}
                     onChange={(e) => setMatrixWidth(Number(e.target.value))}
@@ -682,7 +682,7 @@ export const RiskMatrix: React.FC = () => {
                   <input
                     type="range"
                     min={60}
-                    max={260}
+                    max={520}
                     step={4}
                     value={matrixHeight}
                     onChange={(e) => setMatrixHeight(Number(e.target.value))}
