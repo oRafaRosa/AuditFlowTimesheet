@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as XLSX from 'xlsx';
-import { Shield, Lock, Info, RefreshCcw, Save, Filter, Upload, FileSpreadsheet, X, AlertCircle } from 'lucide-react';
+import { Shield, Lock, Info, RefreshCcw, Save, Filter, Upload, FileSpreadsheet, X, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { RiskMatrixRecord } from '../types';
 import { store } from '../services/store';
 
@@ -28,14 +28,14 @@ const formatRiskCode = (value: string) => {
 
 
 
-// Paleta fixa da matriz: somente os 3 primeiros quadrinhos usam azul.
+// Paleta fixa da matriz alinhada ao print de referencia.
 const getCellColor = (col: number, row: number) => {
   const colorMap = [
-    ['rgba(209, 250, 229, 0.65)', 'rgba(254, 243, 199, 0.72)', 'rgba(254, 215, 170, 0.72)', 'rgba(254, 202, 202, 0.75)', 'rgba(254, 202, 202, 0.82)'],
-    ['rgba(209, 250, 229, 0.65)', 'rgba(209, 250, 229, 0.65)', 'rgba(254, 243, 199, 0.72)', 'rgba(254, 215, 170, 0.72)', 'rgba(254, 202, 202, 0.75)'],
-    ['rgba(209, 250, 229, 0.65)', 'rgba(209, 250, 229, 0.65)', 'rgba(254, 243, 199, 0.72)', 'rgba(254, 243, 199, 0.72)', 'rgba(254, 215, 170, 0.72)'],
-    ['rgba(209, 250, 229, 0.65)', 'rgba(209, 250, 229, 0.65)', 'rgba(209, 250, 229, 0.65)', 'rgba(209, 250, 229, 0.65)', 'rgba(254, 243, 199, 0.72)'],
-    ['rgba(191, 219, 254, 0.72)', 'rgba(191, 219, 254, 0.72)', 'rgba(191, 219, 254, 0.72)', 'rgba(209, 250, 229, 0.65)', 'rgba(209, 250, 229, 0.65)']
+    ['#f3ea00', '#f3ea00', '#ffbf00', '#ff331f', '#ff1f1f'],
+    ['#5e8a3a', '#f3ea00', '#ffc400', '#ffbf00', '#ff331f'],
+    ['#5e8a3a', '#5e8a3a', '#f3ea00', '#ffc400', '#ffbf00'],
+    ['#2f31e8', '#5e8a3a', '#5e8a3a', '#f3ea00', '#ffc400'],
+    ['#2f31e8', '#2f31e8', '#5e8a3a', '#f3ea00', '#f3ea00']
   ];
 
   return colorMap[row]?.[col] ?? 'rgba(255, 255, 255, 1)';
@@ -52,6 +52,7 @@ export const RiskMatrix: React.FC = () => {
   const [selectedCodes, setSelectedCodes] = useState<Set<string>>(new Set());
   const [showFilter, setShowFilter] = useState(false);
   const [showImport, setShowImport] = useState(false);
+  const [showRiskBase, setShowRiskBase] = useState(false);
   const [staging, setStaging] = useState<StagingRow[]>([]);
   const [importError, setImportError] = useState<string | null>(null);
   const [importSaving, setImportSaving] = useState(false);
@@ -103,33 +104,33 @@ export const RiskMatrix: React.FC = () => {
     const mitigation = inherentScore > 0
       ? Math.max(0, ((inherentScore - residualScore) / inherentScore) * 100)
       : 0;
-    const title = record.title.length > 26 ? record.title.substring(0, 26) + '...' : record.title;
-    const tw = 290;
-    const th = 116;
+    const title = record.title.length > 22 ? record.title.substring(0, 22) + '...' : record.title;
+    const tw = 232;
+    const th = 84;
     const tx = x > 560 ? x - tw - 18 : x + 18;
     const ty = Math.min(Math.max(y - 42, 8), 470 - th - 8);
 
     return (
       <g style={{ pointerEvents: 'none' }}>
-        <rect x={tx + 5} y={ty + 5} width={tw} height={th} rx={14} fill="rgba(15, 23, 42, 0.18)" />
-        <rect x={tx} y={ty} width={tw} height={th} rx={14} fill="#111827" stroke="rgba(255,255,255,0.08)" strokeWidth={1} />
+        <rect x={tx + 4} y={ty + 4} width={tw} height={th} rx={12} fill="rgba(15, 23, 42, 0.16)" />
+        <rect x={tx} y={ty} width={tw} height={th} rx={12} fill="#111827" stroke="rgba(255,255,255,0.08)" strokeWidth={1} />
 
-        <text x={tx + 14} y={ty + 24} fontSize={15} fontWeight="700" fill="#f8fafc">{formattedCode}</text>
-        <text x={tx + tw - 14} y={ty + 24} textAnchor="end" fontSize={13} fill="#cbd5e1">{title}</text>
+        <text x={tx + 12} y={ty + 18} fontSize={12} fontWeight="700" fill="#f8fafc">{formattedCode}</text>
+        <text x={tx + tw - 12} y={ty + 18} textAnchor="end" fontSize={10} fill="#cbd5e1">{title}</text>
 
-        <rect x={tx + 12} y={ty + 34} width="126" height="40" rx="6" fill="#1f2937" />
-        <rect x={tx + 152} y={ty + 34} width="126" height="40" rx="6" fill="#1f2937" />
+        <rect x={tx + 10} y={ty + 26} width="102" height="32" rx="6" fill="#1f2937" />
+        <rect x={tx + 120} y={ty + 26} width="102" height="32" rx="6" fill="#1f2937" />
 
-        <text x={tx + 75} y={ty + 50} textAnchor="middle" fontSize={10} fill="#94a3b8">Inerente</text>
-        <text x={tx + 75} y={ty + 66} textAnchor="middle" fontSize={16} fontWeight="700" fill="#f8fafc">{record.inherentImpact.toFixed(0)} x {record.inherentProbability.toFixed(0)}</text>
-        <text x={tx + 75} y={ty + 82} textAnchor="middle" fontSize={10} fill="#cbd5e1">Score: {inherentScore.toFixed(3)}</text>
+        <text x={tx + 61} y={ty + 38} textAnchor="middle" fontSize={8} fill="#94a3b8">Inerente</text>
+        <text x={tx + 61} y={ty + 50} textAnchor="middle" fontSize={10} fontWeight="700" fill="#f8fafc">{record.inherentImpact.toFixed(3)} x {record.inherentProbability.toFixed(3)}</text>
+        <text x={tx + 61} y={ty + 61} textAnchor="middle" fontSize={8} fill="#cbd5e1">Score: {inherentScore.toFixed(3)}</text>
 
-        <text x={tx + 215} y={ty + 50} textAnchor="middle" fontSize={10} fill="#60a5fa">Residual</text>
-        <text x={tx + 215} y={ty + 66} textAnchor="middle" fontSize={16} fontWeight="700" fill="#f8fafc">{record.residualImpact.toFixed(0)} x {record.residualProbability.toFixed(0)}</text>
-        <text x={tx + 215} y={ty + 82} textAnchor="middle" fontSize={10} fill="#cbd5e1">Score: {residualScore.toFixed(3)}</text>
+        <text x={tx + 171} y={ty + 38} textAnchor="middle" fontSize={8} fill="#60a5fa">Residual</text>
+        <text x={tx + 171} y={ty + 50} textAnchor="middle" fontSize={10} fontWeight="700" fill="#f8fafc">{record.residualImpact.toFixed(3)} x {record.residualProbability.toFixed(3)}</text>
+        <text x={tx + 171} y={ty + 61} textAnchor="middle" fontSize={8} fill="#cbd5e1">Score: {residualScore.toFixed(3)}</text>
 
-        <text x={tx + 12} y={ty + 103} fontSize={12} fontWeight="600" fill="#94a3b8">Mitigacao</text>
-        <text x={tx + tw - 12} y={ty + 103} textAnchor="end" fontSize={12} fontWeight="700" fill="#4ade80">{mitigation.toFixed(1)}%</text>
+        <text x={tx + 10} y={ty + 76} fontSize={9} fontWeight="600" fill="#94a3b8">Mitigacao</text>
+        <text x={tx + tw - 10} y={ty + 76} textAnchor="end" fontSize={9} fontWeight="700" fill="#4ade80">{mitigation.toFixed(1)}%</text>
       </g>
     );
   }, [hoveredRisk]);
@@ -288,7 +289,7 @@ export const RiskMatrix: React.FC = () => {
     setSaving(false);
 
     if (failures > 0) {
-      alert(`Nao foi possivel salvar ${failures} registro(s). Confira a chave VITE_RISK_MATRIX_ENCRYPTION_KEY.`);
+      alert(`Nao foi possivel salvar ${failures} registro(s). Confira a configuracao de criptografia do ambiente.`);
       return;
     }
 
@@ -327,23 +328,6 @@ export const RiskMatrix: React.FC = () => {
           <Shield size={14} className="mr-2 text-emerald-600" />
           Permissao atual: {access === 'EDIT' ? 'Edicao' : 'Leitura'}
         </div>
-      </div>
-
-      <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div className="flex items-start gap-3">
-          <Lock size={18} className="text-emerald-700 mt-0.5" />
-          <p className="text-sm text-emerald-900">
-            Os dados desta pagina sao armazenados criptografados (AES-GCM) e so sao descriptografados no app para usuarios autorizados.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => setShowSecurityDetails(true)}
-          className="inline-flex items-center gap-2 text-sm font-bold text-emerald-700 hover:text-emerald-900"
-        >
-          <Info size={14} />
-          Saiba mais
-        </button>
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-100 p-4">
@@ -476,128 +460,161 @@ export const RiskMatrix: React.FC = () => {
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-100 p-4">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold text-slate-800">Base de Riscos</h2>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={loadRecords}
-              className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-300 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-            >
-              <RefreshCcw size={14} />
-              Recarregar
-            </button>
-            {canEdit && (
-              <button
-                type="button"
-                onClick={() => { setStaging([]); setImportError(null); setShowImport(true); }}
-                className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700"
-              >
-                <Upload size={14} />
-                Importar Excel
-              </button>
-            )}
-
-            {canEdit && (
-              <button
-                type="button"
-                onClick={handleSaveAll}
-                disabled={saving}
-                className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700 disabled:opacity-60"
-              >
-                <Save size={14} />
-                {saving ? 'Salvando...' : 'Salvar alteracoes'}
-              </button>
-            )}
+        <button
+          type="button"
+          onClick={() => setShowRiskBase((prev) => !prev)}
+          className="flex w-full items-center justify-between text-left"
+        >
+          <div>
+            <h2 className="text-lg font-bold text-slate-800">Base de Riscos</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              {showRiskBase ? 'Clique para recolher a base e focar no gráfico.' : `Clique para expandir os ${records.length} riscos cadastrados.`}
+            </p>
           </div>
-        </div>
+          <span className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-600">
+            {showRiskBase ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+            {showRiskBase ? 'Recolher' : 'Expandir'}
+          </span>
+        </button>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-200 text-left text-slate-500">
-                <th className="p-2">Codigo</th>
-                <th className="p-2">Descricao</th>
-                <th className="p-2">Imp. Inerente</th>
-                <th className="p-2">Prob. Inerente</th>
-                <th className="p-2">Imp. Residual</th>
-                <th className="p-2">Prob. Residual</th>
-              </tr>
-            </thead>
-            <tbody>
-              {records.map((record) => {
-                const draft = drafts[record.id] || record;
-                return (
-                  <tr key={record.id} className="border-b border-slate-100">
-                    <td className="p-2 font-bold text-slate-700">{formatRiskCode(record.code)}</td>
-                    <td className="p-2">
-                      {canEdit ? (
-                        <input
-                          className="w-full border border-slate-300 rounded p-1.5"
-                          value={draft.title}
-                          onChange={(e) => handleDraftChange(record.id, 'title', e.target.value)}
-                        />
-                      ) : (
-                        <span>{draft.title}</span>
-                      )}
-                    </td>
-                    <td className="p-2">
-                      {canEdit ? (
-                        <input
-                          type="text"
-                          inputMode="decimal"
-                          className="w-28 border border-slate-300 rounded p-1.5"
-                          value={toFive(draft.inherentImpact)}
-                          onChange={(e) => handleDraftChange(record.id, 'inherentImpact', e.target.value)}
-                        />
-                      ) : toFive(draft.inherentImpact)}
-                    </td>
-                    <td className="p-2">
-                      {canEdit ? (
-                        <input
-                          type="text"
-                          inputMode="decimal"
-                          className="w-28 border border-slate-300 rounded p-1.5"
-                          value={toFive(draft.inherentProbability)}
-                          onChange={(e) => handleDraftChange(record.id, 'inherentProbability', e.target.value)}
-                        />
-                      ) : toFive(draft.inherentProbability)}
-                    </td>
-                    <td className="p-2">
-                      {canEdit ? (
-                        <input
-                          type="text"
-                          inputMode="decimal"
-                          className="w-28 border border-slate-300 rounded p-1.5"
-                          value={toFive(draft.residualImpact)}
-                          onChange={(e) => handleDraftChange(record.id, 'residualImpact', e.target.value)}
-                        />
-                      ) : toFive(draft.residualImpact)}
-                    </td>
-                    <td className="p-2">
-                      {canEdit ? (
-                        <input
-                          type="text"
-                          inputMode="decimal"
-                          className="w-28 border border-slate-300 rounded p-1.5"
-                          value={toFive(draft.residualProbability)}
-                          onChange={(e) => handleDraftChange(record.id, 'residualProbability', e.target.value)}
-                        />
-                      ) : toFive(draft.residualProbability)}
-                    </td>
-                  </tr>
-                );
-              })}
-              {records.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="p-6 text-center text-slate-400">
-                    Nenhum risco cadastrado. Use &ldquo;Importar Excel&rdquo; para carregar os dados.
-                  </td>
-                </tr>
+        {showRiskBase && (
+          <>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={loadRecords}
+                className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-300 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                <RefreshCcw size={14} />
+                Recarregar
+              </button>
+              {canEdit && (
+                <button
+                  type="button"
+                  onClick={() => { setStaging([]); setImportError(null); setShowImport(true); }}
+                  className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700"
+                >
+                  <Upload size={14} />
+                  Importar Excel
+                </button>
               )}
-            </tbody>
-          </table>
+
+              {canEdit && (
+                <button
+                  type="button"
+                  onClick={handleSaveAll}
+                  disabled={saving}
+                  className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700 disabled:opacity-60"
+                >
+                  <Save size={14} />
+                  {saving ? 'Salvando...' : 'Salvar alteracoes'}
+                </button>
+              )}
+            </div>
+
+            <div className="mt-4 overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200 text-left text-slate-500">
+                    <th className="p-2">Codigo</th>
+                    <th className="p-2">Descricao</th>
+                    <th className="p-2">Imp. Inerente</th>
+                    <th className="p-2">Prob. Inerente</th>
+                    <th className="p-2">Imp. Residual</th>
+                    <th className="p-2">Prob. Residual</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {records.map((record) => {
+                    const draft = drafts[record.id] || record;
+                    return (
+                      <tr key={record.id} className="border-b border-slate-100">
+                        <td className="p-2 font-bold text-slate-700">{formatRiskCode(record.code)}</td>
+                        <td className="p-2">
+                          {canEdit ? (
+                            <input
+                              className="w-full border border-slate-300 rounded p-1.5"
+                              value={draft.title}
+                              onChange={(e) => handleDraftChange(record.id, 'title', e.target.value)}
+                            />
+                          ) : (
+                            <span>{draft.title}</span>
+                          )}
+                        </td>
+                        <td className="p-2">
+                          {canEdit ? (
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              className="w-28 border border-slate-300 rounded p-1.5"
+                              value={toFive(draft.inherentImpact)}
+                              onChange={(e) => handleDraftChange(record.id, 'inherentImpact', e.target.value)}
+                            />
+                          ) : toFive(draft.inherentImpact)}
+                        </td>
+                        <td className="p-2">
+                          {canEdit ? (
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              className="w-28 border border-slate-300 rounded p-1.5"
+                              value={toFive(draft.inherentProbability)}
+                              onChange={(e) => handleDraftChange(record.id, 'inherentProbability', e.target.value)}
+                            />
+                          ) : toFive(draft.inherentProbability)}
+                        </td>
+                        <td className="p-2">
+                          {canEdit ? (
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              className="w-28 border border-slate-300 rounded p-1.5"
+                              value={toFive(draft.residualImpact)}
+                              onChange={(e) => handleDraftChange(record.id, 'residualImpact', e.target.value)}
+                            />
+                          ) : toFive(draft.residualImpact)}
+                        </td>
+                        <td className="p-2">
+                          {canEdit ? (
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              className="w-28 border border-slate-300 rounded p-1.5"
+                              value={toFive(draft.residualProbability)}
+                              onChange={(e) => handleDraftChange(record.id, 'residualProbability', e.target.value)}
+                            />
+                          ) : toFive(draft.residualProbability)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {records.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="p-6 text-center text-slate-400">
+                        Nenhum risco cadastrado. Use &ldquo;Importar Excel&rdquo; para carregar os dados.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+      </div>
+
+      <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+        <div className="inline-flex items-center gap-2 text-xs text-slate-500 md:text-sm">
+          <Lock size={14} className="text-slate-400" />
+          <span>Dados protegidos por criptografia e exibidos apenas para perfis autorizados.</span>
         </div>
+        <button
+          type="button"
+          onClick={() => setShowSecurityDetails(true)}
+          className="inline-flex items-center gap-1 text-xs font-semibold text-slate-500 hover:text-slate-700 md:text-sm"
+        >
+          <Info size={14} />
+          Detalhes
+        </button>
       </div>
 
       {/* Modal: importar Excel */}
@@ -774,7 +791,7 @@ export const RiskMatrix: React.FC = () => {
             <ul className="mt-4 text-sm text-slate-600 space-y-2 list-disc pl-5">
               <li>Os dados sensiveis sao armazenados criptografados com AES-GCM antes de irem para o banco.</li>
               <li>Sem permissao (NONE), o usuario nao acessa a pagina nem os registros no fluxo da aplicacao.</li>
-              <li>A chave de criptografia e controlada por ambiente (VITE_RISK_MATRIX_ENCRYPTION_KEY), fora da tabela de dados.</li>
+              <li>A configuracao de criptografia fica isolada no ambiente da aplicacao, fora da tabela de dados.</li>
               <li>Usuarios autorizados conseguem visualizar conforme permissao de leitura ou edicao definida no Admin.</li>
             </ul>
             <div className="mt-5 text-right">
