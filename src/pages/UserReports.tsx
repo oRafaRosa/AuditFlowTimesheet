@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { store } from '../services/store';
-import { Project, TimesheetEntry, HOURS_PER_DAY, formatHours } from '../types';
-import { Filter, Loader2, Download, Edit, Trash2 } from 'lucide-react';
+import { Project, TimesheetEntry, HOURS_PER_DAY, formatHours, Holiday, CalendarException } from '../types';
+import { Filter, Loader2, Download, Edit, Trash2, AlertTriangle } from 'lucide-react';
 import { formatDateForDisplay, formatLocalDate, parseDateOnly } from '../utils/date';
+import { buildCalendarMaps, isExpectedWorkingDay, CalendarMaps } from '../utils/workCalendar';
 
 export const UserReports: React.FC = () => {
   const location = useLocation();
@@ -13,7 +14,11 @@ export const UserReports: React.FC = () => {
   const [selectableProjects, setSelectableProjects] = useState<Project[]>([]);
   const [filteredEntries, setFilteredEntries] = useState<TimesheetEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [periodStatuses, setPeriodStatuses] = useState<Record<string, string>>({});
+    const [periodStatuses, setPeriodStatuses] = useState<Record<string, string>>({});
+    const [holidays, setHolidays] = useState<Holiday[]>([]);
+    const [exceptions, setExceptions] = useState<CalendarException[]>([]);
+    const [dailyHourLimit, setDailyHourLimit] = useState(10);
+    const [calendarMaps, setCalendarMaps] = useState<CalendarMaps>({ holidayMap: {}, offdayMap: {}, workdayMap: {} });
 
     // filtros
   const [filterData, setFilterData] = useState({
@@ -58,12 +63,18 @@ export const UserReports: React.FC = () => {
     setLoading(true);
     if (!currentUser) return;
 
-    const [allEntries, allProjects, periods] = await Promise.all([
+    const [allEntries, allProjects, periods, allHolidays, allExceptions, configuredDailyHourLimit] = await Promise.all([
         store.getEntries(currentUser.id),
         store.getProjects(),
-        store.getLastPeriods(currentUser.id)
+        store.getLastPeriods(currentUser.id),
+        store.getHolidays(),
+        store.getExceptions(),
+        store.getDailyHourLimit()
     ]);
-    
+
+    setCalendarMaps(buildCalendarMaps(allHolidays, allExceptions));
+    setDailyHourLimit(configuredDailyHourLimit);
+
     // cria map de "yyyy-mm" -> status pra achar rápido
     const statusMap: Record<string, string> = {};
     periods.forEach(p => {
@@ -182,6 +193,19 @@ export const UserReports: React.FC = () => {
 
   if (loading) return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin text-brand-600" size={48} /></div>;
 
+    // total de horas do usuário num dia (usando todos os lançamentos, não só os filtrados)
+    const getDailyTotal = (date: string) =>
+        Math.round(entries.filter(e => e.date === date).reduce((acc, curr) => acc + curr.hours, 0) * 10) / 10;
+
+    // detecta duplicata exata
+    const isDuplicate = (entry: TimesheetEntry) =>
+        entries.filter(e =>
+            e.id !== entry.id &&
+            e.date === entry.date &&
+            e.projectId === entry.projectId &&
+            e.hours === entry.hours &&
+            e.description === entry.description
+        ).length > 0;
   return (
     <div className="space-y-6">
         <h1 className="text-2xl font-bold text-slate-800">Meus Relatórios Detalhados</h1>
@@ -238,10 +262,33 @@ export const UserReports: React.FC = () => {
                     <tbody className="divide-y divide-gray-100">
                         {filteredEntries.map(e => {
                             const locked = isEntryLocked(e);
+                            const requiresTimesheet = currentUser?.requiresTimesheet !== false;
+                            const totalDayHours = getDailyTotal(e.date);
+                            const isWorkingDay = isExpectedWorkingDay(e.date, calendarMaps);
+                            const isOverConfiguredLimit = requiresTimesheet && totalDayHours > dailyHourLimit;
+                            const isOverLimit = requiresTimesheet && totalDayHours > HOURS_PER_DAY;
+                            const isUnderLimit = requiresTimesheet && isWorkingDay && totalDayHours < HOURS_PER_DAY;
+                            const hasDuplicate = isDuplicate(e);
+                            const hasAlert = isOverLimit || isUnderLimit || hasDuplicate;
                             return (
-                                <tr key={e.id} className="hover:bg-slate-50">
+                                <tr key={e.id} className={`${isOverConfiguredLimit ? 'bg-red-100 hover:bg-red-200' : hasAlert ? 'bg-amber-50 hover:bg-amber-100' : 'hover:bg-slate-50'}`}>
                                     <td className="px-6 py-3 whitespace-nowrap">{formatDateForDisplay(e.date)}</td>
-                                    <td className="px-6 py-3 font-medium text-slate-700">{getProjectName(e.projectId)}</td>
+                                    <td className="px-6 py-3 font-medium text-slate-700">
+                                        <div className="flex items-center gap-2">
+                                            <span>{getProjectName(e.projectId)}</span>
+                                            {hasAlert && (
+                                                <div className="group relative">
+                                                    <AlertTriangle size={14} className="text-amber-600 cursor-help" />
+                                                    <span className="hidden group-hover:block absolute left-5 top-0 bg-slate-800 text-white text-xs p-1.5 rounded z-50 w-64">
+                                                        {isOverConfiguredLimit && `Dia com ${formatHours(totalDayHours)}h (acima do limite diário de ${formatHours(dailyHourLimit)}h). `}
+                                                        {isOverLimit && `Dia com ${formatHours(totalDayHours)}h (acima de ${formatHours(HOURS_PER_DAY)}h). `}
+                                                        {isUnderLimit && `Dia com ${formatHours(totalDayHours)}h (abaixo de ${formatHours(HOURS_PER_DAY)}h em dia útil). `}
+                                                        {hasDuplicate && 'Possível lançamento duplicado detectado.'}
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </td>
                                     <td className="px-6 py-3 text-slate-500 truncate max-w-lg" title={e.description}>{e.description}</td>
                                     <td className="px-6 py-3 text-right font-bold text-slate-600">{formatHours(e.hours)}</td>
                                     <td className="px-6 py-3 text-right">
