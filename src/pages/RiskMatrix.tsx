@@ -148,16 +148,6 @@ export const RiskMatrix: React.FC = () => {
 
   const normalize = (value: number) => (value - axis.min) / axis.span;
 
-  const clampMatrixCoordinate = (value: number, axis: 'x' | 'y', padding = 12) => {
-    const min = axis === 'x'
-      ? matrixLayout.matrixLeft + padding
-      : matrixLayout.matrixTop + padding;
-    const max = axis === 'x'
-      ? matrixLayout.matrixRight - padding
-      : matrixLayout.matrixBottom - padding;
-    return Math.min(Math.max(value, min), max);
-  };
-
   const matrixLayout = useMemo(() => {
     const cellWidth = isFullScreen ? matrixWidth : 80;
     const cellHeight = isFullScreen ? matrixHeight : 80;
@@ -206,6 +196,239 @@ export const RiskMatrix: React.FC = () => {
       return scoreB - scoreA; // descendente
     });
   }, [records]);
+
+  type PointType = 'inherent' | 'residual';
+
+  type PositionInput = {
+    key: string;
+    type: PointType;
+    targetX: number;
+    targetY: number;
+    row: number;
+    col: number;
+    radius: number;
+    score: number;
+    seed: number;
+  };
+
+  type PositionOutput = {
+    x: number;
+    y: number;
+  };
+
+  const RADIUS_INHERENT_STATIC = 12;
+  const RADIUS_RESIDUAL_STATIC = 12;
+  const RADIUS_INHERENT_MOVEMENT = 6;
+  const RADIUS_RESIDUAL_MOVEMENT = 12;
+
+  const positionedPointsByKey = useMemo(() => {
+    const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
+
+    const computeCellFromNorm = (impactNorm: number, probabilityNorm: number) => {
+      const clampedImpact = clamp01(impactNorm);
+      const clampedProbability = clamp01(probabilityNorm);
+
+      const col = Math.min(4, Math.max(0, Math.floor(clampedImpact * 5)));
+      const row = Math.min(4, Math.max(0, Math.floor((1 - clampedProbability) * 5)));
+      return { row, col };
+    };
+
+    const clampToCell = (
+      x: number,
+      y: number,
+      row: number,
+      col: number,
+      radius: number,
+    ) => {
+      const borderInset = radius + 2;
+      const cellLeft = matrixLayout.matrixLeft + col * matrixLayout.cellWidth;
+      const cellTop = matrixLayout.matrixTop + row * matrixLayout.cellHeight;
+      const minX = cellLeft + borderInset;
+      const maxX = cellLeft + matrixLayout.cellWidth - borderInset;
+      const minY = cellTop + borderInset;
+      const maxY = cellTop + matrixLayout.cellHeight - borderInset;
+
+      return {
+        x: Math.min(Math.max(x, minX), maxX),
+        y: Math.min(Math.max(y, minY), maxY),
+        minX,
+        maxX,
+        minY,
+        maxY,
+      };
+    };
+
+    const overlapPenalty = (
+      x: number,
+      y: number,
+      radius: number,
+      placed: Array<{ x: number; y: number; radius: number }>,
+    ) => {
+      let penalty = 0;
+      placed.forEach((point) => {
+        const dx = x - point.x;
+        const dy = y - point.y;
+        const distance = Math.hypot(dx, dy);
+        const minDistance = radius + point.radius;
+        if (distance < minDistance) {
+          penalty += (minDistance - distance);
+        }
+      });
+      return penalty;
+    };
+
+    const choosePosition = (
+      input: PositionInput,
+      placed: Array<{ x: number; y: number; radius: number }>,
+    ) => {
+      const clampedTarget = clampToCell(input.targetX, input.targetY, input.row, input.col, input.radius);
+      let bestX = clampedTarget.x;
+      let bestY = clampedTarget.y;
+      let bestPenalty = overlapPenalty(bestX, bestY, input.radius, placed);
+      let bestDistance = 0;
+
+      if (bestPenalty === 0) {
+        return { x: bestX, y: bestY };
+      }
+
+      const width = clampedTarget.maxX - clampedTarget.minX;
+      const height = clampedTarget.maxY - clampedTarget.minY;
+      const maxSearchRadius = Math.ceil(Math.hypot(width, height));
+      const angleOffset = (input.seed % 360) * (Math.PI / 180);
+
+      for (let ring = 2; ring <= maxSearchRadius; ring += 2) {
+        const steps = Math.max(16, Math.ceil((2 * Math.PI * ring) / 6));
+        for (let i = 0; i < steps; i += 1) {
+          const angle = angleOffset + ((i / steps) * Math.PI * 2);
+          const trial = clampToCell(
+            input.targetX + Math.cos(angle) * ring,
+            input.targetY + Math.sin(angle) * ring,
+            input.row,
+            input.col,
+            input.radius,
+          );
+
+          const penalty = overlapPenalty(trial.x, trial.y, input.radius, placed);
+          const distanceFromTarget = Math.hypot(trial.x - clampedTarget.x, trial.y - clampedTarget.y);
+
+          const isBetterPenalty = penalty < bestPenalty - 0.0001;
+          const isSamePenaltyCloser = Math.abs(penalty - bestPenalty) <= 0.0001 && distanceFromTarget < bestDistance;
+
+          if (isBetterPenalty || isSamePenaltyCloser) {
+            bestX = trial.x;
+            bestY = trial.y;
+            bestPenalty = penalty;
+            bestDistance = distanceFromTarget;
+          }
+
+          if (bestPenalty === 0 && ring > bestDistance + 2) {
+            break;
+          }
+        }
+
+        if (bestPenalty === 0) {
+          break;
+        }
+      }
+
+      return { x: bestX, y: bestY };
+    };
+
+    const selected = records.filter((record) => selectedCodes.has(record.code));
+    const groups = new Map<string, PositionInput[]>();
+
+    selected.forEach((record, index) => {
+      const inherentImpactNorm = normalize(record.inherentImpact);
+      const inherentProbabilityNorm = normalize(record.inherentProbability);
+      const residualImpactNorm = normalize(record.residualImpact);
+      const residualProbabilityNorm = normalize(record.residualProbability);
+
+      const inherentCell = computeCellFromNorm(inherentImpactNorm, inherentProbabilityNorm);
+      const residualCell = computeCellFromNorm(residualImpactNorm, residualProbabilityNorm);
+
+      const inherentTargetX = matrixLayout.matrixLeft + clamp01(inherentImpactNorm) * matrixLayout.matrixPixelWidth;
+      const inherentTargetY = matrixLayout.matrixBottom - clamp01(inherentProbabilityNorm) * matrixLayout.matrixPixelHeight;
+      const residualTargetX = matrixLayout.matrixLeft + clamp01(residualImpactNorm) * matrixLayout.matrixPixelWidth;
+      const residualTargetY = matrixLayout.matrixBottom - clamp01(residualProbabilityNorm) * matrixLayout.matrixPixelHeight;
+
+      const addPoint = (point: PositionInput) => {
+        const cellKey = `${point.row}:${point.col}`;
+        const current = groups.get(cellKey) || [];
+        current.push(point);
+        groups.set(cellKey, current);
+      };
+
+      if (view === 'MOVEMENT') {
+        addPoint({
+          key: `${record.id}:inherent`,
+          type: 'inherent',
+          targetX: inherentTargetX,
+          targetY: inherentTargetY,
+          row: inherentCell.row,
+          col: inherentCell.col,
+          radius: RADIUS_INHERENT_MOVEMENT,
+          score: record.inherentImpact * record.inherentProbability,
+          seed: index * 37 + 11,
+        });
+
+        addPoint({
+          key: `${record.id}:residual`,
+          type: 'residual',
+          targetX: residualTargetX,
+          targetY: residualTargetY,
+          row: residualCell.row,
+          col: residualCell.col,
+          radius: RADIUS_RESIDUAL_MOVEMENT,
+          score: record.residualImpact * record.residualProbability,
+          seed: index * 37 + 23,
+        });
+      } else if (view === 'INHERENT') {
+        addPoint({
+          key: `${record.id}:inherent`,
+          type: 'inherent',
+          targetX: inherentTargetX,
+          targetY: inherentTargetY,
+          row: inherentCell.row,
+          col: inherentCell.col,
+          radius: RADIUS_INHERENT_STATIC,
+          score: record.inherentImpact * record.inherentProbability,
+          seed: index * 37 + 11,
+        });
+      } else {
+        addPoint({
+          key: `${record.id}:residual`,
+          type: 'residual',
+          targetX: residualTargetX,
+          targetY: residualTargetY,
+          row: residualCell.row,
+          col: residualCell.col,
+          radius: RADIUS_RESIDUAL_STATIC,
+          score: record.residualImpact * record.residualProbability,
+          seed: index * 37 + 23,
+        });
+      }
+    });
+
+    const result = new Map<string, PositionOutput>();
+
+    groups.forEach((points) => {
+      // Prioriza bolinhas maiores e riscos mais criticos para preservar leitura visual
+      const ordered = [...points].sort((a, b) => {
+        if (b.radius !== a.radius) return b.radius - a.radius;
+        return b.score - a.score;
+      });
+
+      const placed: Array<{ x: number; y: number; radius: number }> = [];
+
+      ordered.forEach((point) => {
+        const chosen = choosePosition(point, placed);
+        placed.push({ x: chosen.x, y: chosen.y, radius: point.radius });
+        result.set(point.key, chosen);
+      });
+    });
+
+    return result;
+  }, [records, selectedCodes, view, matrixLayout, normalize]);
 
   // Tooltip SVG renderizado sobre a bolinha em hover
   const tooltipEl = useMemo(() => {
@@ -489,10 +712,18 @@ export const RiskMatrix: React.FC = () => {
       <text x={matrixLayout.horizontalTitleX} y={matrixLayout.impactTitleY} textAnchor="middle" fontSize="10" fontWeight="700" fill="#64748b" letterSpacing="1">IMPACTO</text>
 
       {records.filter(r => selectedCodes.has(r.code)).map((record) => {
-        const ix = clampMatrixCoordinate(matrixLayout.matrixLeft + normalize(record.inherentImpact) * matrixLayout.matrixPixelWidth, 'x');
-        const iy = clampMatrixCoordinate(matrixLayout.matrixBottom - normalize(record.inherentProbability) * matrixLayout.matrixPixelHeight, 'y');
-        const rx = clampMatrixCoordinate(matrixLayout.matrixLeft + normalize(record.residualImpact) * matrixLayout.matrixPixelWidth, 'x');
-        const ry = clampMatrixCoordinate(matrixLayout.matrixBottom - normalize(record.residualProbability) * matrixLayout.matrixPixelHeight, 'y');
+        const inherentPosition = positionedPointsByKey.get(`${record.id}:inherent`);
+        const residualPosition = positionedPointsByKey.get(`${record.id}:residual`);
+
+        const fallbackIx = matrixLayout.matrixLeft + normalize(record.inherentImpact) * matrixLayout.matrixPixelWidth;
+        const fallbackIy = matrixLayout.matrixBottom - normalize(record.inherentProbability) * matrixLayout.matrixPixelHeight;
+        const fallbackRx = matrixLayout.matrixLeft + normalize(record.residualImpact) * matrixLayout.matrixPixelWidth;
+        const fallbackRy = matrixLayout.matrixBottom - normalize(record.residualProbability) * matrixLayout.matrixPixelHeight;
+
+        const ix = inherentPosition?.x ?? fallbackIx;
+        const iy = inherentPosition?.y ?? fallbackIy;
+        const rx = residualPosition?.x ?? fallbackRx;
+        const ry = residualPosition?.y ?? fallbackRy;
 
         if (view === 'MOVEMENT') {
           return (
