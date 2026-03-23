@@ -1052,11 +1052,48 @@ export const RiskMatrix: React.FC = () => {
           <div className="w-full max-w-xl bg-white rounded-2xl border border-slate-100 p-6" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-bold text-slate-800">Como protegemos os dados da Matriz de Riscos</h3>
             <ul className="mt-4 text-sm text-slate-600 space-y-2 list-disc pl-5">
-              <li>Os dados sensiveis sao armazenados criptografados com AES-GCM antes de irem para o banco.</li>
-              <li>Sem permissao (NONE), o usuario nao acessa a pagina nem os registros no fluxo da aplicacao.</li>
-              <li>A configuracao de criptografia fica isolada no ambiente da aplicacao, fora da tabela de dados.</li>
-              <li>Usuarios autorizados conseguem visualizar conforme permissao de leitura ou edicao definida no Admin.</li>
+              <li>Os dados sensiveis sao protegidos com criptografia AES-GCM antes de irem para o banco, reduzindo risco de exposicao mesmo em caso de acesso indevido aos registros brutos.</li>
+              <li>A chave de descriptografia nao fica armazenada na tabela da matriz; ela fica separada no ambiente da aplicacao.</li>
+              <li>Sem permissao (NONE), o usuario nao ve a opcao no menu, nao acessa a rota e o fluxo de leitura/descriptografia nao e executado para esse perfil.</li>
+              <li>Apenas usuarios autorizados pelo Admin (READ/EDIT) passam pelas validacoes de acesso para visualizar os dados.</li>
+              <li>Quando o sistema e acessado por HTTPS, o trafego entre navegador e servidor usa TLS com certificado digital valido (cadeado do navegador).</li>
             </ul>
+
+            <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <p className="text-xs font-semibold text-slate-700">Saiba mais sobre o padrao criptografico</p>
+              <ul className="mt-2 text-xs text-slate-600 space-y-1 list-disc pl-4">
+                <li>
+                  <a
+                    href="https://csrc.nist.gov/pubs/fips/197/final"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-brand-700 hover:underline"
+                  >
+                    NIST FIPS 197 - AES (padrao oficial do algoritmo)
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="https://csrc.nist.gov/pubs/sp/800/38/d/final"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-brand-700 hover:underline"
+                  >
+                    NIST SP 800-38D - GCM (modo autenticado do AES)
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="https://cheatsheetseries.owasp.org/cheatsheets/Cryptographic_Storage_Cheat_Sheet.html"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-brand-700 hover:underline"
+                  >
+                    OWASP - Boas praticas de armazenamento criptografado
+                  </a>
+                </li>
+              </ul>
+            </div>
             <div className="mt-5 text-right">
               <button
                 type="button"
