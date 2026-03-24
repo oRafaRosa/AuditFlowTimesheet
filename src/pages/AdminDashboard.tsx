@@ -3,7 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { store, SUPABASE_SCHEMA_SQL } from '../services/store';
 import { User, Project, TimesheetEntry, CalendarException, UserArea, RiskMatrixAccess, formatHours } from '../types';
-import { Database, Edit, Filter, Calendar, Trash2, Loader2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { Database, Edit, Filter, Calendar, Trash2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { DashboardLoadingState } from '../components/DashboardLoadingState';
 import { formatDateForDisplay } from '../utils/date';
 
 interface ManagerApprovalBacklogGroup {
@@ -439,7 +440,14 @@ export const AdminDashboard: React.FC = () => {
         return sorted;
     }, [users, userSortColumn, userSortDirection]);
 
-  if (loading && users.length === 0) return <div className="flex items-center justify-center h-screen"><Loader2 className="animate-spin text-brand-600" /></div>;
+    if (loading && users.length === 0) {
+        return (
+            <DashboardLoadingState
+                title="Carregando administracao"
+                subtitle="Sincronizando usuarios, permissoes e configuracoes da base..."
+            />
+        );
+    }
 
   return (
         <div className="space-y-6">

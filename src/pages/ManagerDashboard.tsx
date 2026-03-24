@@ -7,6 +7,7 @@ import { User, Project, TimesheetEntry, TimesheetPeriod, formatHours, formatPerc
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, Cell } from 'recharts';
 import { Download, AlertCircle, Loader2, CheckCircle, XCircle, ArrowRight, Search, Clock, Calendar, Briefcase, FileText, TrendingUp, Info, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { ManagerProjectBudget } from './ManagerProjectBudget';
+import { DashboardLoadingState } from '../components/DashboardLoadingState';
 import { formatDateForDisplay, formatLocalDate, parseDateOnly } from '../utils/date';
 
 type TabType = 'overview' | 'budget' | 'reports';
@@ -373,7 +374,12 @@ export const ManagerDashboard: React.FC = () => {
   };
 
   if (loading) {
-      return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin text-brand-600" size={48} /></div>;
+            return (
+                <DashboardLoadingState
+                    title="Preparando visao da equipe"
+                    subtitle="Consolidando indicadores, pendencias e desempenho do time..."
+                />
+            );
   }
 
     // render da tab selecionada
@@ -389,6 +395,7 @@ export const ManagerDashboard: React.FC = () => {
     const activeTeamStats = teamStatsByPeriod[teamPerformancePeriod];
     const pendingAlerts = activeTeamStats.stats.filter(s => s.divergence < -10);
     const excessAlerts = activeTeamStats.stats.filter(s => s.divergence > 10);
+    const passivePanelClass = 'bg-white rounded-xl shadow-sm border border-slate-100 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md';
 
     return (
             <div className="space-y-8">
@@ -487,7 +494,7 @@ export const ManagerDashboard: React.FC = () => {
                     </div>
                 </div>
             ) : (
-                <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-8 text-center">
+                <div className={`${passivePanelClass} p-8 text-center`}>
                     <div className="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-3">
                         <CheckCircle size={24} />
                     </div>
@@ -676,7 +683,7 @@ export const ManagerDashboard: React.FC = () => {
             </div>
 
             {/* gráfico de horas do time */}
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 h-96 overflow-y-auto">
+            <div className={`${passivePanelClass} p-6 h-96 overflow-y-auto`}>
                 <div className="flex flex-col gap-4 mb-6 md:flex-row md:items-center md:justify-between">
                     <div>
                         <h3 className="text-lg font-semibold text-slate-800">Desempenho da Equipe</h3>
@@ -725,7 +732,7 @@ export const ManagerDashboard: React.FC = () => {
             </div>
 
             {/* gráfico de orçamento dos projetos */}
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 h-96 overflow-x-auto">
+            <div className={`${passivePanelClass} p-6 h-96 overflow-x-auto`}>
                 <h3 className="text-lg font-semibold text-slate-800 mb-6">Orçado vs Realizado (Projetos da Equipe)</h3>
                 <ResponsiveContainer width={Math.max(600, projectBudgets.length * 120)} height="85%">
                     <BarChart data={projectBudgets} margin={{ bottom: 20, left: 20, right: 20 }}>

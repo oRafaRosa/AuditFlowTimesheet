@@ -3,9 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { store } from '../services/store';
 import { TimesheetEntry, Project, HOURS_PER_DAY, TimesheetPeriod, formatHours, Holiday, CalendarException, FrequentEntryTemplate } from '../types';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { Clock, Calendar, CheckCircle, AlertTriangle, Plus, Trash2, Loader2, Lock, XCircle, Search, Filter, AlertOctagon, Copy, Edit, ChevronDown, ChevronUp, Sparkles, Bookmark } from 'lucide-react';
+import { Clock, Calendar, CheckCircle, AlertTriangle, Plus, Trash2, Lock, XCircle, Search, Filter, AlertOctagon, Copy, Edit, ChevronDown, ChevronUp, Sparkles, Bookmark } from 'lucide-react';
 import { MyStatusWidget } from '../components/MyStatusWidget';
 import { GamificationSnapshot } from '../components/GamificationSnapshot';
+import { DashboardLoadingState } from '../components/DashboardLoadingState';
 import { formatDateForDisplay, formatLocalDate, parseDateOnly } from '../utils/date';
 import { buildCalendarMaps, listPendingDaysForMonth, PendingDay } from '../utils/workCalendar';
 
@@ -476,6 +477,7 @@ export const UserDashboard: React.FC = () => {
     ? 'Divergência acumulada até hoje'
     : 'Divergência do mês encerrado';
   const isUserInactive = user?.isActive === false;
+  const passiveCardClass = 'group bg-white rounded-xl shadow-sm border border-slate-100 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md';
 
     // lógica de filtro das entradas
   const displayEntries = entryFilterDate 
@@ -483,7 +485,12 @@ export const UserDashboard: React.FC = () => {
     : entries.slice(0, 20); // mostra as mais recentes
 
   if (loading && entries.length === 0) {
-      return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin text-brand-600" size={48} /></div>;
+      return (
+        <DashboardLoadingState
+          title="Montando seu painel"
+          subtitle="Buscando lancamentos, indicadores e pendencias do periodo..."
+        />
+      );
   }
 
   return (
@@ -557,9 +564,9 @@ export const UserDashboard: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
+        <div className={`${passiveCardClass} p-6`}>
             <div className="flex items-center gap-4">
-                <div className="p-3 bg-brand-100 text-brand-600 rounded-lg"><Clock size={24} /></div>
+            <div className="p-3 bg-brand-100 text-brand-600 rounded-lg transition-transform duration-300 group-hover:scale-105"><Clock size={24} /></div>
                 <div>
                     <p className="text-sm text-slate-500 font-medium">Horas Realizadas</p>
                     <p className="text-2xl font-bold text-slate-900">{formatHours(activeIndicators.totalHours)}h</p>
@@ -570,9 +577,9 @@ export const UserDashboard: React.FC = () => {
             </div>
         </div>
 
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
+        <div className={`${passiveCardClass} p-6`}>
             <div className="flex items-center gap-4">
-                <div className="p-3 bg-emerald-100 text-emerald-600 rounded-lg"><Calendar size={24} /></div>
+            <div className="p-3 bg-emerald-100 text-emerald-600 rounded-lg transition-transform duration-300 group-hover:scale-105"><Calendar size={24} /></div>
                 <div>
                     <p className="text-sm text-slate-500 font-medium">{expectedLabel}</p>
                     <p className="text-2xl font-bold text-slate-900">{formatHours(activeIndicators.expectedHours)}h</p>
@@ -581,9 +588,9 @@ export const UserDashboard: React.FC = () => {
             <p className="text-xs text-slate-400 mt-2">{expectedHelpText}</p>
         </div>
 
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
+        <div className={`${passiveCardClass} p-6`}>
             <div className="flex items-center gap-4">
-                <div className={`p-3 rounded-lg ${activeIndicators.pendingHours > 0 ? 'bg-amber-100 text-amber-600' : 'bg-green-100 text-green-600'}`}>
+            <div className={`p-3 rounded-lg transition-transform duration-300 group-hover:scale-105 ${activeIndicators.pendingHours > 0 ? 'bg-amber-100 text-amber-600' : 'bg-green-100 text-green-600'}`}>
                     {activeIndicators.pendingHours > 0 ? <AlertTriangle size={24} /> : <CheckCircle size={24} />}
                 </div>
                 <div>
@@ -685,7 +692,7 @@ export const UserDashboard: React.FC = () => {
         <div className="lg:col-span-2 space-y-6">
             
             {/* gráfico */}
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 h-80 relative">
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 h-80 relative transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md">
                 <h3 className="text-lg font-semibold text-slate-800 mb-4">Histórico Semestral</h3>
                 <ResponsiveContainer width="100%" height="90%">
                     <BarChart data={monthlyData} onClick={handleChartClick} style={{cursor: 'pointer'}}>
