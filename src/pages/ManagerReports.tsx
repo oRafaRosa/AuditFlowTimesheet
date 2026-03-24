@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { store } from '../services/store';
 import { CalendarException, Holiday, User, Project, TimesheetEntry, HOURS_PER_DAY, formatHours } from '../types';
-import { Filter, Loader2, Download, AlertTriangle, AlertOctagon, Copy } from 'lucide-react';
+import { Filter, Loader2, Download, AlertTriangle, AlertOctagon, Copy, ArrowUpDown, ArrowUp, ArrowDown, Sparkles } from 'lucide-react';
 import { formatDateForDisplay, formatLocalDate } from '../utils/date';
 import { buildCalendarMaps, isExpectedWorkingDay } from '../utils/workCalendar';
 
@@ -17,6 +17,8 @@ export const ManagerReports: React.FC = () => {
     const [exceptions, setExceptions] = useState<CalendarException[]>([]);
     const [dailyHourLimit, setDailyHourLimit] = useState(10);
   const [filteredEntries, setFilteredEntries] = useState<TimesheetEntry[]>([]);
+    const [sortColumn, setSortColumn] = useState<'date' | 'user' | 'project' | 'description' | 'hours'>('date');
+    const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [loading, setLoading] = useState(true);
 
     // filtros
@@ -113,7 +115,7 @@ export const ManagerReports: React.FC = () => {
 
   useEffect(() => {
     if (!loading) applyFilters();
-  }, [filterData, entries, loading]);
+    }, [filterData, entries, loading, sortColumn, sortDirection, users, projects]);
 
   const applyFilters = () => {
       let result = entries;
@@ -131,7 +133,53 @@ export const ManagerReports: React.FC = () => {
           result = result.filter(e => e.userId === filterData.userId);
       }
 
+      result = [...result].sort((a, b) => {
+          let comparison = 0;
+
+          switch (sortColumn) {
+              case 'date':
+                  comparison = a.date.localeCompare(b.date);
+                  break;
+              case 'user': {
+                  const userA = getUserName(a.userId).toLowerCase();
+                  const userB = getUserName(b.userId).toLowerCase();
+                  comparison = userA.localeCompare(userB);
+                  break;
+              }
+              case 'project': {
+                  const projectA = getProjectName(a.projectId).toLowerCase();
+                  const projectB = getProjectName(b.projectId).toLowerCase();
+                  comparison = projectA.localeCompare(projectB);
+                  break;
+              }
+              case 'description':
+                  comparison = a.description.toLowerCase().localeCompare(b.description.toLowerCase());
+                  break;
+              case 'hours':
+                  comparison = a.hours - b.hours;
+                  break;
+          }
+
+          return sortDirection === 'asc' ? comparison : -comparison;
+      });
+
       setFilteredEntries(result);
+  };
+
+  const handleSort = (column: 'date' | 'user' | 'project' | 'description' | 'hours') => {
+      if (sortColumn === column) {
+          setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+      } else {
+          setSortColumn(column);
+          setSortDirection(column === 'date' || column === 'hours' ? 'desc' : 'asc');
+      }
+  };
+
+  const SortIcon = ({ column }: { column: 'date' | 'user' | 'project' | 'description' | 'hours' }) => {
+      if (sortColumn !== column) return <ArrowUpDown size={14} className="text-slate-400" />;
+      return sortDirection === 'asc'
+          ? <ArrowUp size={14} className="text-brand-600" />
+          : <ArrowDown size={14} className="text-brand-600" />;
   };
 
     const getDailyTotalForUser = (userId: string, date: string) => {
@@ -177,7 +225,13 @@ export const ManagerReports: React.FC = () => {
 
   return (
     <div className="space-y-6">
-        <h1 className="text-2xl font-bold text-slate-800">Relatórios Gerenciais</h1>
+        <div className="flex flex-wrap items-center gap-3">
+            <h1 className="text-2xl font-bold text-slate-800">Relatórios Gerenciais</h1>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-brand-50 to-sky-50 px-3 py-1 text-xs font-semibold text-brand-700 border border-brand-100">
+                <Sparkles size={12} />
+                Atualização de experiência
+            </span>
+        </div>
         
         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
@@ -207,14 +261,15 @@ export const ManagerReports: React.FC = () => {
         </div>
 
         <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
-            <div className="p-4 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
+            <div className="p-4 bg-gradient-to-r from-slate-50 to-brand-50/40 border-b border-gray-200 flex justify-between items-center">
                 <h3 className="font-semibold text-slate-700 flex items-center gap-2"><Filter size={18} /> Resultados</h3>
                 <div className="flex items-center gap-4">
                     <span className="text-sm font-bold text-brand-600 bg-brand-50 px-3 py-1 rounded-full">
                         Total: {formatHours(filteredEntries.reduce((acc, curr) => acc + curr.hours, 0))}h
                     </span>
-                    <button onClick={handleExport} className="text-slate-500 hover:text-brand-600">
-                        <Download size={20} />
+                    <button onClick={handleExport} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 transition-colors hover:border-brand-300 hover:text-brand-600">
+                        <Download size={16} />
+                        Exportar CSV
                     </button>
                 </div>
             </div>
@@ -222,11 +277,36 @@ export const ManagerReports: React.FC = () => {
                 <table className="w-full text-left text-sm">
                     <thead className="bg-white sticky top-0 z-10 font-semibold text-slate-500 border-b border-gray-200 shadow-sm">
                         <tr>
-                            <th className="px-6 py-3">Data</th>
-                            <th className="px-6 py-3">Colaborador</th>
-                            <th className="px-6 py-3">Projeto</th>
-                            <th className="px-6 py-3">Descrição</th>
-                            <th className="px-6 py-3 text-right">Horas</th>
+                            <th onClick={() => handleSort('date')} className="px-6 py-3 cursor-pointer select-none hover:bg-slate-50 transition-colors">
+                                <div className="flex items-center gap-2">
+                                    Data
+                                    <SortIcon column="date" />
+                                </div>
+                            </th>
+                            <th onClick={() => handleSort('user')} className="px-6 py-3 cursor-pointer select-none hover:bg-slate-50 transition-colors">
+                                <div className="flex items-center gap-2">
+                                    Colaborador
+                                    <SortIcon column="user" />
+                                </div>
+                            </th>
+                            <th onClick={() => handleSort('project')} className="px-6 py-3 cursor-pointer select-none hover:bg-slate-50 transition-colors">
+                                <div className="flex items-center gap-2">
+                                    Projeto
+                                    <SortIcon column="project" />
+                                </div>
+                            </th>
+                            <th onClick={() => handleSort('description')} className="px-6 py-3 cursor-pointer select-none hover:bg-slate-50 transition-colors">
+                                <div className="flex items-center gap-2">
+                                    Descrição
+                                    <SortIcon column="description" />
+                                </div>
+                            </th>
+                            <th onClick={() => handleSort('hours')} className="px-6 py-3 text-right cursor-pointer select-none hover:bg-slate-50 transition-colors">
+                                <div className="flex items-center justify-end gap-2">
+                                    Horas
+                                    <SortIcon column="hours" />
+                                </div>
+                            </th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
