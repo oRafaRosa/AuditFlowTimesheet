@@ -467,6 +467,10 @@ export const UserDashboard: React.FC = () => {
     // check visual do botão "novo lançamento" (mês atual)
   const isCurrentPeriodLocked = periodStatus?.status === 'SUBMITTED' || periodStatus?.status === 'APPROVED';
   const activeIndicators = indicators[dashboardPeriod];
+  const referenceIndicators = indicators[dashboardPeriod === 'current' ? 'previous' : 'current'];
+  const totalHoursDelta = Math.round((activeIndicators.totalHours - referenceIndicators.totalHours) * 10) / 10;
+  const expectedHoursDelta = Math.round((activeIndicators.expectedHours - referenceIndicators.expectedHours) * 10) / 10;
+  const pendingHoursDelta = Math.round((activeIndicators.pendingHours - referenceIndicators.pendingHours) * 10) / 10;
   const activePendingSummary = pendingDaysByPeriod[dashboardPeriod];
   const expectedLabel = dashboardPeriod === 'current' ? 'Horas Esperadas (Hoje)' : 'Horas Esperadas (Mês)';
   const expectedHelpText = dashboardPeriod === 'current'
@@ -488,8 +492,17 @@ export const UserDashboard: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center flex-wrap gap-4">
-        <h1 className="text-2xl font-bold text-slate-800">Meu Dashboard</h1>
+      <div className="rounded-2xl border border-slate-200 bg-gradient-to-r from-white via-slate-50 to-brand-50/40 p-4 md:p-5 shadow-sm">
+        <div className="flex justify-between items-center flex-wrap gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-800">Meu Dashboard</h1>
+            <p className="text-sm text-slate-500 mt-1">Visão rápida do seu progresso no mês e pendências de lançamento</p>
+          </div>
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-brand-100 bg-white/90 px-3 py-1 text-xs font-semibold text-brand-700 shadow-sm">
+            <Sparkles size={12} />
+            Atualização contínua
+          </span>
+        </div>
         <div className="flex gap-3">
              {isUserInactive ? (
                 <div className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-slate-500 rounded-lg font-medium border border-gray-200">
@@ -554,7 +567,7 @@ export const UserDashboard: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
             <div className="flex items-center gap-4">
                 <div className="p-3 bg-brand-100 text-brand-600 rounded-lg"><Clock size={24} /></div>
                 <div>
@@ -563,11 +576,14 @@ export const UserDashboard: React.FC = () => {
                 </div>
             </div>
             <div className="mt-4 w-full bg-gray-100 rounded-full h-2">
-                <div className="bg-brand-600 h-2 rounded-full" style={{ width: `${Math.min((activeIndicators.totalHours / (activeIndicators.expectedHours || 1)) * 100, 100)}%` }}></div>
+            <div className="bg-brand-600 h-2 rounded-full transition-all duration-500" style={{ width: `${Math.min((activeIndicators.totalHours / (activeIndicators.expectedHours || 1)) * 100, 100)}%` }}></div>
             </div>
+          <p className={`mt-2 text-xs font-medium ${totalHoursDelta >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+            {totalHoursDelta >= 0 ? '+' : ''}{formatHours(totalHoursDelta)}h vs {referenceIndicators.label || 'período anterior'}
+          </p>
         </div>
 
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
             <div className="flex items-center gap-4">
                 <div className="p-3 bg-emerald-100 text-emerald-600 rounded-lg"><Calendar size={24} /></div>
                 <div>
@@ -576,9 +592,12 @@ export const UserDashboard: React.FC = () => {
                 </div>
             </div>
             <p className="text-xs text-slate-400 mt-2">{expectedHelpText}</p>
+          <p className={`mt-2 text-xs font-medium ${expectedHoursDelta >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+            {expectedHoursDelta >= 0 ? '+' : ''}{formatHours(expectedHoursDelta)}h vs {referenceIndicators.label || 'período anterior'}
+          </p>
         </div>
 
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
             <div className="flex items-center gap-4">
                 <div className={`p-3 rounded-lg ${activeIndicators.pendingHours > 0 ? 'bg-amber-100 text-amber-600' : 'bg-green-100 text-green-600'}`}>
                     {activeIndicators.pendingHours > 0 ? <AlertTriangle size={24} /> : <CheckCircle size={24} />}
@@ -591,6 +610,9 @@ export const UserDashboard: React.FC = () => {
                 </div>
             </div>
             <p className="text-xs text-slate-400 mt-2">{pendingHelpText}</p>
+            <p className={`mt-2 text-xs font-medium ${pendingHoursDelta <= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+              {pendingHoursDelta >= 0 ? '+' : ''}{formatHours(pendingHoursDelta)}h vs {referenceIndicators.label || 'período anterior'}
+            </p>
         </div>
       </div>
 
@@ -627,6 +649,35 @@ export const UserDashboard: React.FC = () => {
           <div className="border-t border-slate-100 px-5 py-4">
             {activePendingSummary.days.length > 0 ? (
               <div className="space-y-2">
+                <div className="mb-3 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEntryFilterDate(activePendingSummary.days[0].date)}
+                    className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800 hover:bg-amber-100 transition-colors"
+                  >
+                    Filtrar primeiro dia pendente
+                  </button>
+                  {!isUserInactive && !isCurrentPeriodLocked && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingId(null);
+                        setFormMode('single');
+                        setFormData({
+                          projectId: '',
+                          date: activePendingSummary.days[0].date,
+                          endDate: activePendingSummary.days[0].date,
+                          hours: HOURS_PER_DAY,
+                          description: ''
+                        });
+                        setIsFormOpen(true);
+                      }}
+                      className="rounded-lg border border-brand-200 bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-700 hover:bg-brand-100 transition-colors"
+                    >
+                      Lançar horas nesse dia
+                    </button>
+                  )}
+                </div>
                 {activePendingSummary.days.map((day) => (
                   <div key={day.date} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 rounded-lg border border-amber-100 bg-amber-50/70 px-4 py-3">
                     <div>
@@ -694,8 +745,8 @@ export const UserDashboard: React.FC = () => {
                     </div>
                 </div>
                 <div className="overflow-x-auto">
-                    <table className="w-full text-left text-sm text-slate-600">
-                        <thead className="bg-gray-50 text-xs uppercase font-semibold text-slate-500">
+                  <table className="w-full text-left text-sm text-slate-600">
+                    <thead className="bg-gray-50/95 backdrop-blur-sm sticky top-0 z-10 text-xs uppercase font-semibold text-slate-500">
                             <tr>
                                 <th className="px-6 py-3">Data</th>
                                 <th className="px-6 py-3">Projeto</th>
@@ -719,7 +770,7 @@ export const UserDashboard: React.FC = () => {
                                         ? 'bg-rose-50 hover:bg-rose-100'
                                         : hasAlert
                                           ? 'bg-yellow-50 hover:bg-yellow-100'
-                                          : 'hover:bg-gray-50'
+                                          : 'odd:bg-white even:bg-slate-50/50 hover:bg-gray-50'
                                     }`}>
                                         <td className="px-6 py-3 whitespace-nowrap flex items-center gap-2">
                                             {formatDateForDisplay(entry.date)}

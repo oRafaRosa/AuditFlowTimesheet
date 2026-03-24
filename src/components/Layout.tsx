@@ -16,6 +16,8 @@ import {
   LogOut, 
   Menu,
   X,
+  PanelLeftClose,
+  PanelLeftOpen,
   ShieldCheck,
   PieChart,
   Settings,
@@ -40,6 +42,9 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const commitHash = import.meta.env.VITE_APP_COMMIT?.trim() || 'local';
   const shortCommitHash = commitHash.slice(0, 7);
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(() => {
+    return localStorage.getItem('auditflow_sidebar_collapsed') === 'true';
+  });
   
   // estado da troca de senha
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -82,6 +87,10 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       document.body.style.overflow = previousOverflow;
     };
   }, [mobileMenuOpen]);
+
+  useEffect(() => {
+    localStorage.setItem('auditflow_sidebar_collapsed', String(isSidebarCollapsed));
+  }, [isSidebarCollapsed]);
 
   useEffect(() => {
     let mounted = true;
@@ -627,19 +636,28 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const isActive = (path: string) => location.pathname === path;
 
   const NavItem = ({ to, icon: Icon, label, locked = false, onClick }: any) => (
-    <Link
-      to={to}
-      onClick={onClick}
-      className={`flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
-        isActive(to)
-          ? 'bg-brand-50 text-brand-600'
-          : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-      }`}
-    >
-      <Icon size={20} />
-      <span className="flex-1">{label}</span>
-      {locked && <Lock size={16} className="text-slate-400" />}
-    </Link>
+    <div className="group relative">
+      <Link
+        to={to}
+        onClick={onClick}
+        className={`flex items-center ${isSidebarCollapsed ? 'justify-center px-2' : 'gap-3 px-4'} py-3 text-sm font-medium rounded-xl transition-all ${
+          isActive(to)
+            ? 'bg-brand-50 text-brand-700 shadow-sm ring-1 ring-brand-100'
+            : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+        }`}
+      >
+        <Icon size={20} />
+        {!isSidebarCollapsed && <span className="flex-1">{label}</span>}
+        {!isSidebarCollapsed && locked && <Lock size={16} className="text-slate-400" />}
+      </Link>
+
+      {isSidebarCollapsed && (
+        <div className="pointer-events-none absolute left-full top-1/2 z-40 ml-3 -translate-y-1/2 rounded-xl border border-brand-100 bg-gradient-to-r from-slate-900 to-brand-900 px-3 py-2 text-xs font-semibold text-white opacity-0 shadow-xl transition-all duration-200 group-hover:translate-x-1 group-hover:opacity-100 whitespace-nowrap">
+          {label}
+          {locked && <span className="ml-2 text-[10px] text-brand-200">(Bloqueado)</span>}
+        </div>
+      )}
+    </div>
   );
 
   const BrandLogo = ({ size = 'normal' }: { size?: 'normal' | 'small' }) => {
@@ -660,7 +678,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           <img 
             src="https://i.postimg.cc/bv4S9DFS/logo.png" 
             alt="AuditFlow" 
-            className="w-[200px] h-[100px] object-cover object-center"
+            className={`${isSidebarCollapsed ? 'w-[72px] h-[72px]' : 'w-[200px] h-[100px]'} object-cover object-center transition-all duration-300`}
           />
        </div>
      );
@@ -669,15 +687,37 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   return (
     <div className="min-h-screen bg-gray-50 flex">
       {/* sidebar desktop */}
-      <aside className="hidden md:flex flex-col w-64 bg-white border-r border-gray-200 fixed h-full z-10">
-        <div className="py-4 flex items-center justify-center">
+      <aside className={`hidden md:flex flex-col ${isSidebarCollapsed ? 'w-20' : 'w-64'} bg-white border-r border-gray-200 fixed h-full z-10 transition-all duration-300`}>
+        <div className={`py-4 px-3 flex items-center ${isSidebarCollapsed ? 'justify-center' : 'justify-between'}`}>
             <BrandLogo />
+            {!isSidebarCollapsed && (
+              <button
+                type="button"
+                onClick={() => setIsSidebarCollapsed(true)}
+                className="rounded-lg border border-slate-200 p-2 text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors"
+                title="Minimizar menu"
+                aria-label="Minimizar menu"
+              >
+                <PanelLeftClose size={16} />
+              </button>
+            )}
+            {isSidebarCollapsed && (
+              <button
+                type="button"
+                onClick={() => setIsSidebarCollapsed(false)}
+                className="absolute top-4 -right-3 rounded-full border border-slate-200 bg-white p-1.5 text-slate-500 shadow-sm hover:text-slate-700 transition-colors"
+                title="Expandir menu"
+                aria-label="Expandir menu"
+              >
+                <PanelLeftOpen size={14} />
+              </button>
+            )}
         </div>
 
-        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+        <nav className={`flex-1 ${isSidebarCollapsed ? 'p-2' : 'p-4'} space-y-1 overflow-y-auto`}>
           {user.role === 'ADMIN' && (
             <>
-              <div className="px-4 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">Administração</div>
+              {!isSidebarCollapsed && <div className="px-4 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">Administração</div>}
               <NavItem to="/admin" icon={ShieldCheck} label="Painel Admin" />
               <NavItem to="/admin/users" icon={Users} label="Usuários" />
               <NavItem to="/admin/projects" icon={Briefcase} label="Trabalhos" />
@@ -686,7 +726,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
           {(user.role === 'MANAGER' || user.role === 'ADMIN') && (
             <>
-              <div className="px-4 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider mt-4">Gestão</div>
+              {!isSidebarCollapsed && <div className="px-4 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider mt-4">Gestão</div>}
               <NavItem to="/manager" icon={PieChart} label="Dashboard Equipe" />
               <NavItem to="/manager/budget" icon={TrendingUp} label="Orçado vs Realizado" />
               <NavItem to="/manager/reports/capacity" icon={Users} label="Capacity" />
@@ -694,7 +734,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             </>
           )}
 
-          <div className="px-4 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider mt-4">Meu Espaço</div>
+          {!isSidebarCollapsed && <div className="px-4 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider mt-4">Meu Espaço</div>}
           <NavItem to="/dashboard" icon={LayoutDashboard} label="Meu Dashboard" />
           <NavItem to="/timesheet" icon={Clock} label="Meus Lançamentos" />
           <NavItem to="/reports" icon={TableProperties} label="Relatórios Detalhados" />
@@ -703,24 +743,34 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           )}
           <NavItem to="/achievements" icon={Trophy} label="Ranking & Conquistas" locked={!GAMIFICATION_ENABLED} />
 
-          <div className="px-4 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider mt-4">Nossos Apps</div>
+          {!isSidebarCollapsed && <div className="px-4 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider mt-4">Nossos Apps</div>}
           <a
             href="https://orafarosa.github.io/AuditFlowSampling/"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+            className={`group relative flex items-center ${isSidebarCollapsed ? 'justify-center px-2' : 'gap-3 px-4'} py-3 text-sm font-medium rounded-xl transition-colors text-slate-600 hover:bg-slate-50 hover:text-slate-900`}
           >
             <ExternalLink size={20} />
-            AuditFlow Sampling
+            {!isSidebarCollapsed && 'AuditFlow Sampling'}
+            {isSidebarCollapsed && (
+              <div className="pointer-events-none absolute left-full top-1/2 z-40 ml-3 -translate-y-1/2 rounded-xl border border-brand-100 bg-gradient-to-r from-slate-900 to-brand-900 px-3 py-2 text-xs font-semibold text-white opacity-0 shadow-xl transition-all duration-200 group-hover:translate-x-1 group-hover:opacity-100 whitespace-nowrap">
+                AuditFlow Sampling
+              </div>
+            )}
           </a>
           <a
             href="https://orafarosa.github.io/AuditFlow-RiskMap/"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+            className={`group relative flex items-center ${isSidebarCollapsed ? 'justify-center px-2' : 'gap-3 px-4'} py-3 text-sm font-medium rounded-xl transition-colors text-slate-600 hover:bg-slate-50 hover:text-slate-900`}
           >
             <ExternalLink size={20} />
-            AuditFlow RiskMap
+            {!isSidebarCollapsed && 'AuditFlow RiskMap'}
+            {isSidebarCollapsed && (
+              <div className="pointer-events-none absolute left-full top-1/2 z-40 ml-3 -translate-y-1/2 rounded-xl border border-brand-100 bg-gradient-to-r from-slate-900 to-brand-900 px-3 py-2 text-xs font-semibold text-white opacity-0 shadow-xl transition-all duration-200 group-hover:translate-x-1 group-hover:opacity-100 whitespace-nowrap">
+                AuditFlow RiskMap
+              </div>
+            )}
           </a>
           
           <div className="mt-4 border-t border-gray-100 pt-4">
@@ -733,7 +783,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             <button
               type="button"
               onClick={() => setShowNotificationPanel((prev) => !prev)}
-              className={`w-full flex items-center justify-between rounded-xl border px-4 py-3 text-sm font-semibold transition-colors ${
+              className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center px-2' : 'justify-between px-4'} rounded-xl border py-3 text-sm font-semibold transition-colors ${
                 showNotificationPanel
                   ? 'border-brand-200 bg-brand-50 text-brand-700'
                   : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-white'
@@ -741,7 +791,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             >
               <span className="flex items-center gap-2">
                 <Bell size={16} />
-                Notificações
+                {!isSidebarCollapsed && 'Notificações'}
               </span>
               <span className={`min-w-6 rounded-full px-2 py-0.5 text-xs font-bold ${
                 unreadCount > 0 ? 'bg-red-500 text-white' : 'bg-slate-200 text-slate-600'
@@ -757,24 +807,26 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             )}
           </div>
 
-          <div className="flex items-center gap-3 px-4 py-2">
+          <div className={`flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3 px-4'} py-2`}>
             <img src={user.avatarUrl} alt="Avatar" className="w-8 h-8 rounded-full bg-slate-200" />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-slate-900 truncate">{user.name}</p>
-              <button 
-                onClick={() => setShowPasswordModal(true)}
-                className="text-xs text-brand-600 hover:text-brand-800 flex items-center gap-1 mt-0.5"
-              >
-                <Settings size={10} /> Alterar Senha
-              </button>
-            </div>
+            {!isSidebarCollapsed && (
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-slate-900 truncate">{user.name}</p>
+                <button 
+                  onClick={() => setShowPasswordModal(true)}
+                  className="text-xs text-brand-600 hover:text-brand-800 flex items-center gap-1 mt-0.5"
+                >
+                  <Settings size={10} /> Alterar Senha
+                </button>
+              </div>
+            )}
           </div>
           <button
             onClick={handleLogout}
-            className="mt-2 w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+            className={`mt-2 w-full flex items-center ${isSidebarCollapsed ? 'justify-center px-2' : 'gap-2 px-4'} py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors`}
           >
             <LogOut size={16} />
-            Sair
+            {!isSidebarCollapsed && 'Sair'}
           </button>
         </div>
       </aside>
@@ -1036,7 +1088,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           )}
 
       {/* conteúdo principal */}
-      <main className={`flex-1 md:ml-64 p-4 md:p-8 pt-20 md:pt-8 overflow-y-auto min-h-screen ${user.isDefaultPassword ? 'filter blur-sm pointer-events-none select-none overflow-hidden h-screen' : ''}`}>
+      <main className={`flex-1 ${isSidebarCollapsed ? 'md:ml-20' : 'md:ml-64'} p-4 md:p-8 pt-20 md:pt-8 overflow-y-auto min-h-screen transition-all duration-300 ${user.isDefaultPassword ? 'filter blur-sm pointer-events-none select-none overflow-hidden h-screen' : ''}`}>
         {children}
       </main>
 
