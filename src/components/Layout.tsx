@@ -687,7 +687,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   return (
     <div className="min-h-screen bg-gray-50 flex">
       {/* sidebar desktop */}
-      <aside className={`hidden md:flex flex-col ${isSidebarCollapsed ? 'w-20' : 'w-64'} bg-white border-r border-gray-200 fixed h-full z-10 overflow-hidden transition-all duration-300`}>
+      <aside className={`hidden md:flex flex-col ${isSidebarCollapsed ? 'w-20' : 'w-64'} bg-white border-r border-gray-200 fixed h-full z-10 transition-all duration-300`}>
         <div className={`py-4 px-3 flex items-center ${isSidebarCollapsed ? 'justify-center' : 'justify-between'}`}>
             <BrandLogo />
             {!isSidebarCollapsed && (
@@ -789,19 +789,36 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                   : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-white'
               }`}
             >
-              <span className="flex items-center gap-2">
-                <Bell size={16} />
-                {!isSidebarCollapsed && 'Notificações'}
-              </span>
-              <span className={`min-w-6 rounded-full px-2 py-0.5 text-xs font-bold ${
-                unreadCount > 0 ? 'bg-red-500 text-white' : 'bg-slate-200 text-slate-600'
-              }`}>
-                {unreadCount}
-              </span>
+              {isSidebarCollapsed ? (
+                <div className="relative">
+                  <Bell size={18} />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 min-w-4 h-4 px-0.5 bg-red-500 text-white rounded-full text-[9px] font-bold flex items-center justify-center">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <span className="flex items-center gap-2">
+                    <Bell size={16} />
+                    Notificações
+                  </span>
+                  <span className={`min-w-6 rounded-full px-2 py-0.5 text-xs font-bold ${
+                    unreadCount > 0 ? 'bg-red-500 text-white' : 'bg-slate-200 text-slate-600'
+                  }`}>
+                    {unreadCount}
+                  </span>
+                </>
+              )}
             </button>
 
             {showNotificationPanel && (
-              <div className="absolute bottom-full left-0 right-0 mb-2 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl z-30">
+              <div className={`absolute z-30 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl ${
+                isSidebarCollapsed
+                  ? 'left-full ml-3 bottom-0 w-72'
+                  : 'bottom-full left-0 right-0 mb-2'
+              }`}>
                 {notificationPanelBody}
               </div>
             )}
