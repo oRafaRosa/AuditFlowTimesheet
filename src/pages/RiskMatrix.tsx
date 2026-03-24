@@ -744,14 +744,17 @@ export const RiskMatrix: React.FC = () => {
         const y = view === 'INHERENT' ? iy : ry;
         const pointColor = view === 'INHERENT' ? '#0ea5e9' : '#f59e0b';
 
+        // Transicao suave ao alternar entre inerente e residual
+        const dotTransition = 'cx 0.55s cubic-bezier(0.4,0,0.2,1), cy 0.55s cubic-bezier(0.4,0,0.2,1)';
+
         return (
           <g key={record.id} style={{ cursor: 'pointer' }}
             onMouseEnter={() => setHoveredRisk({ record, x, y })}
             onMouseLeave={() => setHoveredRisk(null)}
           >
-            <circle cx={x} cy={y} r={12} fill={pointColor} opacity={0.15} />
-            <circle cx={x} cy={y} r={9} fill={pointColor} stroke="#ffffff" strokeWidth={1.5} />
-            <text x={x} y={y + 3} textAnchor="middle" fontSize={8} fontWeight="700" fill="#ffffff">{formatRiskCodeForDisplay(record.code)}</text>
+            <circle cx={x} cy={y} r={12} fill={pointColor} opacity={0.15} style={{ transition: dotTransition }} />
+            <circle cx={x} cy={y} r={9} fill={pointColor} stroke="#ffffff" strokeWidth={1.5} style={{ transition: dotTransition }} />
+            <text x={x} y={y + 3} textAnchor="middle" fontSize={8} fontWeight="700" fill="#ffffff" style={{ transition: 'x 0.55s cubic-bezier(0.4,0,0.2,1), y 0.55s cubic-bezier(0.4,0,0.2,1)' }}>{formatRiskCodeForDisplay(record.code)}</text>
           </g>
         );
       })}
