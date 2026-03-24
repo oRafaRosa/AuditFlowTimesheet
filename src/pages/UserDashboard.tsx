@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { store } from '../services/store';
 import { TimesheetEntry, Project, HOURS_PER_DAY, TimesheetPeriod, formatHours, Holiday, CalendarException, FrequentEntryTemplate } from '../types';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { Clock, Calendar, CheckCircle, AlertTriangle, Plus, Trash2, Loader2, Lock, XCircle, Search, Filter, AlertOctagon, Copy, Edit, ChevronDown, ChevronUp, Bookmark } from 'lucide-react';
+import { Clock, Calendar, CheckCircle, AlertTriangle, Plus, Trash2, Loader2, Lock, XCircle, Search, Filter, AlertOctagon, Copy, Edit, ChevronDown, ChevronUp, Sparkles, Bookmark } from 'lucide-react';
 import { MyStatusWidget } from '../components/MyStatusWidget';
 import { GamificationSnapshot } from '../components/GamificationSnapshot';
 import { formatDateForDisplay, formatLocalDate, parseDateOnly } from '../utils/date';
@@ -853,8 +853,8 @@ export const UserDashboard: React.FC = () => {
                     {frequentTemplates.length > 0 && (
                         <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
                             <div className="flex items-center gap-2">
-                          <Bookmark size={16} className="text-brand-600" />
-                                <h3 className="text-sm font-semibold text-slate-800">Combinações frequentes</h3>
+                          <Sparkles size={16} className="text-brand-600" />
+                          <h3 className="text-sm font-semibold text-slate-800">Sugerido pra você</h3>
                             </div>
                             <div className="grid grid-cols-1 gap-2">
                                 {frequentTemplates.map((template) => (
