@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { store } from '../services/store';
 import { TimesheetEntry, Project, HOURS_PER_DAY, TimesheetPeriod, formatHours, Holiday, CalendarException, FrequentEntryTemplate } from '../types';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { Clock, Calendar, CheckCircle, AlertTriangle, Plus, Trash2, Loader2, Lock, XCircle, Search, Filter, AlertOctagon, Copy, Edit, ChevronDown, ChevronUp, Sparkles, Bookmark } from 'lucide-react';
+import { Clock, Calendar, CheckCircle, AlertTriangle, Plus, Trash2, Loader2, Lock, XCircle, Search, Filter, AlertOctagon, Copy, Edit, ChevronDown, ChevronUp, Bookmark } from 'lucide-react';
 import { MyStatusWidget } from '../components/MyStatusWidget';
 import { GamificationSnapshot } from '../components/GamificationSnapshot';
 import { formatDateForDisplay, formatLocalDate, parseDateOnly } from '../utils/date';
@@ -467,10 +467,6 @@ export const UserDashboard: React.FC = () => {
     // check visual do botão "novo lançamento" (mês atual)
   const isCurrentPeriodLocked = periodStatus?.status === 'SUBMITTED' || periodStatus?.status === 'APPROVED';
   const activeIndicators = indicators[dashboardPeriod];
-  const referenceIndicators = indicators[dashboardPeriod === 'current' ? 'previous' : 'current'];
-  const totalHoursDelta = Math.round((activeIndicators.totalHours - referenceIndicators.totalHours) * 10) / 10;
-  const expectedHoursDelta = Math.round((activeIndicators.expectedHours - referenceIndicators.expectedHours) * 10) / 10;
-  const pendingHoursDelta = Math.round((activeIndicators.pendingHours - referenceIndicators.pendingHours) * 10) / 10;
   const activePendingSummary = pendingDaysByPeriod[dashboardPeriod];
   const expectedLabel = dashboardPeriod === 'current' ? 'Horas Esperadas (Hoje)' : 'Horas Esperadas (Mês)';
   const expectedHelpText = dashboardPeriod === 'current'
@@ -492,16 +488,10 @@ export const UserDashboard: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-slate-200 bg-gradient-to-r from-white via-slate-50 to-brand-50/40 p-4 md:p-5 shadow-sm">
-        <div className="flex justify-between items-center flex-wrap gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-800">Meu Dashboard</h1>
-            <p className="text-sm text-slate-500 mt-1">Visão rápida do seu progresso no mês e pendências de lançamento</p>
-          </div>
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-brand-100 bg-white/90 px-3 py-1 text-xs font-semibold text-brand-700 shadow-sm">
-            <Sparkles size={12} />
-            Atualização contínua
-          </span>
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800">Meu Dashboard</h1>
+          <p className="text-sm text-slate-500 mt-1">Visão rápida do seu progresso no mês e pendências de lançamento</p>
         </div>
         <div className="flex gap-3">
              {isUserInactive ? (
@@ -576,11 +566,8 @@ export const UserDashboard: React.FC = () => {
                 </div>
             </div>
             <div className="mt-4 w-full bg-gray-100 rounded-full h-2">
-            <div className="bg-brand-600 h-2 rounded-full transition-all duration-500" style={{ width: `${Math.min((activeIndicators.totalHours / (activeIndicators.expectedHours || 1)) * 100, 100)}%` }}></div>
+                <div className="bg-brand-600 h-2 rounded-full transition-all duration-500" style={{ width: `${Math.min((activeIndicators.totalHours / (activeIndicators.expectedHours || 1)) * 100, 100)}%` }}></div>
             </div>
-          <p className={`mt-2 text-xs font-medium ${totalHoursDelta >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-            {totalHoursDelta >= 0 ? '+' : ''}{formatHours(totalHoursDelta)}h vs {referenceIndicators.label || 'período anterior'}
-          </p>
         </div>
 
         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
@@ -592,9 +579,6 @@ export const UserDashboard: React.FC = () => {
                 </div>
             </div>
             <p className="text-xs text-slate-400 mt-2">{expectedHelpText}</p>
-          <p className={`mt-2 text-xs font-medium ${expectedHoursDelta >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-            {expectedHoursDelta >= 0 ? '+' : ''}{formatHours(expectedHoursDelta)}h vs {referenceIndicators.label || 'período anterior'}
-          </p>
         </div>
 
         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
@@ -610,9 +594,6 @@ export const UserDashboard: React.FC = () => {
                 </div>
             </div>
             <p className="text-xs text-slate-400 mt-2">{pendingHelpText}</p>
-            <p className={`mt-2 text-xs font-medium ${pendingHoursDelta <= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-              {pendingHoursDelta >= 0 ? '+' : ''}{formatHours(pendingHoursDelta)}h vs {referenceIndicators.label || 'período anterior'}
-            </p>
         </div>
       </div>
 
@@ -872,7 +853,7 @@ export const UserDashboard: React.FC = () => {
                     {frequentTemplates.length > 0 && (
                         <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
                             <div className="flex items-center gap-2">
-                                <Sparkles size={16} className="text-brand-600" />
+                          <Bookmark size={16} className="text-brand-600" />
                                 <h3 className="text-sm font-semibold text-slate-800">Combinações frequentes</h3>
                             </div>
                             <div className="grid grid-cols-1 gap-2">
