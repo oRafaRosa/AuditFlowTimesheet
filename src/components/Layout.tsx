@@ -687,7 +687,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   return (
     <div className="min-h-screen bg-gray-50 flex">
       {/* sidebar desktop */}
-      <aside className={`hidden md:flex flex-col ${isSidebarCollapsed ? 'w-20' : 'w-64'} bg-white border-r border-gray-200 fixed h-full z-10 transition-all duration-300`}>
+      <aside className={`hidden md:flex flex-col ${isSidebarCollapsed ? 'w-20' : 'w-64'} bg-white border-r border-gray-200 fixed h-full z-10 overflow-hidden transition-all duration-300`}>
         <div className={`py-4 px-3 flex items-center ${isSidebarCollapsed ? 'justify-center' : 'justify-between'}`}>
             <BrandLogo />
             {!isSidebarCollapsed && (
@@ -714,7 +714,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             )}
         </div>
 
-        <nav className={`flex-1 ${isSidebarCollapsed ? 'p-2' : 'p-4'} space-y-1 overflow-y-auto`}>
+        <nav className={`flex-1 ${isSidebarCollapsed ? 'p-2' : 'p-4'} space-y-1 overflow-y-auto overflow-x-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden`}>
           {user.role === 'ADMIN' && (
             <>
               {!isSidebarCollapsed && <div className="px-4 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">Administração</div>}
