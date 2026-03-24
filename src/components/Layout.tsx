@@ -695,7 +695,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   return (
     <div className="min-h-screen bg-gray-50 flex">
       {/* sidebar desktop */}
-      <aside className={`hidden md:flex flex-col ${isSidebarCollapsed ? 'w-20' : 'w-64'} bg-white border-r border-gray-200 fixed h-full z-10 transition-all duration-300`}>
+      <aside className={`hidden md:flex flex-col ${isSidebarCollapsed ? 'w-20' : 'w-56'} bg-white border-r border-gray-200 fixed h-full z-10 transition-all duration-300`}>
         <div className={`py-4 px-3 flex items-center ${isSidebarCollapsed ? 'justify-center' : 'justify-between'}`}>
             <BrandLogo />
             {!isSidebarCollapsed && (
@@ -713,7 +713,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               <button
                 type="button"
                 onClick={() => setIsSidebarCollapsed(false)}
-                className="absolute top-4 -right-3 rounded-full border border-slate-200 bg-white p-1.5 text-slate-500 shadow-sm hover:text-slate-700 transition-colors"
+                className="absolute top-2 -right-3 rounded-full border border-slate-200 bg-white p-1.5 text-slate-500 shadow-sm hover:text-slate-700 transition-colors"
                 title="Expandir menu"
                 aria-label="Expandir menu"
               >
@@ -1113,7 +1113,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           )}
 
       {/* conteúdo principal */}
-      <main className={`flex-1 ${isSidebarCollapsed ? 'md:ml-20' : 'md:ml-64'} p-4 md:p-8 pt-20 md:pt-8 overflow-y-auto min-h-screen transition-all duration-300 ${user.isDefaultPassword ? 'filter blur-sm pointer-events-none select-none overflow-hidden h-screen' : ''}`}>
+      <main className={`flex-1 ${isSidebarCollapsed ? 'md:ml-20' : 'md:ml-56'} p-4 md:p-8 pt-20 md:pt-8 overflow-y-auto min-h-screen transition-all duration-300 ${user.isDefaultPassword ? 'filter blur-sm pointer-events-none select-none overflow-hidden h-screen' : ''}`}>
         {children}
       </main>
 
