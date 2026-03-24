@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { store } from '../services/store';
 import { Project, TimesheetEntry, HOURS_PER_DAY, formatHours, Holiday, CalendarException } from '../types';
-import { Filter, Loader2, Download, Edit, Trash2, AlertTriangle } from 'lucide-react';
+import { Filter, Loader2, Download, Edit, Trash2, AlertTriangle, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { formatDateForDisplay, formatLocalDate, parseDateOnly } from '../utils/date';
 import { buildCalendarMaps, isExpectedWorkingDay, CalendarMaps } from '../utils/workCalendar';
 
@@ -13,6 +13,8 @@ export const UserReports: React.FC = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectableProjects, setSelectableProjects] = useState<Project[]>([]);
   const [filteredEntries, setFilteredEntries] = useState<TimesheetEntry[]>([]);
+    const [sortColumn, setSortColumn] = useState<'date' | 'project' | 'description' | 'hours'>('date');
+    const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [loading, setLoading] = useState(true);
     const [periodStatuses, setPeriodStatuses] = useState<Record<string, string>>({});
     const [holidays, setHolidays] = useState<Holiday[]>([]);
@@ -103,7 +105,7 @@ export const UserReports: React.FC = () => {
 
   useEffect(() => {
     if (!loading) applyFilters();
-  }, [filterData, entries, loading]);
+    }, [filterData, entries, loading, sortColumn, sortDirection, projects]);
 
   const applyFilters = () => {
       let result = entries;
@@ -118,7 +120,47 @@ export const UserReports: React.FC = () => {
           result = result.filter(e => e.projectId === filterData.projectId);
       }
 
+      result = [...result].sort((a, b) => {
+          let comparison = 0;
+
+          switch (sortColumn) {
+              case 'date':
+                  comparison = a.date.localeCompare(b.date);
+                  break;
+              case 'project': {
+                  const projectA = getProjectName(a.projectId).toLowerCase();
+                  const projectB = getProjectName(b.projectId).toLowerCase();
+                  comparison = projectA.localeCompare(projectB);
+                  break;
+              }
+              case 'description':
+                  comparison = a.description.toLowerCase().localeCompare(b.description.toLowerCase());
+                  break;
+              case 'hours':
+                  comparison = a.hours - b.hours;
+                  break;
+          }
+
+          return sortDirection === 'asc' ? comparison : -comparison;
+      });
+
       setFilteredEntries(result);
+  };
+
+  const handleSort = (column: 'date' | 'project' | 'description' | 'hours') => {
+      if (sortColumn === column) {
+          setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+      } else {
+          setSortColumn(column);
+          setSortDirection(column === 'date' || column === 'hours' ? 'desc' : 'asc');
+      }
+  };
+
+  const SortIcon = ({ column }: { column: 'date' | 'project' | 'description' | 'hours' }) => {
+      if (sortColumn !== column) return <ArrowUpDown size={14} className="text-slate-400" />;
+      return sortDirection === 'asc'
+          ? <ArrowUp size={14} className="text-brand-600" />
+          : <ArrowDown size={14} className="text-brand-600" />;
   };
 
   const isEntryLocked = (entry: TimesheetEntry) => {
@@ -252,10 +294,30 @@ export const UserReports: React.FC = () => {
                 <table className="w-full text-left text-sm">
                     <thead className="bg-white sticky top-0 z-10 font-semibold text-slate-500 border-b border-gray-200 shadow-sm">
                         <tr>
-                            <th className="px-6 py-3">Data</th>
-                            <th className="px-6 py-3">Projeto</th>
-                            <th className="px-6 py-3">Descrição</th>
-                            <th className="px-6 py-3 text-right">Horas</th>
+                            <th onClick={() => handleSort('date')} className="px-6 py-3 cursor-pointer select-none hover:bg-slate-50 transition-colors">
+                                <div className="flex items-center gap-2">
+                                    Data
+                                    <SortIcon column="date" />
+                                </div>
+                            </th>
+                            <th onClick={() => handleSort('project')} className="px-6 py-3 cursor-pointer select-none hover:bg-slate-50 transition-colors">
+                                <div className="flex items-center gap-2">
+                                    Projeto
+                                    <SortIcon column="project" />
+                                </div>
+                            </th>
+                            <th onClick={() => handleSort('description')} className="px-6 py-3 cursor-pointer select-none hover:bg-slate-50 transition-colors">
+                                <div className="flex items-center gap-2">
+                                    Descrição
+                                    <SortIcon column="description" />
+                                </div>
+                            </th>
+                            <th onClick={() => handleSort('hours')} className="px-6 py-3 text-right cursor-pointer select-none hover:bg-slate-50 transition-colors">
+                                <div className="flex items-center justify-end gap-2">
+                                    Horas
+                                    <SortIcon column="hours" />
+                                </div>
+                            </th>
                             <th className="px-6 py-3 text-right">Ações</th>
                         </tr>
                     </thead>
