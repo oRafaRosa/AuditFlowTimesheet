@@ -646,7 +646,13 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
         }`}
       >
-        <span className={isSidebarCollapsed ? 'transition-transform duration-200 ease-out group-hover:scale-125 group-hover:drop-shadow-[0_0_6px_rgba(79,70,229,0.4)]' : ''}>
+        <span
+          className={`transition-transform duration-200 ease-out ${
+            isSidebarCollapsed
+              ? 'group-hover:scale-125 group-hover:drop-shadow-[0_0_6px_rgba(79,70,229,0.4)]'
+              : 'group-hover:scale-110 group-hover:drop-shadow-[0_0_4px_rgba(79,70,229,0.25)]'
+          }`}
+        >
           <Icon size={20} />
         </span>
         {!isSidebarCollapsed && <span className="flex-1">{label}</span>}
