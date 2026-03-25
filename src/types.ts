@@ -90,6 +90,26 @@ export interface CalendarException {
   name: string;
 }
 
+export interface LeaveType {
+  code: string;
+  name: string;
+  color: string;
+  yearlyLimit?: number;
+  preferredBirthdayMonth?: boolean;
+  active?: boolean;
+}
+
+export interface TeamLeave {
+  id: string;
+  userId: string;
+  leaveTypeCode: string;
+  startDate: string;
+  endDate: string;
+  notes?: string;
+  createdAt: string;
+  createdBy?: string;
+}
+
 export interface FrequentEntryTemplate {
   id: string;
   userId: string;

@@ -29,7 +29,8 @@ import {
   ExternalLink,
   TableProperties,
   TrendingUp,
-  Trophy
+  Trophy,
+  CalendarDays
 } from 'lucide-react';
 
 const getAchievementSnapshotKey = (userId: string) => `grc_achievement_snapshot_${userId}`;
@@ -758,6 +759,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               <NavItem to="/manager" icon={PieChart} label="Dashboard Equipe" />
               <NavItem to="/manager/budget" icon={TrendingUp} label="Orçado vs Realizado" />
               <NavItem to="/manager/reports/capacity" icon={Users} label="Capacity" />
+              <NavItem to="/manager/team-leaves" icon={CalendarDays} label="Férias e Folgas" />
               <NavItem to="/manager/reports" icon={FileBarChart} label="Relatórios" />
             </>
           )}
@@ -947,6 +949,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                   <NavItem to="/manager" icon={PieChart} label="Dashboard Equipe" onClick={() => setMobileMenuOpen(false)} />
                   <NavItem to="/manager/budget" icon={TrendingUp} label="Orçado vs Realizado" onClick={() => setMobileMenuOpen(false)} />
                   <NavItem to="/manager/reports/capacity" icon={Users} label="Capacity" onClick={() => setMobileMenuOpen(false)} />
+                  <NavItem to="/manager/team-leaves" icon={CalendarDays} label="Férias e Folgas" onClick={() => setMobileMenuOpen(false)} />
                   <NavItem to="/manager/reports" icon={FileBarChart} label="Relatórios" onClick={() => setMobileMenuOpen(false)} />
                 </>
               )}

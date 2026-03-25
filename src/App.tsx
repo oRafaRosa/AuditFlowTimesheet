@@ -8,6 +8,7 @@ import { ManagerDashboard } from './pages/ManagerDashboard';
 import { ManagerProjectBudget } from './pages/ManagerProjectBudget';
 import { ManagerReports } from './pages/ManagerReports';
 import { ManagerCapacity } from './pages/ManagerCapacity';
+import { ManagerTeamLeaves } from './pages/ManagerTeamLeaves';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { HelpCenter } from './pages/HelpCenter'; 
 import { AchievementsHub } from './pages/AchievementsHub';
@@ -160,6 +161,14 @@ const App: React.FC = () => {
           element={
             <ProtectedRoute allowedRoles={['MANAGER', 'ADMIN']}>
               <ManagerCapacity />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/manager/team-leaves"
+          element={
+            <ProtectedRoute allowedRoles={['MANAGER', 'ADMIN']}>
+              <ManagerTeamLeaves />
             </ProtectedRoute>
           }
         />

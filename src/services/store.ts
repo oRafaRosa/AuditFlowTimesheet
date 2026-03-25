@@ -1,5 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { User, Project, TimesheetEntry, Holiday, CalendarException, HOURS_PER_DAY, TimesheetPeriod, PeriodStatus, FrequentEntryTemplate, TimesheetPeriodEvent, UserActivityEvent, UserActivityType, UserLoginActivity, RiskMatrixAccess, RiskMatrixRecord } from '../types';
+import { User, Project, TimesheetEntry, Holiday, CalendarException, HOURS_PER_DAY, TimesheetPeriod, PeriodStatus, FrequentEntryTemplate, TimesheetPeriodEvent, UserActivityEvent, UserActivityType, UserLoginActivity, RiskMatrixAccess, RiskMatrixRecord, LeaveType, TeamLeave } from '../types';
 import { formatLocalDate, normalizeDateValue } from '../utils/date';
 import { loadingState } from './loadingState';
 
@@ -17,10 +17,18 @@ const KEYS = {
   CURRENT_USER: 'grc_current_user',
   HOLIDAYS: 'grc_holidays', // fallback se não tiver no banco
   FREQUENT_TEMPLATES: 'grc_frequent_templates',
-  DAILY_HOUR_LIMIT: 'grc_daily_hour_limit'
+  DAILY_HOUR_LIMIT: 'grc_daily_hour_limit',
+  LEAVE_TYPES: 'grc_leave_types'
 };
 
 const DEFAULT_DAILY_HOUR_LIMIT = 10;
+
+const DEFAULT_LEAVE_TYPES: LeaveType[] = [
+  { code: 'FERIAS', name: 'Ferias', color: '#2563eb', active: true },
+  { code: 'FOLGA_ANIVERSARIO', name: 'Folga de Aniversario', color: '#dc2626', yearlyLimit: 1, preferredBirthdayMonth: true, active: true },
+  { code: 'ABONO_GESTOR', name: 'Abono Gestor', color: '#f59e0b', yearlyLimit: 1, active: true },
+  { code: 'FOLGA_COMERCIARIO', name: 'Folga Comerciario', color: '#0891b2', yearlyLimit: 2, active: true }
+];
 
 // hash sha-256 de 'AuditFlow@2025'
 const DEFAULT_PASSWORD_HASH = '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918';
@@ -1148,6 +1156,171 @@ class StoreService {
     });
   }
 
+  async getLeaveTypes(): Promise<LeaveType[]> {
+    try {
+      const { data, error } = await supabase
+        .from('app_settings')
+        .select('setting_value')
+        .eq('setting_key', 'team_leave_types')
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (data?.setting_value) {
+        const parsed = JSON.parse(data.setting_value);
+        if (Array.isArray(parsed)) {
+          const normalized = parsed
+            .filter((item: any) => item && typeof item.code === 'string' && typeof item.name === 'string')
+            .map((item: any) => ({
+              code: String(item.code).toUpperCase(),
+              name: String(item.name),
+              color: typeof item.color === 'string' ? item.color : '#2563eb',
+              yearlyLimit: Number.isFinite(Number(item.yearlyLimit)) ? Number(item.yearlyLimit) : undefined,
+              preferredBirthdayMonth: item.preferredBirthdayMonth === true,
+              active: item.active !== false
+            } as LeaveType));
+
+          if (normalized.length > 0) {
+            localStorage.setItem(KEYS.LEAVE_TYPES, JSON.stringify(normalized));
+            return normalized;
+          }
+        }
+      }
+    } catch (error) {
+      if (!this.isMissingRelationError(error)) {
+        console.warn('Erro ao buscar tipos de folga:', error);
+      }
+    }
+
+    try {
+      const localValue = localStorage.getItem(KEYS.LEAVE_TYPES);
+      if (localValue) {
+        const parsed = JSON.parse(localValue);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+    } catch {
+      // ignora parse local inválido
+    }
+
+    return DEFAULT_LEAVE_TYPES;
+  }
+
+  async updateLeaveTypes(leaveTypes: LeaveType[]): Promise<boolean> {
+    const normalized = leaveTypes
+      .filter((item) => item.code && item.name)
+      .map((item) => ({
+        code: item.code.trim().toUpperCase(),
+        name: item.name.trim(),
+        color: item.color || '#2563eb',
+        yearlyLimit: Number.isFinite(Number(item.yearlyLimit)) ? Number(item.yearlyLimit) : undefined,
+        preferredBirthdayMonth: item.preferredBirthdayMonth === true,
+        active: item.active !== false
+      }));
+
+    localStorage.setItem(KEYS.LEAVE_TYPES, JSON.stringify(normalized));
+
+    try {
+      const { error } = await supabase
+        .from('app_settings')
+        .upsert({
+          setting_key: 'team_leave_types',
+          setting_value: JSON.stringify(normalized),
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'setting_key' });
+
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      if (!this.isMissingRelationError(error)) {
+        console.warn('Erro ao salvar tipos de folga:', error);
+      }
+      return false;
+    }
+  }
+
+  async getTeamLeaves(filters?: { userIds?: string[]; year?: number }): Promise<TeamLeave[]> {
+    try {
+      let query = supabase
+        .from('team_leave_events')
+        .select('*')
+        .order('start_date', { ascending: true });
+
+      if (filters?.userIds && filters.userIds.length > 0) {
+        query = query.in('user_id', filters.userIds);
+      }
+
+      if (filters?.year) {
+        const start = `${filters.year}-01-01`;
+        const end = `${filters.year}-12-31`;
+        query = query.lte('start_date', end).gte('end_date', start);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+
+      return (data || []).map((item: any) => ({
+        id: item.id,
+        userId: item.user_id,
+        leaveTypeCode: item.leave_type_code,
+        startDate: item.start_date,
+        endDate: item.end_date,
+        notes: item.notes || undefined,
+        createdAt: item.created_at,
+        createdBy: item.created_by || undefined
+      }));
+    } catch (error) {
+      if (!this.isMissingRelationError(error)) {
+        console.warn('Erro ao buscar eventos de férias/folgas:', error);
+      }
+      return [];
+    }
+  }
+
+  async addTeamLeave(payload: Omit<TeamLeave, 'id' | 'createdAt' | 'createdBy'>): Promise<boolean> {
+    const currentUser = this.getCurrentUser();
+
+    try {
+      const { error } = await supabase
+        .from('team_leave_events')
+        .insert({
+          user_id: payload.userId,
+          leave_type_code: payload.leaveTypeCode,
+          start_date: payload.startDate,
+          end_date: payload.endDate,
+          notes: payload.notes || null,
+          created_by: currentUser && isUuid(currentUser.id) ? currentUser.id : null,
+          created_at: new Date().toISOString()
+        });
+
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      if (!this.isMissingRelationError(error)) {
+        console.warn('Erro ao salvar férias/folga:', error);
+      }
+      return false;
+    }
+  }
+
+  async deleteTeamLeave(id: string): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('team_leave_events')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      if (!this.isMissingRelationError(error)) {
+        console.warn('Erro ao excluir férias/folga:', error);
+      }
+      return false;
+    }
+  }
+
   // deixei as combinações frequentes no localStorage pra não depender de migration no banco
   // se depois fizer sentido levar pro Supabase, dá pra reaproveitar a interface sem dor
   getFrequentEntryTemplates(userId: string): FrequentEntryTemplate[] {
@@ -1579,7 +1752,23 @@ create table if not exists app_settings (
   updated_at timestamp with time zone default timezone('utc'::text, now())
 );
 
--- 9. Matriz de Riscos (payload criptografado no app)
+-- 9. Férias e folgas por colaborador
+create table if not exists team_leave_events (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references profiles(id) not null,
+  leave_type_code text not null,
+  start_date date not null,
+  end_date date not null,
+  notes text,
+  created_by uuid references profiles(id),
+  created_at timestamp with time zone default timezone('utc'::text, now()),
+  constraint team_leave_events_date_range_check check (end_date >= start_date)
+);
+
+create index if not exists idx_team_leave_events_user_date
+  on team_leave_events (user_id, start_date, end_date);
+
+-- 10. Matriz de Riscos (payload criptografado no app)
 create table if not exists risk_matrix_records (
   id uuid default gen_random_uuid() primary key,
   risk_code text unique not null,
@@ -1588,12 +1777,12 @@ create table if not exists risk_matrix_records (
   updated_at timestamp with time zone default timezone('utc'::text, now())
 );
 
--- 10. CRIAR USUÁRIO ADMIN (Senha padrão AuditFlow@2025 já no hash)
+-- 11. CRIAR USUÁRIO ADMIN (Senha padrão AuditFlow@2025 já no hash)
 insert into profiles (full_name, email, role, password)
 values ('Administrador', 'admin@auditflow.com', 'ADMIN', '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918')
 on conflict (email) do nothing;
 
--- 11. GARANTIR PERMISSÕES E RECARREGAR CACHE (Fix para erros de 'table not found')
+-- 12. GARANTIR PERMISSÕES E RECARREGAR CACHE (Fix para erros de 'table not found')
 grant all on all tables in schema public to postgres, anon, authenticated, service_role;
 NOTIFY pgrst, 'reload schema';
 `;

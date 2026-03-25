@@ -1,0 +1,589 @@
+import React, { useEffect, useMemo, useState } from 'react';
+import { AlertTriangle, CalendarDays, Plus, Trash2 } from 'lucide-react';
+import { store } from '../services/store';
+import { Holiday, LeaveType, TeamLeave, User } from '../types';
+import { formatDateForDisplay } from '../utils/date';
+
+const MONTH_LABELS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+const WEEKDAY_LABELS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+
+interface YearDayCell {
+  dateKey: string;
+  month: number;
+  day: number;
+  weekday: number;
+}
+
+const toDateKey = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const parseDateOnly = (value: string): Date => {
+  const [year, month, day] = value.split('-').map(Number);
+  return new Date(year, (month || 1) - 1, day || 1, 12, 0, 0, 0);
+};
+
+const normalizeCode = (value: string) => value.trim().toUpperCase();
+
+export const ManagerTeamLeaves: React.FC = () => {
+  const currentUser = store.getCurrentUser();
+  const currentYear = new Date().getFullYear();
+
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [selectedYear, setSelectedYear] = useState(currentYear);
+  const [users, setUsers] = useState<User[]>([]);
+  const [holidays, setHolidays] = useState<Holiday[]>([]);
+  const [leaveTypes, setLeaveTypes] = useState<LeaveType[]>([]);
+  const [leaves, setLeaves] = useState<TeamLeave[]>([]);
+
+  const [formData, setFormData] = useState({
+    userId: '',
+    leaveTypeCode: 'FERIAS',
+    startDate: '',
+    endDate: '',
+    notes: ''
+  });
+
+  const loadData = async () => {
+    setLoading(true);
+    const [allUsers, allHolidays, allLeaveTypes] = await Promise.all([
+      store.getUsers(),
+      store.getHolidays(),
+      store.getLeaveTypes()
+    ]);
+
+    const activeLeaveTypes = allLeaveTypes.filter((type) => type.active !== false);
+    const defaultTypeCode = activeLeaveTypes[0]?.code || 'FERIAS';
+
+    setUsers(allUsers);
+    setHolidays(allHolidays);
+    setLeaveTypes(activeLeaveTypes);
+    setFormData((prev) => ({
+      ...prev,
+      leaveTypeCode: prev.leaveTypeCode || defaultTypeCode
+    }));
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const teamUsers = useMemo(() => {
+    if (!currentUser) return [] as User[];
+
+    if (currentUser.role === 'ADMIN') {
+      return users.filter((user) => user.isActive !== false && user.role !== 'ADMIN');
+    }
+
+    const managedIds = new Set<string>([currentUser.id]);
+    let changed = true;
+
+    while (changed) {
+      changed = false;
+      users.forEach((user) => {
+        if (user.managerId && managedIds.has(user.managerId) && !managedIds.has(user.id)) {
+          managedIds.add(user.id);
+          changed = true;
+        }
+      });
+    }
+
+    return users.filter((user) => managedIds.has(user.id) && user.isActive !== false);
+  }, [users, currentUser]);
+
+  const monthSegments = useMemo(() => {
+    return MONTH_LABELS.map((label, month) => ({
+      label,
+      month,
+      days: new Date(selectedYear, month + 1, 0).getDate()
+    }));
+  }, [selectedYear]);
+
+  const yearDays = useMemo(() => {
+    const days: YearDayCell[] = [];
+
+    for (let month = 0; month < 12; month += 1) {
+      const totalDays = new Date(selectedYear, month + 1, 0).getDate();
+      for (let day = 1; day <= totalDays; day += 1) {
+        const date = new Date(selectedYear, month, day, 12, 0, 0, 0);
+        days.push({
+          dateKey: toDateKey(date),
+          month,
+          day,
+          weekday: date.getDay()
+        });
+      }
+    }
+
+    return days;
+  }, [selectedYear]);
+
+  const holidaySet = useMemo(() => {
+    return new Set(holidays.map((holiday) => holiday.date));
+  }, [holidays]);
+
+  useEffect(() => {
+    const loadLeaves = async () => {
+      if (teamUsers.length === 0) {
+        setLeaves([]);
+        return;
+      }
+
+      const userIds = teamUsers.map((user) => user.id);
+      const scopedLeaves = await store.getTeamLeaves({ userIds, year: selectedYear });
+      setLeaves(scopedLeaves);
+    };
+
+    loadLeaves();
+  }, [teamUsers, selectedYear]);
+
+  const leaveTypeMap = useMemo(() => {
+    const map = new Map<string, LeaveType>();
+    leaveTypes.forEach((item) => map.set(normalizeCode(item.code), item));
+    return map;
+  }, [leaveTypes]);
+
+  const leavesByUser = useMemo(() => {
+    const map = new Map<string, TeamLeave[]>();
+
+    teamUsers.forEach((user) => map.set(user.id, []));
+    leaves.forEach((leave) => {
+      const list = map.get(leave.userId) || [];
+      list.push(leave);
+      map.set(leave.userId, list);
+    });
+
+    map.forEach((list, userId) => {
+      map.set(userId, [...list].sort((a, b) => a.startDate.localeCompare(b.startDate)));
+    });
+
+    return map;
+  }, [teamUsers, leaves]);
+
+  const leaveTypeCodeSet = useMemo(() => {
+    return new Set(leaveTypes.map((item) => normalizeCode(item.code)));
+  }, [leaveTypes]);
+
+  const leavesByUserDay = useMemo(() => {
+    const map = new Map<string, Map<string, TeamLeave>>();
+
+    teamUsers.forEach((user) => {
+      const dayMap = new Map<string, TeamLeave>();
+      const userLeaves = leavesByUser.get(user.id) || [];
+
+      userLeaves.forEach((leave) => {
+        if (!leaveTypeCodeSet.has(normalizeCode(leave.leaveTypeCode))) return;
+
+        let cursor = parseDateOnly(leave.startDate);
+        const end = parseDateOnly(leave.endDate);
+
+        while (cursor.getTime() <= end.getTime()) {
+          const key = toDateKey(cursor);
+          if (key.startsWith(`${selectedYear}-`)) {
+            dayMap.set(key, leave);
+          }
+          cursor = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate() + 1, 12, 0, 0, 0);
+        }
+      });
+
+      map.set(user.id, dayMap);
+    });
+
+    return map;
+  }, [teamUsers, leavesByUser, leaveTypeCodeSet, selectedYear]);
+
+  const usersWithoutVacation = useMemo(() => {
+    return teamUsers.filter((user) => {
+      const userLeaves = leavesByUser.get(user.id) || [];
+      return !userLeaves.some((leave) => normalizeCode(leave.leaveTypeCode) === 'FERIAS');
+    });
+  }, [teamUsers, leavesByUser]);
+
+  const pendingBirthdayLeave = useMemo(() => {
+    return teamUsers
+      .filter((user) => !!user.birthdayDate)
+      .filter((user) => {
+        const birthdayMonth = parseDateOnly(user.birthdayDate as string).getMonth();
+        const userLeaves = leavesByUser.get(user.id) || [];
+
+        return !userLeaves.some((leave) => {
+          if (normalizeCode(leave.leaveTypeCode) !== 'FOLGA_ANIVERSARIO') return false;
+          const start = parseDateOnly(leave.startDate);
+          const end = parseDateOnly(leave.endDate);
+          let cursor = new Date(start.getFullYear(), start.getMonth(), start.getDate(), 12, 0, 0, 0);
+          while (cursor.getTime() <= end.getTime()) {
+            if (cursor.getMonth() === birthdayMonth) return true;
+            cursor = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate() + 1, 12, 0, 0, 0);
+          }
+          return false;
+        });
+      })
+      .map((user) => ({
+        ...user,
+        birthdayMonth: parseDateOnly(user.birthdayDate as string).getMonth()
+      }))
+      .sort((a, b) => a.birthdayMonth - b.birthdayMonth || a.name.localeCompare(b.name));
+  }, [teamUsers, leavesByUser]);
+
+  const pendingBirthdayMonthByUser = useMemo(() => {
+    const map = new Map<string, number>();
+    pendingBirthdayLeave.forEach((user) => {
+      map.set(user.id, user.birthdayMonth);
+    });
+    return map;
+  }, [pendingBirthdayLeave]);
+
+  const leaveOptions = useMemo(() => {
+    return leaveTypes.filter((item) => item.active !== false);
+  }, [leaveTypes]);
+
+  const handleAddLeave = async (event: React.FormEvent) => {
+    event.preventDefault();
+
+    if (!formData.userId || !formData.leaveTypeCode || !formData.startDate || !formData.endDate) {
+      alert('Preencha os campos obrigatórios para cadastrar férias/folga.');
+      return;
+    }
+
+    if (formData.startDate > formData.endDate) {
+      alert('A data inicial não pode ser maior que a data final.');
+      return;
+    }
+
+    setSaving(true);
+    const ok = await store.addTeamLeave({
+      userId: formData.userId,
+      leaveTypeCode: normalizeCode(formData.leaveTypeCode),
+      startDate: formData.startDate,
+      endDate: formData.endDate,
+      notes: formData.notes.trim() || undefined
+    });
+    setSaving(false);
+
+    if (!ok) {
+      alert('Não foi possível salvar no banco agora.');
+      return;
+    }
+
+    const updatedLeaves = await store.getTeamLeaves({ userIds: teamUsers.map((user) => user.id), year: selectedYear });
+    setLeaves(updatedLeaves);
+
+    setFormData((prev) => ({
+      ...prev,
+      startDate: '',
+      endDate: '',
+      notes: ''
+    }));
+  };
+
+  const handleDeleteLeave = async (id: string) => {
+    const confirmed = window.confirm('Deseja remover este agendamento de folga/férias?');
+    if (!confirmed) return;
+
+    const ok = await store.deleteTeamLeave(id);
+    if (!ok) {
+      alert('Não foi possível remover o registro.');
+      return;
+    }
+
+    const updatedLeaves = await store.getTeamLeaves({ userIds: teamUsers.map((user) => user.id), year: selectedYear });
+    setLeaves(updatedLeaves);
+  };
+
+  const getPeriodSummary = (userId: string) => {
+    const userLeaves = leavesByUser.get(userId) || [];
+    if (userLeaves.length === 0) return '-';
+
+    const latest = userLeaves[0];
+    const latestType = leaveTypeMap.get(normalizeCode(latest.leaveTypeCode));
+    const label = latestType?.name || latest.leaveTypeCode;
+
+    if (userLeaves.length === 1) {
+      return `${label}: ${formatDateForDisplay(latest.startDate)} a ${formatDateForDisplay(latest.endDate)}`;
+    }
+
+    return `${label}: ${formatDateForDisplay(latest.startDate)} a ${formatDateForDisplay(latest.endDate)} (+${userLeaves.length - 1})`;
+  };
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-8 text-center text-slate-500">
+        Carregando agenda de férias e folgas...
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800">Férias e Folgas do Time</h1>
+          <p className="text-sm text-slate-500 mt-1">Planejamento anual da equipe com destaque para feriados, férias e folgas especiais.</p>
+        </div>
+        <div className="w-full md:w-auto">
+          <label className="text-xs font-bold text-slate-500 block mb-1">Ano</label>
+          <input
+            type="number"
+            className="w-full md:w-36 border border-gray-300 p-2 rounded-lg text-sm"
+            value={selectedYear}
+            onChange={(e) => setSelectedYear(Number(e.target.value) || currentYear)}
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4">
+          <div className="flex items-center gap-2 text-red-700">
+            <AlertTriangle size={18} />
+            <h2 className="font-bold">Sem férias cadastradas</h2>
+          </div>
+          <p className="text-sm text-red-700 mt-2">{usersWithoutVacation.length} colaborador(es) sem programação de férias no ano.</p>
+          <div className="mt-2 text-xs text-red-800">
+            {usersWithoutVacation.length === 0 ? 'Nenhuma pendência.' : usersWithoutVacation.map((user) => user.name).join(' • ')}
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+          <div className="flex items-center gap-2 text-amber-700">
+            <CalendarDays size={18} />
+            <h2 className="font-bold">Folga de aniversário pendente</h2>
+          </div>
+          <p className="text-sm text-amber-700 mt-2">{pendingBirthdayLeave.length} colaborador(es) ainda sem folga de aniversário no mês ideal.</p>
+          <div className="mt-2 text-xs text-amber-800">
+            {pendingBirthdayLeave.length === 0
+              ? 'Nenhuma pendência.'
+              : pendingBirthdayLeave.map((user) => `${user.name} (${MONTH_LABELS[user.birthdayMonth]})`).join(' • ')}
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
+        <div className="xl:col-span-3 bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
+          <div className="p-4 border-b border-slate-100 bg-slate-50">
+            <h3 className="font-semibold text-slate-700">Programação de férias e folgas</h3>
+            <p className="text-xs text-slate-500">Feriados cadastrados no sistema aparecem em amarelo no calendário.</p>
+          </div>
+
+          <div className="overflow-auto">
+            <table className="min-w-[2400px] text-[11px] border-collapse">
+              <thead>
+                <tr className="bg-slate-100">
+                  <th className="sticky left-0 z-30 bg-amber-100 border border-slate-300 px-2 py-2 min-w-[220px]">Colaborador</th>
+                  <th className="sticky left-[220px] z-30 bg-slate-100 border border-slate-300 px-2 py-2 min-w-[280px]">Período</th>
+                  {monthSegments.map((segment) => (
+                    <th key={segment.month} colSpan={segment.days} className="border border-slate-300 px-2 py-2 text-center font-bold">
+                      {segment.label}-{String(selectedYear).slice(-2)}
+                    </th>
+                  ))}
+                </tr>
+                <tr className="bg-white">
+                  <th className="sticky left-0 z-20 bg-white border border-slate-300 px-2 py-1">&nbsp;</th>
+                  <th className="sticky left-[220px] z-20 bg-white border border-slate-300 px-2 py-1">&nbsp;</th>
+                  {yearDays.map((item) => (
+                    <th key={`week-${item.dateKey}`} className="border border-slate-300 w-6 h-6 font-normal">
+                      {WEEKDAY_LABELS[item.weekday]}
+                    </th>
+                  ))}
+                </tr>
+                <tr className="bg-white">
+                  <th className="sticky left-0 z-20 bg-white border border-slate-300 px-2 py-1">&nbsp;</th>
+                  <th className="sticky left-[220px] z-20 bg-white border border-slate-300 px-2 py-1">&nbsp;</th>
+                  {yearDays.map((item) => (
+                    <th key={`day-${item.dateKey}`} className="border border-slate-300 w-6 h-6 font-normal">
+                      {item.day}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {teamUsers.map((user) => {
+                  const userDayMap = leavesByUserDay.get(user.id) || new Map<string, TeamLeave>();
+                  const pendingBirthdayMonth = pendingBirthdayMonthByUser.get(user.id);
+
+                  return (
+                    <tr key={user.id} className="hover:bg-slate-50/50">
+                      <td className="sticky left-0 z-10 bg-white border border-slate-300 px-2 py-1 min-w-[220px]">
+                        <div className="font-medium text-slate-800 leading-tight">{user.name}</div>
+                        <div className="text-[10px] text-slate-500">{user.email}</div>
+                        {pendingBirthdayMonth !== undefined && (
+                          <div className="mt-1 inline-flex rounded px-1.5 py-0.5 bg-amber-100 text-amber-800 text-[10px] font-bold">
+                            Aniv: programar em {MONTH_LABELS[pendingBirthdayMonth]}
+                          </div>
+                        )}
+                      </td>
+                      <td className="sticky left-[220px] z-10 bg-white border border-slate-300 px-2 py-1 min-w-[280px] text-slate-700">
+                        {getPeriodSummary(user.id)}
+                      </td>
+                      {yearDays.map((item) => {
+                        const leave = userDayMap.get(item.dateKey);
+                        const leaveType = leave ? leaveTypeMap.get(normalizeCode(leave.leaveTypeCode)) : undefined;
+                        const isHoliday = holidaySet.has(item.dateKey);
+                        const isWeekend = item.weekday === 0 || item.weekday === 6;
+
+                        let backgroundColor = '#ffffff';
+                        let title = '';
+
+                        if (isWeekend) backgroundColor = '#f8fafc';
+                        if (isHoliday) {
+                          backgroundColor = '#fef08a';
+                          title = 'Feriado cadastrado';
+                        }
+
+                        if (leave && leaveType) {
+                          backgroundColor = leaveType.color || '#2563eb';
+                          title = `${leaveType.name} • ${formatDateForDisplay(leave.startDate)} a ${formatDateForDisplay(leave.endDate)}`;
+                        }
+
+                        return (
+                          <td
+                            key={`${user.id}-${item.dateKey}`}
+                            className="border border-slate-300 w-6 h-6"
+                            style={{ backgroundColor }}
+                            title={title || undefined}
+                          />
+                        );
+                      })}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="p-4 border-t border-slate-100 bg-white">
+            <div className="flex flex-wrap items-center gap-3 text-xs text-slate-600">
+              {leaveOptions.map((type) => (
+                <span key={type.code} className="inline-flex items-center gap-2">
+                  <span className="inline-block w-3 h-3 rounded-sm border border-slate-300" style={{ backgroundColor: type.color }} />
+                  {type.name}
+                </span>
+              ))}
+              <span className="inline-flex items-center gap-2">
+                <span className="inline-block w-3 h-3 rounded-sm border border-slate-300 bg-yellow-200" />
+                Feriado
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-6">
+          <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
+            <h3 className="font-bold text-slate-800 mb-3">Cadastrar férias/folga</h3>
+            <form onSubmit={handleAddLeave} className="space-y-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">Colaborador</label>
+                <select
+                  className="w-full border border-gray-300 p-2 rounded-lg text-sm"
+                  value={formData.userId}
+                  onChange={(e) => setFormData({ ...formData, userId: e.target.value })}
+                  required
+                >
+                  <option value="">Selecione</option>
+                  {teamUsers.map((user) => (
+                    <option key={user.id} value={user.id}>{user.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">Tipo</label>
+                <select
+                  className="w-full border border-gray-300 p-2 rounded-lg text-sm"
+                  value={formData.leaveTypeCode}
+                  onChange={(e) => setFormData({ ...formData, leaveTypeCode: e.target.value })}
+                  required
+                >
+                  {leaveOptions.map((item) => (
+                    <option key={item.code} value={item.code}>{item.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">Início</label>
+                  <input
+                    type="date"
+                    className="w-full border border-gray-300 p-2 rounded-lg text-sm"
+                    value={formData.startDate}
+                    onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">Fim</label>
+                  <input
+                    type="date"
+                    className="w-full border border-gray-300 p-2 rounded-lg text-sm"
+                    value={formData.endDate}
+                    onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">Observação</label>
+                <input
+                  className="w-full border border-gray-300 p-2 rounded-lg text-sm"
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  placeholder="Opcional"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={saving}
+                className="w-full bg-brand-600 text-white p-2 rounded-lg font-bold hover:bg-brand-700 disabled:opacity-60 inline-flex items-center justify-center gap-2"
+              >
+                <Plus size={16} />
+                {saving ? 'Salvando...' : 'Adicionar'}
+              </button>
+            </form>
+          </div>
+
+          <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
+            <h3 className="font-bold text-slate-800 mb-3">Agendamentos do ano</h3>
+            <div className="space-y-2 max-h-[360px] overflow-y-auto pr-1">
+              {leaves.map((leave) => {
+                const user = teamUsers.find((item) => item.id === leave.userId);
+                const leaveType = leaveTypeMap.get(normalizeCode(leave.leaveTypeCode));
+
+                return (
+                  <div key={leave.id} className="rounded-lg border border-slate-200 p-3 text-xs">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="font-semibold text-slate-800">{user?.name || 'Colaborador removido'}</p>
+                        <p className="text-slate-500">{leaveType?.name || leave.leaveTypeCode}</p>
+                        <p className="text-slate-600 mt-1">{formatDateForDisplay(leave.startDate)} a {formatDateForDisplay(leave.endDate)}</p>
+                        {leave.notes && <p className="text-slate-500 mt-1">{leave.notes}</p>}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteLeave(leave.id)}
+                        className="text-red-500 hover:text-red-700"
+                        title="Remover"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+
+              {leaves.length === 0 && (
+                <p className="text-xs text-slate-400">Nenhum agendamento encontrado para o ano selecionado.</p>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
