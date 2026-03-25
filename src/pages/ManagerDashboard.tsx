@@ -547,7 +547,7 @@ export const ManagerDashboard: React.FC = () => {
                             </div>
 
                             <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-                                <p className="text-[11px] font-bold uppercase tracking-wide text-slate-600">Já passaram no mês</p>
+                                <p className="text-[11px] font-bold uppercase tracking-wide text-slate-600">Aniversários deste mês (já ocorridos)</p>
                                 {monthlyBirthdaysPassed.length > 0 ? (
                                     <div className="mt-2 space-y-1.5">
                                         {monthlyBirthdaysPassed.slice(0, 4).map((person) => (
