@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { store } from '../services/store';
-import { TimesheetEntry, Project, HOURS_PER_DAY, TimesheetPeriod, formatHours, Holiday, CalendarException, FrequentEntryTemplate } from '../types';
+import { User, TimesheetEntry, Project, HOURS_PER_DAY, TimesheetPeriod, formatHours, Holiday, CalendarException, FrequentEntryTemplate } from '../types';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { Clock, Calendar, CheckCircle, AlertTriangle, Plus, Trash2, Lock, XCircle, Search, Filter, AlertOctagon, Copy, Edit, ChevronDown, ChevronUp, Sparkles, Bookmark } from 'lucide-react';
 import { MyStatusWidget } from '../components/MyStatusWidget';
@@ -9,6 +9,7 @@ import { GamificationSnapshot } from '../components/GamificationSnapshot';
 import { DashboardLoadingState } from '../components/DashboardLoadingState';
 import { formatDateForDisplay, formatLocalDate, parseDateOnly } from '../utils/date';
 import { buildCalendarMaps, listPendingDaysForMonth, PendingDay } from '../utils/workCalendar';
+import { getMonthlyBirthdays, getUpcomingBirthdays } from '../utils/birthdays';
 
 type DashboardPeriodKey = 'current' | 'previous';
 
@@ -35,6 +36,7 @@ export const UserDashboard: React.FC = () => {
   const user = store.getCurrentUser();
   const navigate = useNavigate();
   const [entries, setEntries] = useState<TimesheetEntry[]>([]);
+  const [allUsers, setAllUsers] = useState<User[]>([]);
   const [periodStatus, setPeriodStatus] = useState<TimesheetPeriod | null>(null);
   
     // separação de estado:
@@ -94,13 +96,14 @@ export const UserDashboard: React.FC = () => {
     const currentYear = today.getFullYear();
     const currentMonth = today.getMonth();
 
-    const [allEntries, allProjects, status, holidays, exceptions, configuredDailyHourLimit] = await Promise.all([
+    const [allEntries, allProjects, status, holidays, exceptions, configuredDailyHourLimit, directoryUsers] = await Promise.all([
         store.getEntries(user.id),
         store.getProjects(),
         store.getPeriodStatus(user.id, currentYear, currentMonth),
         store.getHolidays(),
       store.getExceptions(),
-      store.getDailyHourLimit()
+      store.getDailyHourLimit(),
+      store.getUsers()
     ]);
 
     setPeriodStatus(status);
@@ -141,6 +144,7 @@ export const UserDashboard: React.FC = () => {
     setHolidayMarkers(markers);
     setFrequentTemplates(store.getFrequentEntryTemplates(user.id).slice(0, 6));
     setDailyHourLimit(configuredDailyHourLimit);
+    setAllUsers(directoryUsers.filter((item) => item.isActive !== false));
 
     // calcula kpis do mês atual e anterior
     const previousDate = new Date(currentYear, currentMonth - 1, 1);
@@ -478,6 +482,8 @@ export const UserDashboard: React.FC = () => {
     : 'Divergência do mês encerrado';
   const isUserInactive = user?.isActive === false;
   const passiveCardClass = 'group bg-white rounded-xl shadow-sm border border-slate-100 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md';
+  const monthlyBirthdays = useMemo(() => getMonthlyBirthdays(allUsers), [allUsers]);
+  const upcomingBirthdays = useMemo(() => getUpcomingBirthdays(allUsers, 4), [allUsers]);
 
     // lógica de filtro das entradas
   const displayEntries = entryFilterDate 
@@ -538,6 +544,67 @@ export const UserDashboard: React.FC = () => {
           Seu usuário está inativo. Os lançamentos anteriores continuam visíveis, mas novas inclusões e edições estão bloqueadas.
         </div>
       )}
+
+      <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+        <div className="p-5 border-b border-slate-100 bg-slate-50">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center">
+              <Calendar size={18} />
+            </div>
+            <div>
+              <h3 className="font-bold text-slate-800">Aniversariantes do Mês</h3>
+              <p className="text-sm text-slate-500">Quem faz aniversário neste mês e quem está chegando na sequência.</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-5 space-y-4">
+          {monthlyBirthdays.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {monthlyBirthdays.map((person) => (
+                <div
+                  key={person.id}
+                  className={`rounded-xl border p-4 ${person.isToday ? 'border-rose-300 bg-rose-50 ring-2 ring-rose-200' : 'border-slate-200 bg-white'}`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className={`font-semibold ${person.isToday ? 'text-rose-900 text-base' : 'text-slate-800 text-sm'}`}>{person.name}</p>
+                      <p className="text-xs text-slate-500 mt-1">{person.area ? person.area.replace(/_/g, ' ') : 'Área não informada'}</p>
+                    </div>
+                    <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${person.isToday ? 'bg-rose-600 text-white' : 'bg-slate-100 text-slate-700'}`}>
+                      {person.isToday ? 'Hoje' : person.dateLabel}
+                    </span>
+                  </div>
+                  {person.isToday && (
+                    <p className="text-xs font-semibold text-rose-700 mt-3">Aniversário hoje. Vale mandar os parabéns.</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-slate-500">Nenhum aniversariante cadastrado para este mês.</p>
+          )}
+
+          <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-600">Próximos aniversariantes</p>
+            {upcomingBirthdays.length > 0 ? (
+              <div className="mt-3 space-y-2">
+                {upcomingBirthdays.map((person) => (
+                  <div key={person.id} className="flex items-center justify-between gap-3 text-sm">
+                    <div className="min-w-0">
+                      <p className="font-medium text-slate-700 truncate">{person.name}</p>
+                      <p className="text-[11px] text-slate-500">{person.area ? person.area.replace(/_/g, ' ') : 'Área não informada'}</p>
+                    </div>
+                    <span className="text-xs font-semibold text-slate-600 whitespace-nowrap">{person.dateLabel} • em {person.daysUntil} dia(s)</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-2 text-xs text-slate-500">Sem próximos aniversários cadastrados.</p>
+            )}
+          </div>
+        </div>
+      </div>
 
     {/* cards de kpi */}
       <div className="flex flex-wrap items-center justify-between gap-3">

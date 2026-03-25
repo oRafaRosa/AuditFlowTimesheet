@@ -1,6 +1,6 @@
 
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { store } from '../services/store';
 import { User, Project, TimesheetEntry, TimesheetPeriod, formatHours, formatPercentage } from '../types';
@@ -9,6 +9,7 @@ import { Download, AlertCircle, Loader2, CheckCircle, XCircle, ArrowRight, Searc
 import { ManagerProjectBudget } from './ManagerProjectBudget';
 import { DashboardLoadingState } from '../components/DashboardLoadingState';
 import { formatDateForDisplay, formatLocalDate, parseDateOnly } from '../utils/date';
+import { getMonthlyBirthdays, getUpcomingBirthdays } from '../utils/birthdays';
 
 type TabType = 'overview' | 'budget' | 'reports';
 type TeamPerformancePeriodKey = 'current' | 'previous';
@@ -180,6 +181,9 @@ export const ManagerDashboard: React.FC = () => {
     await calculateStats(uniqueTeam, filteredEntries, relevantProjects, delegatedMemberIdSet);
     setLoading(false);
   };
+
+    const monthlyTeamBirthdays = useMemo(() => getMonthlyBirthdays(teamMembers), [teamMembers]);
+    const upcomingTeamBirthdays = useMemo(() => getUpcomingBirthdays(teamMembers, 4), [teamMembers]);
 
     const calculateStats = async (members: User[], entries: TimesheetEntry[], projs: Project[], delegatedMemberIdSet: Set<string>) => {
     const today = new Date();
@@ -442,6 +446,67 @@ export const ManagerDashboard: React.FC = () => {
                     </button>
                 </div>
             )}
+
+            <div className={`${passivePanelClass} overflow-hidden`}>
+                <div className="p-5 border-b border-slate-100 bg-slate-50">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center">
+                            <Calendar size={18} />
+                        </div>
+                        <div>
+                            <h3 className="font-bold text-slate-800">Aniversariantes do Mês</h3>
+                            <p className="text-sm text-slate-500">Visão rápida dos aniversários do time e do que vem na sequência.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="p-5 space-y-4">
+                    {monthlyTeamBirthdays.length > 0 ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                            {monthlyTeamBirthdays.map((person) => (
+                                <div
+                                    key={person.id}
+                                    className={`rounded-xl border p-4 ${person.isToday ? 'border-rose-300 bg-rose-50 ring-2 ring-rose-200' : 'border-slate-200 bg-white'}`}
+                                >
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div>
+                                            <p className={`font-semibold ${person.isToday ? 'text-rose-900 text-base' : 'text-slate-800 text-sm'}`}>{person.name}</p>
+                                            <p className="text-xs text-slate-500 mt-1">{person.area ? person.area.replace(/_/g, ' ') : 'Área não informada'}</p>
+                                        </div>
+                                        <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${person.isToday ? 'bg-rose-600 text-white' : 'bg-slate-100 text-slate-700'}`}>
+                                            {person.isToday ? 'Hoje' : person.dateLabel}
+                                        </span>
+                                    </div>
+                                    {person.isToday && (
+                                        <p className="text-xs font-semibold text-rose-700 mt-3">Aniversário hoje. Destaque especial para o colaborador.</p>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <p className="text-sm text-slate-500">Nenhum aniversariante cadastrado para este mês na sua visão da equipe.</p>
+                    )}
+
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                        <p className="text-xs font-bold uppercase tracking-wide text-slate-600">Próximos aniversariantes</p>
+                        {upcomingTeamBirthdays.length > 0 ? (
+                            <div className="mt-3 space-y-2">
+                                {upcomingTeamBirthdays.map((person) => (
+                                    <div key={person.id} className="flex items-center justify-between gap-3 text-sm">
+                                        <div className="min-w-0">
+                                            <p className="font-medium text-slate-700 truncate">{person.name}</p>
+                                            <p className="text-[11px] text-slate-500">{person.area ? person.area.replace(/_/g, ' ') : 'Área não informada'}</p>
+                                        </div>
+                                        <span className="text-xs font-semibold text-slate-600 whitespace-nowrap">{person.dateLabel} • em {person.daysUntil} dia(s)</span>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="mt-2 text-xs text-slate-500">Sem próximos aniversários cadastrados.</p>
+                        )}
+                    </div>
+                </div>
+            </div>
             
             {/* seção de aprovações pendentes */}
             {pendingApprovals.length > 0 ? (
