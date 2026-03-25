@@ -8,6 +8,7 @@ import { buildGamificationProfiles } from '../utils/gamification';
 import { buildCalendarMaps, isExpectedWorkingDay, listPendingDaysForMonth } from '../utils/workCalendar';
 import { isBirthdayToday } from '../utils/birthdays';
 import { GAMIFICATION_ENABLED } from '../config/features';
+import { BirthdayBalloonCelebration } from './BirthdayBalloonCelebration';
 import { BirthdayBalloons } from './BirthdayBalloons';
 import { LoadingIndicator } from './LoadingIndicator';
 import { 
@@ -638,6 +639,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
   const isActive = (path: string) => location.pathname === path;
   const isOnDashboard = location.pathname === '/dashboard';
+  const isOnBirthdayDashboard = location.pathname === '/dashboard' || location.pathname === '/manager';
   const isUserBirthdayToday = isBirthdayToday(user?.birthdayDate);
 
   const handleLogoClick = () => {
@@ -735,6 +737,10 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
+      {isUserBirthdayToday && isOnBirthdayDashboard && (
+        <BirthdayBalloonCelebration key={location.pathname} />
+      )}
+
       {/* sidebar desktop */}
       <aside className={`hidden md:flex flex-col ${isSidebarCollapsed ? 'w-20' : 'w-56'} bg-white border-r border-gray-200 fixed h-full z-10 transition-all duration-300`}>
         <div className={`py-4 px-3 flex items-center ${isSidebarCollapsed ? 'justify-center' : 'justify-between'}`}>

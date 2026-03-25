@@ -2,15 +2,17 @@ import React, { useId } from 'react';
 
 interface BirthdayBalloonsProps {
   className?: string;
+  style?: React.CSSProperties;
 }
 
-export const BirthdayBalloons: React.FC<BirthdayBalloonsProps> = ({ className = '' }) => {
+export const BirthdayBalloons: React.FC<BirthdayBalloonsProps> = ({ className = '', style }) => {
   const gradientId = useId().replace(/:/g, '');
 
   return (
     <svg
       viewBox="0 0 88 56"
       className={className}
+      style={style}
       aria-hidden="true"
       focusable="false"
     >
