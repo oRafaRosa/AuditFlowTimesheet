@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, CalendarDays, Plus, Trash2 } from 'lucide-react';
+import { AlertTriangle, Plus, Trash2 } from 'lucide-react';
 import { store } from '../services/store';
 import { Holiday, LeaveType, TeamLeave, User } from '../types';
 import { formatDateForDisplay } from '../utils/date';
@@ -364,14 +364,6 @@ export const ManagerTeamLeaves: React.FC = () => {
           </div>
         </div>
 
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
-          <div className="flex items-center gap-2 text-amber-700">
-            <CalendarDays size={18} />
-            <h2 className="font-bold">Dica visual</h2>
-          </div>
-          <p className="text-sm text-amber-700 mt-2">O símbolo pequeno <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-amber-200 text-amber-800 font-bold">!</span> ao lado do nome indica pendência de folga de aniversário.</p>
-          <p className="text-xs text-amber-800 mt-2">Clique no nome do colaborador para destacar o mês de aniversário e ver detalhes no painel lateral.</p>
-        </div>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
