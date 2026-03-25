@@ -505,6 +505,91 @@ export const ManagerDashboard: React.FC = () => {
             </>
         );
 
+        const renderTeamAlertsPanel = () => (
+            <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+                <button
+                    type="button"
+                    onClick={() => setShowTeamAlertsDetails(prev => !prev)}
+                    className="w-full p-5 text-left hover:bg-slate-50 transition-colors"
+                >
+                    <div className="flex items-start justify-between gap-4">
+                        <div>
+                            <h3 className="font-bold text-slate-800">Alertas da Equipe</h3>
+                            <p className="text-sm text-slate-500 mt-1">
+                                Visão consolidada das pendências e excessos do mês atual.
+                            </p>
+                        </div>
+                        <div className="text-slate-400 mt-1">
+                            {showTeamAlertsDetails ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                        <div className="rounded-xl border border-red-200 bg-red-50 p-4">
+                            <p className="text-xs font-bold uppercase text-red-700">Com Pendência Alta</p>
+                            <p className="text-2xl font-bold text-red-900 mt-1">{pendingAlerts.length}</p>
+                        </div>
+                        <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-4">
+                            <p className="text-xs font-bold uppercase text-yellow-700">Com Excesso</p>
+                            <p className="text-2xl font-bold text-yellow-900 mt-1">{excessAlerts.length}</p>
+                        </div>
+                    </div>
+                </button>
+
+                {showTeamAlertsDetails && (
+                    <div className="border-t border-slate-100 p-5 space-y-5">
+                        <div>
+                            <h4 className="text-sm font-bold text-red-800 uppercase tracking-wide mb-3">Pendência Alta</h4>
+                            {pendingAlerts.length > 0 ? (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {pendingAlerts.map((s) => (
+                                        <div key={s.id} className="bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg flex items-start gap-3">
+                                            <AlertCircle className="text-red-500 shrink-0" size={20} />
+                                            <div onClick={() => navigate(`/manager/reports?userId=${s.id}`)} className="cursor-pointer group">
+                                                <p className="font-bold text-red-900 text-sm group-hover:underline flex items-center gap-2">
+                                                    {s.name}
+                                                    {s.isDelegated && (
+                                                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200">Delegada</span>
+                                                    )}
+                                                </p>
+                                                <p className="text-xs text-red-700">Pendente: {formatHours(Math.abs(s.divergence))}h</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="text-sm text-slate-500">Ninguém com pendência alta no momento.</p>
+                            )}
+                        </div>
+
+                        <div>
+                            <h4 className="text-sm font-bold text-yellow-800 uppercase tracking-wide mb-3">Excesso de Horas</h4>
+                            {excessAlerts.length > 0 ? (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {excessAlerts.map((s) => (
+                                        <div key={s.id} className="bg-yellow-50 border-l-4 border-yellow-500 p-4 rounded-r-lg flex items-start gap-3">
+                                            <AlertCircle className="text-yellow-600 shrink-0" size={20} />
+                                            <div onClick={() => navigate(`/manager/reports?userId=${s.id}`)} className="cursor-pointer group">
+                                                <p className="font-bold text-yellow-900 text-sm group-hover:underline flex items-center gap-2">
+                                                    {s.name}
+                                                    {s.isDelegated && (
+                                                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200">Delegada</span>
+                                                    )}
+                                                </p>
+                                                <p className="text-xs text-yellow-700">Excesso: {formatHours(s.divergence)}h</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="text-sm text-slate-500">Ninguém com excesso relevante no momento.</p>
+                            )}
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
+
     return (
             <div className="space-y-8">
             
@@ -604,23 +689,22 @@ export const ManagerDashboard: React.FC = () => {
                                     </table>
                                 </div>
                             </div>
-
-                            <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
-                                {renderBacklogPanel()}
-                            </div>
                         </>
                     ) : (
-                        <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
-                            <div className="p-6 text-center border-b border-slate-100">
-                                <div className="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-3">
-                                    <CheckCircle size={24} />
-                                </div>
-                                <h3 className="text-lg font-medium text-slate-800">Tudo em dia</h3>
-                                <p className="text-slate-500">Não há timesheets pendentes de aprovação no momento.</p>
+                        <div className={`${passivePanelClass} p-8 text-center`}>
+                            <div className="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-3">
+                                <CheckCircle size={24} />
                             </div>
-                            {renderBacklogPanel()}
+                            <h3 className="text-lg font-medium text-slate-800">Tudo em dia</h3>
+                            <p className="text-slate-500">Não há timesheets pendentes de aprovação no momento.</p>
                         </div>
                     )}
+
+                    <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+                        {renderBacklogPanel()}
+                    </div>
+
+                    {renderTeamAlertsPanel()}
                 </div>
 
                 <div>
@@ -631,89 +715,6 @@ export const ManagerDashboard: React.FC = () => {
                         subtitle="Quadrinho rápido da equipe"
                     />
                 </div>
-            </div>
-
-            <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
-                <button
-                    type="button"
-                    onClick={() => setShowTeamAlertsDetails(prev => !prev)}
-                    className="w-full p-5 text-left hover:bg-slate-50 transition-colors"
-                >
-                    <div className="flex items-start justify-between gap-4">
-                        <div>
-                            <h3 className="font-bold text-slate-800">Alertas da Equipe</h3>
-                            <p className="text-sm text-slate-500 mt-1">
-                                Visão consolidada das pendências e excessos do mês atual.
-                            </p>
-                        </div>
-                        <div className="text-slate-400 mt-1">
-                            {showTeamAlertsDetails ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                        <div className="rounded-xl border border-red-200 bg-red-50 p-4">
-                            <p className="text-xs font-bold uppercase text-red-700">Com Pendência Alta</p>
-                            <p className="text-2xl font-bold text-red-900 mt-1">{pendingAlerts.length}</p>
-                        </div>
-                        <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-4">
-                            <p className="text-xs font-bold uppercase text-yellow-700">Com Excesso</p>
-                            <p className="text-2xl font-bold text-yellow-900 mt-1">{excessAlerts.length}</p>
-                        </div>
-                    </div>
-                </button>
-
-                {showTeamAlertsDetails && (
-                    <div className="border-t border-slate-100 p-5 space-y-5">
-                        <div>
-                            <h4 className="text-sm font-bold text-red-800 uppercase tracking-wide mb-3">Pendência Alta</h4>
-                            {pendingAlerts.length > 0 ? (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {pendingAlerts.map((s) => (
-                                        <div key={s.id} className="bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg flex items-start gap-3">
-                                            <AlertCircle className="text-red-500 shrink-0" size={20} />
-                                            <div onClick={() => navigate(`/manager/reports?userId=${s.id}`)} className="cursor-pointer group">
-                                                <p className="font-bold text-red-900 text-sm group-hover:underline flex items-center gap-2">
-                                                    {s.name}
-                                                    {s.isDelegated && (
-                                                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200">Delegada</span>
-                                                    )}
-                                                </p>
-                                                <p className="text-xs text-red-700">Pendente: {formatHours(Math.abs(s.divergence))}h</p>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <p className="text-sm text-slate-500">Ninguém com pendência alta no momento.</p>
-                            )}
-                        </div>
-
-                        <div>
-                            <h4 className="text-sm font-bold text-yellow-800 uppercase tracking-wide mb-3">Excesso de Horas</h4>
-                            {excessAlerts.length > 0 ? (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {excessAlerts.map((s) => (
-                                        <div key={s.id} className="bg-yellow-50 border-l-4 border-yellow-500 p-4 rounded-r-lg flex items-start gap-3">
-                                            <AlertCircle className="text-yellow-600 shrink-0" size={20} />
-                                            <div onClick={() => navigate(`/manager/reports?userId=${s.id}`)} className="cursor-pointer group">
-                                                <p className="font-bold text-yellow-900 text-sm group-hover:underline flex items-center gap-2">
-                                                    {s.name}
-                                                    {s.isDelegated && (
-                                                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200">Delegada</span>
-                                                    )}
-                                                </p>
-                                                <p className="text-xs text-yellow-700">Excesso: {formatHours(s.divergence)}h</p>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <p className="text-sm text-slate-500">Ninguém com excesso relevante no momento.</p>
-                            )}
-                        </div>
-                    </div>
-                )}
             </div>
 
             {/* gráfico de horas do time */}
