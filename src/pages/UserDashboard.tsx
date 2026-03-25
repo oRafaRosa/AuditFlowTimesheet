@@ -7,9 +7,10 @@ import { Clock, Calendar, CheckCircle, AlertTriangle, Plus, Trash2, Lock, XCircl
 import { MyStatusWidget } from '../components/MyStatusWidget';
 import { GamificationSnapshot } from '../components/GamificationSnapshot';
 import { DashboardLoadingState } from '../components/DashboardLoadingState';
+import { BirthdaySidebarCard } from '../components/BirthdaySidebarCard';
 import { formatDateForDisplay, formatLocalDate, parseDateOnly } from '../utils/date';
 import { buildCalendarMaps, listPendingDaysForMonth, PendingDay } from '../utils/workCalendar';
-import { getMonthlyBirthdays, getUpcomingBirthdays } from '../utils/birthdays';
+import { getMonthlyBirthdays, getUpcomingBirthdays, isBirthdayToday } from '../utils/birthdays';
 
 type DashboardPeriodKey = 'current' | 'previous';
 
@@ -483,7 +484,13 @@ export const UserDashboard: React.FC = () => {
   const isUserInactive = user?.isActive === false;
   const passiveCardClass = 'group bg-white rounded-xl shadow-sm border border-slate-100 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md';
   const monthlyBirthdays = useMemo(() => getMonthlyBirthdays(allUsers), [allUsers]);
-  const upcomingBirthdays = useMemo(() => getUpcomingBirthdays(allUsers, 4), [allUsers]);
+  const upcomingBirthdays = useMemo(() => getUpcomingBirthdays(allUsers, 8), [allUsers]);
+  const currentMonth = useMemo(() => new Date().getMonth(), []);
+  const nextMonthsBirthdays = useMemo(
+    () => upcomingBirthdays.filter((person) => person.month !== currentMonth).slice(0, 3),
+    [upcomingBirthdays, currentMonth]
+  );
+  const isUserBirthdayToday = useMemo(() => isBirthdayToday(user?.birthdayDate), [user?.birthdayDate]);
 
     // lógica de filtro das entradas
   const displayEntries = entryFilterDate 
@@ -505,6 +512,16 @@ export const UserDashboard: React.FC = () => {
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Meu Dashboard</h1>
           <p className="text-sm text-slate-500 mt-1">Visão rápida do seu progresso no mês e pendências de lançamento</p>
+          {isUserBirthdayToday && (
+            <div className="mt-2 inline-flex items-center gap-2 rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700">
+              Hoje é seu aniversário
+              <span className="inline-flex items-center gap-1" aria-hidden="true">
+                <span className="inline-block w-2.5 h-2.5 rounded-full bg-rose-400" />
+                <span className="inline-block w-3 h-3 rounded-full bg-amber-400" />
+                <span className="inline-block w-2.5 h-2.5 rounded-full bg-brand-500" />
+              </span>
+            </div>
+          )}
         </div>
         <div className="flex gap-3">
              {isUserInactive ? (
@@ -828,61 +845,13 @@ export const UserDashboard: React.FC = () => {
 
         {/* coluna direita: status e histórico */}
         <div className="space-y-6">
-          <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
-            <div className="px-4 py-3 border-b border-slate-100 bg-slate-50 flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-rose-100 text-rose-600 flex items-center justify-center">
-                <Calendar size={16} />
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-slate-800">Aniversariantes do Mês</h3>
-                <p className="text-[11px] text-slate-500">Resumo rápido do mês</p>
-              </div>
-            </div>
-
-            <div className="p-4 space-y-3">
-              {monthlyBirthdays.length > 0 ? (
-                <div className="space-y-2">
-                  {monthlyBirthdays.slice(0, 4).map((person) => (
-                    <div
-                      key={person.id}
-                      className={`rounded-lg border px-3 py-2 ${person.isToday ? 'border-rose-300 bg-rose-50 ring-1 ring-rose-200' : 'border-slate-200 bg-white'}`}
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className={`truncate font-semibold ${person.isToday ? 'text-rose-900 text-sm' : 'text-slate-800 text-sm'}`}>{person.name}</p>
-                          <p className="text-[11px] text-slate-500">{person.area ? person.area.replace(/_/g, ' ') : 'Área não informada'}</p>
-                        </div>
-                        <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold whitespace-nowrap ${person.isToday ? 'bg-rose-600 text-white' : 'bg-slate-100 text-slate-700'}`}>
-                          {person.isToday ? 'Hoje' : person.dateLabel}
-                        </span>
-                      </div>
-                      {person.isToday && (
-                        <p className="mt-2 text-[11px] font-semibold text-rose-700">Aniversário hoje.</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-xs text-slate-500">Nenhum aniversariante neste mês.</p>
-              )}
-
-              <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-                <p className="text-[11px] font-bold uppercase tracking-wide text-slate-600">Próximos</p>
-                {upcomingBirthdays.length > 0 ? (
-                  <div className="mt-2 space-y-2">
-                    {upcomingBirthdays.slice(0, 3).map((person) => (
-                      <div key={person.id} className="flex items-center justify-between gap-2 text-xs">
-                        <span className="truncate text-slate-700 font-medium">{person.name}</span>
-                        <span className="whitespace-nowrap text-slate-500">{person.dateLabel}</span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="mt-2 text-[11px] text-slate-500">Sem próximos aniversários.</p>
-                )}
-              </div>
-            </div>
-          </div>
+          <BirthdaySidebarCard
+            monthlyBirthdays={monthlyBirthdays}
+            upcomingBirthdays={nextMonthsBirthdays}
+            title="Aniversariantes do Mês"
+            subtitle="Resumo rápido do mês"
+            showBirthdayBalloons={isUserBirthdayToday}
+          />
             {user && <GamificationSnapshot userId={user.id} />}
             {user && <MyStatusWidget userId={user.id} onUpdate={loadData} />}
         </div>

@@ -8,6 +8,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, Cell
 import { Download, AlertCircle, Loader2, CheckCircle, XCircle, ArrowRight, Search, Clock, Calendar, Briefcase, FileText, TrendingUp, Info, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { ManagerProjectBudget } from './ManagerProjectBudget';
 import { DashboardLoadingState } from '../components/DashboardLoadingState';
+import { BirthdaySidebarCard } from '../components/BirthdaySidebarCard';
 import { formatDateForDisplay, formatLocalDate, parseDateOnly } from '../utils/date';
 import { getMonthlyBirthdays, getUpcomingBirthdays } from '../utils/birthdays';
 
@@ -182,8 +183,13 @@ export const ManagerDashboard: React.FC = () => {
     setLoading(false);
   };
 
-    const monthlyTeamBirthdays = useMemo(() => getMonthlyBirthdays(teamMembers), [teamMembers]);
-    const upcomingTeamBirthdays = useMemo(() => getUpcomingBirthdays(teamMembers, 4), [teamMembers]);
+        const monthlyTeamBirthdays = useMemo(() => getMonthlyBirthdays(teamMembers), [teamMembers]);
+        const upcomingTeamBirthdays = useMemo(() => getUpcomingBirthdays(teamMembers, 8), [teamMembers]);
+        const currentMonth = useMemo(() => new Date().getMonth(), []);
+        const nextMonthsTeamBirthdays = useMemo(
+            () => upcomingTeamBirthdays.filter((person) => person.month !== currentMonth).slice(0, 3),
+            [upcomingTeamBirthdays, currentMonth]
+        );
 
     const calculateStats = async (members: User[], entries: TimesheetEntry[], projs: Project[], delegatedMemberIdSet: Set<string>) => {
     const today = new Date();
@@ -399,8 +405,6 @@ export const ManagerDashboard: React.FC = () => {
     const activeTeamStats = teamStatsByPeriod[teamPerformancePeriod];
     const pendingAlerts = activeTeamStats.stats.filter(s => s.divergence < -10);
     const excessAlerts = activeTeamStats.stats.filter(s => s.divergence > 10);
-    const monthlyBirthdaysPassed = monthlyTeamBirthdays.filter((person) => person.daysUntil < 0 && !person.isToday);
-    const monthlyBirthdaysUpcoming = monthlyTeamBirthdays.filter((person) => person.daysUntil >= 0 || person.isToday);
     const passivePanelClass = 'bg-white rounded-xl shadow-sm border border-slate-100 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md';
 
     return (
@@ -513,72 +517,12 @@ export const ManagerDashboard: React.FC = () => {
                 </div>
 
                 <div>
-                    <div className={`${passivePanelClass} overflow-hidden`}>
-                        <div className="px-4 py-3 border-b border-slate-100 bg-slate-50 flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-lg bg-rose-100 text-rose-600 flex items-center justify-center">
-                                <Calendar size={16} />
-                            </div>
-                            <div>
-                                <h3 className="text-sm font-bold text-slate-800">Aniversariantes do Mês</h3>
-                                <p className="text-[11px] text-slate-500">Quadrinho rápido da equipe</p>
-                            </div>
-                        </div>
-
-                        <div className="p-4 space-y-3">
-                            <div className="rounded-lg border border-brand-200 bg-brand-50 px-3 py-2">
-                                <p className="text-[11px] font-bold uppercase tracking-wide text-brand-700">Próximos do mês</p>
-                                {monthlyBirthdaysUpcoming.length > 0 ? (
-                                    <div className="mt-2 space-y-2">
-                                        {monthlyBirthdaysUpcoming.slice(0, 4).map((person) => (
-                                            <div key={person.id} className="rounded-md border border-brand-100 bg-white px-2.5 py-2">
-                                                <div className="flex items-center justify-between gap-2">
-                                                    <span className="truncate text-xs font-semibold text-slate-800">{person.name}</span>
-                                                    <span className={`text-[11px] font-bold whitespace-nowrap ${person.isToday ? 'text-rose-600' : 'text-brand-700'}`}>
-                                                        {person.isToday ? 'Hoje' : person.dateLabel}
-                                                    </span>
-                                                </div>
-                                                <p className="text-[11px] text-slate-500 mt-0.5">{person.area ? person.area.replace(/_/g, ' ') : 'Área não informada'}</p>
-                                            </div>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <p className="mt-2 text-[11px] text-slate-500">Sem próximos aniversários neste mês.</p>
-                                )}
-                            </div>
-
-                            <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-                                <p className="text-[11px] font-bold uppercase tracking-wide text-slate-600">Aniversários deste mês (já ocorridos)</p>
-                                {monthlyBirthdaysPassed.length > 0 ? (
-                                    <div className="mt-2 space-y-1.5">
-                                        {monthlyBirthdaysPassed.slice(0, 4).map((person) => (
-                                            <div key={person.id} className="flex items-center justify-between gap-2 text-xs text-slate-500">
-                                                <span className="truncate">{person.name}</span>
-                                                <span className="whitespace-nowrap">{person.dateLabel}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <p className="mt-2 text-[11px] text-slate-500">Nenhum até agora.</p>
-                                )}
-                            </div>
-
-                            <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-                                <p className="text-[11px] font-bold uppercase tracking-wide text-slate-600">Próximos meses</p>
-                                {upcomingTeamBirthdays.length > 0 ? (
-                                    <div className="mt-2 space-y-1.5">
-                                        {upcomingTeamBirthdays.slice(0, 4).map((person) => (
-                                            <div key={person.id} className="flex items-center justify-between gap-2 text-xs text-slate-500">
-                                                <span className="truncate">{person.name}</span>
-                                                <span className="whitespace-nowrap">{person.dateLabel}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <p className="mt-2 text-[11px] text-slate-500">Sem próximos aniversários.</p>
-                                )}
-                            </div>
-                        </div>
-                    </div>
+                    <BirthdaySidebarCard
+                        monthlyBirthdays={monthlyTeamBirthdays}
+                        upcomingBirthdays={nextMonthsTeamBirthdays}
+                        title="Aniversariantes do Mês"
+                        subtitle="Quadrinho rápido da equipe"
+                    />
                 </div>
             </div>
 

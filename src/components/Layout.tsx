@@ -6,6 +6,7 @@ import { EarnedAchievement, formatHours, HOURS_PER_DAY } from '../types';
 import { formatDateForDisplay, formatLocalDate, parseDateOnly } from '../utils/date';
 import { buildGamificationProfiles } from '../utils/gamification';
 import { buildCalendarMaps, isExpectedWorkingDay, listPendingDaysForMonth } from '../utils/workCalendar';
+import { isBirthdayToday } from '../utils/birthdays';
 import { GAMIFICATION_ENABLED } from '../config/features';
 import { LoadingIndicator } from './LoadingIndicator';
 import { 
@@ -636,6 +637,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
   const isActive = (path: string) => location.pathname === path;
   const isOnDashboard = location.pathname === '/dashboard';
+  const isUserBirthdayToday = isBirthdayToday(user?.birthdayDate);
 
   const handleLogoClick = () => {
     if (!isOnDashboard) {
@@ -683,7 +685,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
            <button
              type="button"
              onClick={handleLogoClick}
-             className={`group flex items-center select-none justify-center overflow-hidden h-10 transition-transform duration-300 ${isOnDashboard ? 'cursor-default' : 'cursor-pointer hover:scale-[1.03]'}`}
+             className={`group relative flex items-center select-none justify-center overflow-hidden h-10 transition-transform duration-300 ${isOnDashboard ? 'cursor-default' : 'cursor-pointer hover:scale-[1.03]'}`}
              title={isOnDashboard ? 'Meu Dashboard' : 'Ir para Meu Dashboard'}
              aria-label="Ir para Meu Dashboard"
            >
@@ -692,6 +694,12 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                 alt="AuditFlow"
                 className="h-[200%] w-auto max-w-none object-cover object-center transition-transform duration-300 group-hover:scale-105"
              />
+             {isUserBirthdayToday && (
+               <span className="pointer-events-none absolute right-0 top-0 inline-flex items-center gap-1" aria-hidden="true">
+                 <span className="inline-block w-2 h-2 rounded-full bg-rose-400" />
+                 <span className="inline-block w-2.5 h-2.5 rounded-full bg-amber-400" />
+               </span>
+             )}
            </button>
          );
      }
@@ -700,7 +708,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
        <button
          type="button"
          onClick={handleLogoClick}
-         className={`group flex items-center select-none justify-center w-full transition-transform duration-300 ${isOnDashboard ? 'cursor-default' : 'cursor-pointer hover:scale-[1.02]'}`}
+         className={`group relative flex items-center select-none justify-center w-full transition-transform duration-300 ${isOnDashboard ? 'cursor-default' : 'cursor-pointer hover:scale-[1.02]'}`}
          title={isOnDashboard ? 'Meu Dashboard' : 'Ir para Meu Dashboard'}
          aria-label="Ir para Meu Dashboard"
        >
@@ -709,6 +717,13 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           alt="AuditFlow"
           className={`${isSidebarCollapsed ? 'w-[72px] h-[72px]' : 'w-[200px] h-[100px]'} object-cover object-center transition-all duration-300 group-hover:scale-105`}
          />
+         {isUserBirthdayToday && (
+           <span className="pointer-events-none absolute right-3 top-2 inline-flex items-center gap-1.5" aria-hidden="true">
+             <span className="inline-block w-2.5 h-2.5 rounded-full bg-rose-400" />
+             <span className="inline-block w-3 h-3 rounded-full bg-amber-400" />
+             <span className="inline-block w-2.5 h-2.5 rounded-full bg-brand-500" />
+           </span>
+         )}
        </button>
      );
   };

@@ -11,11 +11,23 @@ export interface BirthdayListItem {
   daysUntil: number;
 }
 
+const parseBirthdayParts = (birthdayDate: string) => {
+  const matched = String(birthdayDate).match(/(\d{4})-(\d{2})-(\d{2})/);
+  if (!matched) return null;
+
+  const [, yearRaw, monthRaw, dayRaw] = matched;
+  return {
+    year: Number(yearRaw),
+    month: Number(monthRaw),
+    day: Number(dayRaw)
+  };
+};
+
 const getBirthdayOccurrence = (birthdayDate: string, year: number) => {
-  const [rawYear, rawMonth, rawDay] = birthdayDate.split('-').map(Number);
-  const month = (rawMonth || 1) - 1;
+  const parsed = parseBirthdayParts(birthdayDate);
+  const month = ((parsed?.month || 1) - 1);
   const maxDay = new Date(year, month + 1, 0).getDate();
-  const day = Math.min(rawDay || 1, maxDay);
+  const day = Math.min(parsed?.day || 1, maxDay);
 
   return new Date(year, month, day, 12, 0, 0, 0);
 };
@@ -63,4 +75,19 @@ export const getUpcomingBirthdays = (users: User[], limit = 3, referenceDate = n
     .filter((item) => item.daysUntil > 0)
     .sort((a, b) => a.daysUntil - b.daysUntil || a.name.localeCompare(b.name))
     .slice(0, limit);
+};
+
+export const isBirthdayToday = (birthdayDate?: string, referenceDate = new Date()): boolean => {
+  if (!birthdayDate) return false;
+
+  const parsed = parseBirthdayParts(birthdayDate);
+  if (!parsed) return false;
+
+  const normalizedReference = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), referenceDate.getDate(), 12, 0, 0, 0);
+  const todayMonth = normalizedReference.getMonth() + 1;
+  const todayDay = normalizedReference.getDate();
+  const maxDayInBirthdayMonth = new Date(normalizedReference.getFullYear(), parsed.month, 0).getDate();
+  const adjustedDay = Math.min(parsed.day, maxDayInBirthdayMonth);
+
+  return parsed.month === todayMonth && adjustedDay === todayDay;
 };
