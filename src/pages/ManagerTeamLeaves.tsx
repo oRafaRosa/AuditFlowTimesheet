@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Plus, Trash2 } from 'lucide-react';
 import { store } from '../services/store';
-import { Holiday, LeaveType, TeamLeave, User } from '../types';
+import { CalendarException, Holiday, LeaveType, TeamLeave, User } from '../types';
 import { formatDateForDisplay } from '../utils/date';
 
 const MONTH_LABELS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
@@ -37,6 +37,7 @@ export const ManagerTeamLeaves: React.FC = () => {
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [users, setUsers] = useState<User[]>([]);
   const [holidays, setHolidays] = useState<Holiday[]>([]);
+  const [exceptions, setExceptions] = useState<CalendarException[]>([]);
   const [leaveTypes, setLeaveTypes] = useState<LeaveType[]>([]);
   const [leaves, setLeaves] = useState<TeamLeave[]>([]);
   const [selectedUserId, setSelectedUserId] = useState('');
@@ -51,10 +52,11 @@ export const ManagerTeamLeaves: React.FC = () => {
 
   const loadData = async () => {
     setLoading(true);
-    const [allUsers, allHolidays, allLeaveTypes] = await Promise.all([
+    const [allUsers, allHolidays, allLeaveTypes, allExceptions] = await Promise.all([
       store.getUsers(),
       store.getHolidays(),
-      store.getLeaveTypes()
+      store.getLeaveTypes(),
+      store.getExceptions()
     ]);
 
     const activeLeaveTypes = allLeaveTypes.filter((type) => type.active !== false);
@@ -62,6 +64,7 @@ export const ManagerTeamLeaves: React.FC = () => {
 
     setUsers(allUsers);
     setHolidays(allHolidays);
+    setExceptions(allExceptions);
     setLeaveTypes(activeLeaveTypes);
     setFormData((prev) => ({
       ...prev,
@@ -124,9 +127,15 @@ export const ManagerTeamLeaves: React.FC = () => {
     return days;
   }, [selectedYear]);
 
-  const holidaySet = useMemo(() => {
-    return new Set(holidays.map((holiday) => holiday.date));
-  }, [holidays]);
+  // Mapa de feriados: inclui tanto a tabela holidays quanto as exceções de calendário tipo OFFDAY
+  const holidayMap = useMemo(() => {
+    const map = new Map<string, string>();
+    holidays.forEach((h) => map.set(h.date, h.name));
+    exceptions
+      .filter((ex) => ex.type === 'OFFDAY')
+      .forEach((ex) => map.set(ex.date, ex.name || 'Feriado / Folga'));
+    return map;
+  }, [holidays, exceptions]);
 
   useEffect(() => {
     const loadLeaves = async () => {
@@ -432,7 +441,8 @@ export const ManagerTeamLeaves: React.FC = () => {
                       {yearDays.map((item) => {
                         const leave = userDayMap.get(item.dateKey);
                         const leaveType = leave ? leaveTypeMap.get(normalizeCode(leave.leaveTypeCode)) : undefined;
-                        const isHoliday = holidaySet.has(item.dateKey);
+                        const holidayName = holidayMap.get(item.dateKey);
+                        const isHoliday = !!holidayName;
                         const isWeekend = item.weekday === 0 || item.weekday === 6;
                         const highlightBirthdayMonth = isSelected && selectedUserBirthdayMonth === item.month;
 
@@ -443,7 +453,7 @@ export const ManagerTeamLeaves: React.FC = () => {
                         if (isWeekend) backgroundColor = '#f8fafc';
                         if (isHoliday) {
                           backgroundColor = '#fde68a';
-                          title = 'Feriado cadastrado';
+                          title = holidayName!;
                         }
 
                         if (leave && leaveType) {
