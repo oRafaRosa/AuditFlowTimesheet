@@ -3,9 +3,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { store } from '../services/store';
-import { User, Project, TimesheetEntry, TimesheetPeriod, formatHours, formatPercentage } from '../types';
+import { User, Project, TimesheetEntry, TimesheetPeriod, formatHours, formatPercentage, AppNotice, TeamLeave } from '../types';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, Cell } from 'recharts';
-import { Download, AlertCircle, Loader2, CheckCircle, XCircle, ArrowRight, Search, Clock, Calendar, Briefcase, FileText, TrendingUp, Info, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { Download, AlertCircle, Loader2, CheckCircle, XCircle, ArrowRight, Search, Clock, Calendar, Briefcase, FileText, TrendingUp, Info, X, ChevronDown, ChevronUp, Bell } from 'lucide-react';
 import { ManagerProjectBudget } from './ManagerProjectBudget';
 import { DashboardLoadingState } from '../components/DashboardLoadingState';
 import { BirthdaySidebarCard } from '../components/BirthdaySidebarCard';
@@ -51,6 +51,8 @@ export const ManagerDashboard: React.FC = () => {
   const [showBacklogDetails, setShowBacklogDetails] = useState(false);
   const [showTeamAlertsDetails, setShowTeamAlertsDetails] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [notices, setNotices] = useState<AppNotice[]>([]);
+  const [upcomingLeaves, setUpcomingLeaves] = useState<TeamLeave[]>([]);
 
     // --- estado do modal de revisão ---
   const [reviewPeriod, setReviewPeriod] = useState<TimesheetPeriod | null>(null);
@@ -180,6 +182,21 @@ export const ManagerDashboard: React.FC = () => {
     setTeamPeriodBacklog(backlogData);
 
     await calculateStats(uniqueTeam, filteredEntries, relevantProjects, delegatedMemberIdSet);
+
+    // busca avisos e próximas folgas do próprio gestor
+    const [fetchedNotices, managerLeaves] = await Promise.all([
+      store.getNotices(),
+      store.getTeamLeaves({ userIds: [user.id] })
+    ]);
+    setNotices(fetchedNotices);
+    const todayDate = new Date();
+    todayDate.setHours(12, 0, 0, 0);
+    const limitDate = new Date(todayDate);
+    limitDate.setDate(limitDate.getDate() + 40);
+    const todayKey = formatLocalDate(todayDate);
+    const limitKey = formatLocalDate(limitDate);
+    setUpcomingLeaves(managerLeaves.filter((l) => l.startDate >= todayKey && l.startDate <= limitKey));
+
     setLoading(false);
   };
 
@@ -708,6 +725,45 @@ export const ManagerDashboard: React.FC = () => {
                 </div>
 
                 <div>
+                    {/* widget de avisos: só aparece se tiver algo */}
+                    {(notices.length > 0 || upcomingLeaves.length > 0) && (
+                      <div className="bg-amber-50 rounded-xl border border-amber-200 shadow-sm p-4 space-y-3 mb-6">
+                        <div className="flex items-center gap-2 text-amber-800">
+                          <Bell size={15} />
+                          <span className="text-xs font-bold uppercase tracking-wide">Avisos</span>
+                        </div>
+
+                        {upcomingLeaves.map((leave) => {
+                          const isVacation = leave.leaveTypeCode.toUpperCase() === 'FERIAS';
+                          const startFmt = formatDateForDisplay(leave.startDate);
+                          const endFmt = formatDateForDisplay(leave.endDate);
+                          const periodLabel = leave.startDate === leave.endDate ? startFmt : `${startFmt} a ${endFmt}`;
+                          return (
+                            <div key={leave.id} className="rounded-lg bg-white border border-amber-200 p-3 text-xs">
+                              <p className="font-semibold text-slate-800">
+                                {isVacation ? '🏖️ Férias se aproximando' : '🗓️ Folga agendada'}
+                              </p>
+                              <p className="text-slate-600 mt-0.5">{periodLabel}</p>
+                              {isVacation && (
+                                <p className="text-slate-500 mt-1 leading-snug">
+                                  Alinhe suas atividades com seus pares e seu gestor.
+                                </p>
+                              )}
+                            </div>
+                          );
+                        })}
+
+                        {notices.map((notice) => (
+                          <div key={notice.id} className="rounded-lg bg-white border border-amber-200 p-3 text-xs">
+                            <p className="font-semibold text-slate-800">{notice.title}</p>
+                            {notice.description && (
+                              <p className="text-slate-600 mt-0.5 leading-snug">{notice.description}</p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
                     <BirthdaySidebarCard
                         monthlyBirthdays={monthlyTeamBirthdays}
                         upcomingBirthdays={nextMonthsTeamBirthdays}
