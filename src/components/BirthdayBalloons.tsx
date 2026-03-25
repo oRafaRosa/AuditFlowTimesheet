@@ -5,6 +5,62 @@ interface BirthdayBalloonsProps {
   style?: React.CSSProperties;
 }
 
+interface BirthdayBalloonProps {
+  className?: string;
+  style?: React.CSSProperties;
+  tone?: 'rose' | 'amber' | 'blue';
+}
+
+export const BirthdayBalloon: React.FC<BirthdayBalloonProps> = ({
+  className = '',
+  style,
+  tone = 'rose'
+}) => {
+  const gradientId = useId().replace(/:/g, '');
+  const palette = {
+    rose: {
+      start: '#fb7185',
+      end: '#e11d48',
+      knot: '#fb7185',
+      string: '#f9a8d4'
+    },
+    amber: {
+      start: '#fbbf24',
+      end: '#f59e0b',
+      knot: '#fbbf24',
+      string: '#fcd34d'
+    },
+    blue: {
+      start: '#6366f1',
+      end: '#2563eb',
+      knot: '#6366f1',
+      string: '#93c5fd'
+    }
+  }[tone];
+
+  return (
+    <svg
+      viewBox="0 0 28 44"
+      className={className}
+      style={style}
+      aria-hidden="true"
+      focusable="false"
+    >
+      <defs>
+        <linearGradient id={`${gradientId}-${tone}`} x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor={palette.start} />
+          <stop offset="100%" stopColor={palette.end} />
+        </linearGradient>
+      </defs>
+
+      <path d="M14 1C8.48 1 4 5.48 4 11c0 6.09 4.93 12 10 12s10-5.91 10-12C24 5.48 19.52 1 14 1Z" fill={`url(#${gradientId}-${tone})`} />
+      <path d="M14 23l-3.5 3.5h7L14 23Z" fill={palette.knot} />
+      <path d="M14 26.5c0 7.02-1.96 12.16-4.4 16.5" fill="none" stroke={palette.string} strokeWidth="1.8" strokeLinecap="round" />
+      <circle cx="10.4" cy="8.2" r="2.2" fill="#fff" fillOpacity="0.28" />
+    </svg>
+  );
+};
+
 export const BirthdayBalloons: React.FC<BirthdayBalloonsProps> = ({ className = '', style }) => {
   const gradientId = useId().replace(/:/g, '');
 
