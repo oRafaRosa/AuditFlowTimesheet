@@ -399,6 +399,8 @@ export const ManagerDashboard: React.FC = () => {
     const activeTeamStats = teamStatsByPeriod[teamPerformancePeriod];
     const pendingAlerts = activeTeamStats.stats.filter(s => s.divergence < -10);
     const excessAlerts = activeTeamStats.stats.filter(s => s.divergence > 10);
+    const monthlyBirthdaysPassed = monthlyTeamBirthdays.filter((person) => person.daysUntil < 0 && !person.isToday);
+    const monthlyBirthdaysUpcoming = monthlyTeamBirthdays.filter((person) => person.daysUntil >= 0 || person.isToday);
     const passivePanelClass = 'bg-white rounded-xl shadow-sm border border-slate-100 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md';
 
     return (
@@ -447,126 +449,138 @@ export const ManagerDashboard: React.FC = () => {
                 </div>
             )}
 
-            <div className={`${passivePanelClass} overflow-hidden`}>
-                <div className="p-5 border-b border-slate-100 bg-slate-50">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center">
-                            <Calendar size={18} />
-                        </div>
-                        <div>
-                            <h3 className="font-bold text-slate-800">Aniversariantes do Mês</h3>
-                            <p className="text-sm text-slate-500">Visão rápida dos aniversários do time e do que vem na sequência.</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="p-5 space-y-4">
-                    {monthlyTeamBirthdays.length > 0 ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                            {monthlyTeamBirthdays.map((person) => (
-                                <div
-                                    key={person.id}
-                                    className={`rounded-xl border p-4 ${person.isToday ? 'border-rose-300 bg-rose-50 ring-2 ring-rose-200' : 'border-slate-200 bg-white'}`}
-                                >
-                                    <div className="flex items-start justify-between gap-3">
-                                        <div>
-                                            <p className={`font-semibold ${person.isToday ? 'text-rose-900 text-base' : 'text-slate-800 text-sm'}`}>{person.name}</p>
-                                            <p className="text-xs text-slate-500 mt-1">{person.area ? person.area.replace(/_/g, ' ') : 'Área não informada'}</p>
-                                        </div>
-                                        <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${person.isToday ? 'bg-rose-600 text-white' : 'bg-slate-100 text-slate-700'}`}>
-                                            {person.isToday ? 'Hoje' : person.dateLabel}
-                                        </span>
-                                    </div>
-                                    {person.isToday && (
-                                        <p className="text-xs font-semibold text-rose-700 mt-3">Aniversário hoje. Destaque especial para o colaborador.</p>
-                                    )}
-                                </div>
-                            ))}
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                <div className="xl:col-span-2">
+                    {/* seção de aprovações pendentes */}
+                    {pendingApprovals.length > 0 ? (
+                        <div className="bg-white rounded-xl shadow-md border border-brand-100 overflow-hidden ring-1 ring-brand-100 h-full">
+                            <div className="p-4 bg-brand-50 border-b border-brand-100 flex justify-between items-center">
+                                <h3 className="font-bold text-brand-800 flex items-center gap-2">
+                                    <Clock size={20} className="text-brand-600" />
+                                    Aprovações Pendentes <span className="bg-brand-600 text-white text-xs px-2 py-0.5 rounded-full">{pendingApprovals.length}</span>
+                                </h3>
+                            </div>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left text-sm">
+                                    <thead className="text-slate-500 font-semibold border-b border-gray-100 bg-white">
+                                        <tr>
+                                            <th className="px-6 py-3">Colaborador</th>
+                                            <th className="px-6 py-3">Período de Referência</th>
+                                            <th className="px-6 py-3 text-right">Ação</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100 bg-white">
+                                        {pendingApprovals.map(p => (
+                                            <tr key={p.id} className="hover:bg-brand-50/30 transition-colors">
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-8 h-8 rounded-full bg-brand-100 flex items-center justify-center text-brand-700 font-bold text-xs">
+                                                            {(p.userName || 'U').substring(0, 2).toUpperCase()}
+                                                        </div>
+                                                        <div>
+                                                            <p className="font-medium text-slate-800">{p.userName}</p>
+                                                            <p className="text-xs text-slate-500">Solicitado em: {new Date(p.updatedAt).toLocaleDateString()}</p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 font-medium text-slate-600">
+                                                    {new Date(p.year, p.month, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }).toUpperCase()}
+                                                </td>
+                                                <td className="px-6 py-4 text-right">
+                                                    <button
+                                                        onClick={() => openReviewModal(p)}
+                                                        disabled={processingAction}
+                                                        className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-brand-700 shadow-sm shadow-brand-500/20 flex items-center gap-2 ml-auto"
+                                                    >
+                                                        <Search size={16} /> Analisar
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     ) : (
-                        <p className="text-sm text-slate-500">Nenhum aniversariante cadastrado para este mês na sua visão da equipe.</p>
-                    )}
-
-                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                        <p className="text-xs font-bold uppercase tracking-wide text-slate-600">Próximos aniversariantes</p>
-                        {upcomingTeamBirthdays.length > 0 ? (
-                            <div className="mt-3 space-y-2">
-                                {upcomingTeamBirthdays.map((person) => (
-                                    <div key={person.id} className="flex items-center justify-between gap-3 text-sm">
-                                        <div className="min-w-0">
-                                            <p className="font-medium text-slate-700 truncate">{person.name}</p>
-                                            <p className="text-[11px] text-slate-500">{person.area ? person.area.replace(/_/g, ' ') : 'Área não informada'}</p>
-                                        </div>
-                                        <span className="text-xs font-semibold text-slate-600 whitespace-nowrap">{person.dateLabel} • em {person.daysUntil} dia(s)</span>
-                                    </div>
-                                ))}
+                        <div className={`${passivePanelClass} p-8 text-center h-full`}>
+                            <div className="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-3">
+                                <CheckCircle size={24} />
                             </div>
-                        ) : (
-                            <p className="mt-2 text-xs text-slate-500">Sem próximos aniversários cadastrados.</p>
-                        )}
+                            <h3 className="text-lg font-medium text-slate-800">Tudo em dia</h3>
+                            <p className="text-slate-500">Não há timesheets pendentes de aprovação no momento.</p>
+                        </div>
+                    )}
+                </div>
+
+                <div>
+                    <div className={`${passivePanelClass} overflow-hidden`}>
+                        <div className="px-4 py-3 border-b border-slate-100 bg-slate-50 flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-lg bg-rose-100 text-rose-600 flex items-center justify-center">
+                                <Calendar size={16} />
+                            </div>
+                            <div>
+                                <h3 className="text-sm font-bold text-slate-800">Aniversariantes do Mês</h3>
+                                <p className="text-[11px] text-slate-500">Quadrinho rápido da equipe</p>
+                            </div>
+                        </div>
+
+                        <div className="p-4 space-y-3">
+                            <div className="rounded-lg border border-brand-200 bg-brand-50 px-3 py-2">
+                                <p className="text-[11px] font-bold uppercase tracking-wide text-brand-700">Próximos do mês</p>
+                                {monthlyBirthdaysUpcoming.length > 0 ? (
+                                    <div className="mt-2 space-y-2">
+                                        {monthlyBirthdaysUpcoming.slice(0, 4).map((person) => (
+                                            <div key={person.id} className="rounded-md border border-brand-100 bg-white px-2.5 py-2">
+                                                <div className="flex items-center justify-between gap-2">
+                                                    <span className="truncate text-xs font-semibold text-slate-800">{person.name}</span>
+                                                    <span className={`text-[11px] font-bold whitespace-nowrap ${person.isToday ? 'text-rose-600' : 'text-brand-700'}`}>
+                                                        {person.isToday ? 'Hoje' : person.dateLabel}
+                                                    </span>
+                                                </div>
+                                                <p className="text-[11px] text-slate-500 mt-0.5">{person.area ? person.area.replace(/_/g, ' ') : 'Área não informada'}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="mt-2 text-[11px] text-slate-500">Sem próximos aniversários neste mês.</p>
+                                )}
+                            </div>
+
+                            <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                                <p className="text-[11px] font-bold uppercase tracking-wide text-slate-600">Já passaram no mês</p>
+                                {monthlyBirthdaysPassed.length > 0 ? (
+                                    <div className="mt-2 space-y-1.5">
+                                        {monthlyBirthdaysPassed.slice(0, 4).map((person) => (
+                                            <div key={person.id} className="flex items-center justify-between gap-2 text-xs text-slate-500">
+                                                <span className="truncate">{person.name}</span>
+                                                <span className="whitespace-nowrap">{person.dateLabel}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="mt-2 text-[11px] text-slate-500">Nenhum até agora.</p>
+                                )}
+                            </div>
+
+                            <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                                <p className="text-[11px] font-bold uppercase tracking-wide text-slate-600">Próximos meses</p>
+                                {upcomingTeamBirthdays.length > 0 ? (
+                                    <div className="mt-2 space-y-1.5">
+                                        {upcomingTeamBirthdays.slice(0, 4).map((person) => (
+                                            <div key={person.id} className="flex items-center justify-between gap-2 text-xs text-slate-500">
+                                                <span className="truncate">{person.name}</span>
+                                                <span className="whitespace-nowrap">{person.dateLabel}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="mt-2 text-[11px] text-slate-500">Sem próximos aniversários.</p>
+                                )}
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
-            
-            {/* seção de aprovações pendentes */}
-            {pendingApprovals.length > 0 ? (
-                <div className="bg-white rounded-xl shadow-md border border-brand-100 overflow-hidden ring-1 ring-brand-100">
-                    <div className="p-4 bg-brand-50 border-b border-brand-100 flex justify-between items-center">
-                        <h3 className="font-bold text-brand-800 flex items-center gap-2">
-                            <Clock size={20} className="text-brand-600" /> 
-                            Aprovações Pendentes <span className="bg-brand-600 text-white text-xs px-2 py-0.5 rounded-full">{pendingApprovals.length}</span>
-                        </h3>
-                    </div>
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left text-sm">
-                            <thead className="text-slate-500 font-semibold border-b border-gray-100 bg-white">
-                                <tr>
-                                    <th className="px-6 py-3">Colaborador</th>
-                                    <th className="px-6 py-3">Período de Referência</th>
-                                    <th className="px-6 py-3 text-right">Ação</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100 bg-white">
-                                {pendingApprovals.map(p => (
-                                    <tr key={p.id} className="hover:bg-brand-50/30 transition-colors">
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded-full bg-brand-100 flex items-center justify-center text-brand-700 font-bold text-xs">
-                                                    {(p.userName || 'U').substring(0,2).toUpperCase()}
-                                                </div>
-                                                <div>
-                                                    <p className="font-medium text-slate-800">{p.userName}</p>
-                                                    <p className="text-xs text-slate-500">Solicitado em: {new Date(p.updatedAt).toLocaleDateString()}</p>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 font-medium text-slate-600">
-                                            {new Date(p.year, p.month, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }).toUpperCase()}
-                                        </td>
-                                        <td className="px-6 py-4 text-right">
-                                            <button 
-                                                onClick={() => openReviewModal(p)}
-                                                disabled={processingAction}
-                                                className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-brand-700 shadow-sm shadow-brand-500/20 flex items-center gap-2 ml-auto"
-                                            >
-                                                <Search size={16} /> Analisar
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            ) : (
-                <div className={`${passivePanelClass} p-8 text-center`}>
-                    <div className="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-3">
-                        <CheckCircle size={24} />
-                    </div>
-                    <h3 className="text-lg font-medium text-slate-800">Tudo em dia</h3>
-                    <p className="text-slate-500">Não há timesheets pendentes de aprovação no momento.</p>
-                </div>
-            )}
 
             <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
                 <button
