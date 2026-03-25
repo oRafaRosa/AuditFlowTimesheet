@@ -1,7 +1,9 @@
 import React from 'react';
-import { Calendar } from 'lucide-react';
+import { Calendar, Gift } from 'lucide-react';
 import { BirthdayListItem } from '../utils/birthdays';
 import { BirthdayBalloons } from './BirthdayBalloons';
+
+const COLABORADOR_STORE_URL = 'https://lojadocolaborador.com.br/';
 
 interface BirthdaySidebarCardProps {
   monthlyBirthdays: BirthdayListItem[];
@@ -57,16 +59,27 @@ export const BirthdaySidebarCard: React.FC<BirthdaySidebarCardProps> = ({
         <div className="rounded-lg border border-brand-200 bg-brand-50 px-3 py-2">
           <p className="text-[11px] font-bold uppercase tracking-wide text-brand-700">Do mês</p>
           {upcomingInMonth.length > 0 ? (
-            <div className="mt-2 space-y-2">
+            <div className="mt-2 space-y-1.5">
               {upcomingInMonth.slice(0, 4).map((person) => (
-                <div key={person.id} className="rounded-md border border-brand-100 bg-white px-2.5 py-2">
+                <div key={person.id} className="rounded-md border border-brand-100 bg-white px-2.5 py-1.5">
                   <div className="flex items-center justify-between gap-2">
                     <span className="truncate text-xs font-semibold text-slate-800">{person.name}</span>
                     <span className={`text-[11px] font-bold whitespace-nowrap ${person.isToday ? 'text-rose-600' : 'text-brand-700'}`}>
                       {person.isToday ? 'Hoje' : person.dateLabel}
                     </span>
                   </div>
-                  <p className="text-[11px] text-slate-500 mt-0.5">{person.area ? person.area.replace(/_/g, ' ') : 'Área não informada'}</p>
+                  <div className="mt-0.5 flex items-start justify-between gap-2">
+                    <p className="text-[11px] text-slate-500 truncate">{person.area ? person.area.replace(/_/g, ' ') : 'Área não informada'}</p>
+                    <a
+                      href={COLABORADOR_STORE_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-[10px] font-semibold text-brand-600 hover:text-brand-700 whitespace-nowrap"
+                    >
+                      <Gift size={10} />
+                      Compre um presente
+                    </a>
+                  </div>
                 </div>
               ))}
             </div>
