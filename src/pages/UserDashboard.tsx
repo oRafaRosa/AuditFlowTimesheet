@@ -545,67 +545,6 @@ export const UserDashboard: React.FC = () => {
         </div>
       )}
 
-      <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
-        <div className="p-5 border-b border-slate-100 bg-slate-50">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center">
-              <Calendar size={18} />
-            </div>
-            <div>
-              <h3 className="font-bold text-slate-800">Aniversariantes do Mês</h3>
-              <p className="text-sm text-slate-500">Quem faz aniversário neste mês e quem está chegando na sequência.</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="p-5 space-y-4">
-          {monthlyBirthdays.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-              {monthlyBirthdays.map((person) => (
-                <div
-                  key={person.id}
-                  className={`rounded-xl border p-4 ${person.isToday ? 'border-rose-300 bg-rose-50 ring-2 ring-rose-200' : 'border-slate-200 bg-white'}`}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className={`font-semibold ${person.isToday ? 'text-rose-900 text-base' : 'text-slate-800 text-sm'}`}>{person.name}</p>
-                      <p className="text-xs text-slate-500 mt-1">{person.area ? person.area.replace(/_/g, ' ') : 'Área não informada'}</p>
-                    </div>
-                    <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${person.isToday ? 'bg-rose-600 text-white' : 'bg-slate-100 text-slate-700'}`}>
-                      {person.isToday ? 'Hoje' : person.dateLabel}
-                    </span>
-                  </div>
-                  {person.isToday && (
-                    <p className="text-xs font-semibold text-rose-700 mt-3">Aniversário hoje. Vale mandar os parabéns.</p>
-                  )}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-slate-500">Nenhum aniversariante cadastrado para este mês.</p>
-          )}
-
-          <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-            <p className="text-xs font-bold uppercase tracking-wide text-slate-600">Próximos aniversariantes</p>
-            {upcomingBirthdays.length > 0 ? (
-              <div className="mt-3 space-y-2">
-                {upcomingBirthdays.map((person) => (
-                  <div key={person.id} className="flex items-center justify-between gap-3 text-sm">
-                    <div className="min-w-0">
-                      <p className="font-medium text-slate-700 truncate">{person.name}</p>
-                      <p className="text-[11px] text-slate-500">{person.area ? person.area.replace(/_/g, ' ') : 'Área não informada'}</p>
-                    </div>
-                    <span className="text-xs font-semibold text-slate-600 whitespace-nowrap">{person.dateLabel} • em {person.daysUntil} dia(s)</span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="mt-2 text-xs text-slate-500">Sem próximos aniversários cadastrados.</p>
-            )}
-          </div>
-        </div>
-      </div>
-
     {/* cards de kpi */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -889,6 +828,61 @@ export const UserDashboard: React.FC = () => {
 
         {/* coluna direita: status e histórico */}
         <div className="space-y-6">
+          <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-100 bg-slate-50 flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-rose-100 text-rose-600 flex items-center justify-center">
+                <Calendar size={16} />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-800">Aniversariantes do Mês</h3>
+                <p className="text-[11px] text-slate-500">Resumo rápido do mês</p>
+              </div>
+            </div>
+
+            <div className="p-4 space-y-3">
+              {monthlyBirthdays.length > 0 ? (
+                <div className="space-y-2">
+                  {monthlyBirthdays.slice(0, 4).map((person) => (
+                    <div
+                      key={person.id}
+                      className={`rounded-lg border px-3 py-2 ${person.isToday ? 'border-rose-300 bg-rose-50 ring-1 ring-rose-200' : 'border-slate-200 bg-white'}`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className={`truncate font-semibold ${person.isToday ? 'text-rose-900 text-sm' : 'text-slate-800 text-sm'}`}>{person.name}</p>
+                          <p className="text-[11px] text-slate-500">{person.area ? person.area.replace(/_/g, ' ') : 'Área não informada'}</p>
+                        </div>
+                        <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold whitespace-nowrap ${person.isToday ? 'bg-rose-600 text-white' : 'bg-slate-100 text-slate-700'}`}>
+                          {person.isToday ? 'Hoje' : person.dateLabel}
+                        </span>
+                      </div>
+                      {person.isToday && (
+                        <p className="mt-2 text-[11px] font-semibold text-rose-700">Aniversário hoje.</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-slate-500">Nenhum aniversariante neste mês.</p>
+              )}
+
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                <p className="text-[11px] font-bold uppercase tracking-wide text-slate-600">Próximos</p>
+                {upcomingBirthdays.length > 0 ? (
+                  <div className="mt-2 space-y-2">
+                    {upcomingBirthdays.slice(0, 3).map((person) => (
+                      <div key={person.id} className="flex items-center justify-between gap-2 text-xs">
+                        <span className="truncate text-slate-700 font-medium">{person.name}</span>
+                        <span className="whitespace-nowrap text-slate-500">{person.dateLabel}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-2 text-[11px] text-slate-500">Sem próximos aniversários.</p>
+                )}
+              </div>
+            </div>
+          </div>
             {user && <GamificationSnapshot userId={user.id} />}
             {user && <MyStatusWidget userId={user.id} onUpdate={loadData} />}
         </div>
