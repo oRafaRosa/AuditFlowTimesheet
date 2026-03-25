@@ -31,6 +31,7 @@ export interface User {
   role: Role;
   riskMatrixAccess?: RiskMatrixAccess;
   area?: UserArea;
+  birthdayDate?: string; // yyyy-mm-dd
   admissionDate?: string; // yyyy-mm-dd
   terminationDate?: string; // yyyy-mm-dd (vazio quando ativo)
   isActive?: boolean;

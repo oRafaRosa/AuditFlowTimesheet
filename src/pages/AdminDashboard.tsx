@@ -51,6 +51,7 @@ export const AdminDashboard: React.FC = () => {
         role: 'USER' as any,
         managerId: '',
         area: '' as any,
+        birthdayDate: '',
         admissionDate: '2020-01-01',
         terminationDate: '',
         isActive: true,
@@ -247,6 +248,7 @@ export const AdminDashboard: React.FC = () => {
         role: u.role, 
         managerId: u.managerId || '', 
             area: u.area || '',
+                                birthdayDate: u.birthdayDate || '',
                 admissionDate: u.admissionDate || '2020-01-01',
                 terminationDate: u.terminationDate || '',
         isActive: u.isActive !== false,
@@ -262,6 +264,7 @@ export const AdminDashboard: React.FC = () => {
                 role: 'USER',
                 managerId: '',
                 area: '',
+                birthdayDate: '',
                 admissionDate: '2020-01-01',
                 terminationDate: '',
                 isActive: true,
@@ -286,6 +289,7 @@ export const AdminDashboard: React.FC = () => {
             role: 'USER',
             managerId: '',
             area: '',
+            birthdayDate: '',
             admissionDate: '2020-01-01',
             terminationDate: '',
             isActive: true,
@@ -676,7 +680,16 @@ export const AdminDashboard: React.FC = () => {
                               <option value="OUTROS">Outros</option>
                           </select>
                       </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                          <div>
+                              <label className="block text-xs font-bold text-slate-500 mb-1">Data de Aniversário</label>
+                              <input
+                                  type="date"
+                                  className="w-full border border-gray-300 p-2 rounded-lg text-sm"
+                                  value={userData.birthdayDate}
+                                  onChange={e => setUserData({...userData, birthdayDate: e.target.value})}
+                              />
+                          </div>
                           <div>
                               <label className="block text-xs font-bold text-slate-500 mb-1">Data de Admissão</label>
                               <input

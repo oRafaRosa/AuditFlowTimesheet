@@ -200,6 +200,7 @@ class StoreService {
             role: data.role,
           riskMatrixAccess: normalizeRiskMatrixAccess(data.risk_matrix_access),
           area: data.area || undefined,
+          birthdayDate: data.birthday_date || undefined,
           admissionDate: data.admission_date || '2020-01-01',
           terminationDate: data.termination_date || undefined,
             isActive: data.is_active !== false,
@@ -270,6 +271,7 @@ class StoreService {
         role: data.role,
         riskMatrixAccess: normalizeRiskMatrixAccess(data.risk_matrix_access),
         area: data.area || undefined,
+        birthdayDate: data.birthday_date || undefined,
         admissionDate: data.admission_date || currentUser.admissionDate || '2020-01-01',
         terminationDate: data.termination_date || undefined,
         isActive: data.is_active !== false,
@@ -472,6 +474,7 @@ class StoreService {
           role: d.role,
           riskMatrixAccess: normalizeRiskMatrixAccess(d.risk_matrix_access),
           area: d.area || undefined,
+          birthdayDate: d.birthday_date || undefined,
           admissionDate: d.admission_date || '2020-01-01',
           terminationDate: d.termination_date || undefined,
           isActive: d.is_active !== false,
@@ -493,6 +496,7 @@ class StoreService {
           role: user.role,
           risk_matrix_access: normalizeRiskMatrixAccess(user.riskMatrixAccess),
           area: user.area || null,
+          birthday_date: user.birthdayDate || null,
           admission_date: user.admissionDate || '2020-01-01',
           termination_date: user.terminationDate || null,
           manager_id: managerIdValue,
@@ -514,6 +518,7 @@ class StoreService {
           role: data.role,
           riskMatrixAccess: normalizeRiskMatrixAccess(data.risk_matrix_access),
           area: data.area || undefined,
+          birthdayDate: data.birthday_date || undefined,
           admissionDate: data.admission_date || '2020-01-01',
           terminationDate: data.termination_date || undefined,
           isActive: data.is_active !== false,
@@ -531,6 +536,7 @@ class StoreService {
     if (data.role) dbUpdate.role = data.role;
     if (data.riskMatrixAccess !== undefined) dbUpdate.risk_matrix_access = normalizeRiskMatrixAccess(data.riskMatrixAccess);
     if (data.area !== undefined) dbUpdate.area = data.area || null;
+    if (data.birthdayDate !== undefined) dbUpdate.birthday_date = data.birthdayDate || null;
     if (data.admissionDate !== undefined) dbUpdate.admission_date = data.admissionDate || '2020-01-01';
     if (data.terminationDate !== undefined) dbUpdate.termination_date = data.terminationDate || null;
     if (data.isActive !== undefined) dbUpdate.is_active = data.isActive;
@@ -703,6 +709,7 @@ class StoreService {
         email: d.email,
         role: d.role,
       area: d.area || undefined,
+        birthdayDate: d.birthday_date || undefined,
         admissionDate: d.admission_date || '2020-01-01',
         terminationDate: d.termination_date || undefined,
         isActive: d.is_active !== false,
@@ -1434,6 +1441,7 @@ create table if not exists profiles (
   role text default 'USER' check (role in ('ADMIN', 'MANAGER', 'USER')),
   risk_matrix_access text default 'NONE' check (risk_matrix_access in ('NONE', 'READ', 'EDIT')),
   area text,
+  birthday_date date,
   admission_date date default '2020-01-01',
   termination_date date,
   is_active boolean default true,
@@ -1447,6 +1455,7 @@ create table if not exists profiles (
 alter table profiles add column if not exists requires_timesheet boolean default true;
 alter table profiles add column if not exists risk_matrix_access text default 'NONE';
 alter table profiles add column if not exists area text;
+alter table profiles add column if not exists birthday_date date;
 alter table profiles add column if not exists admission_date date default '2020-01-01';
 alter table profiles add column if not exists termination_date date;
 alter table profiles drop constraint if exists profiles_area_check;
