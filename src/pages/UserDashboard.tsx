@@ -515,10 +515,22 @@ export const UserDashboard: React.FC = () => {
           {isUserBirthdayToday && (
             <div className="mt-2 inline-flex items-center gap-2 rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700">
               Hoje é seu aniversário
-              <span className="inline-flex items-center gap-1" aria-hidden="true">
-                <span className="inline-block w-2.5 h-2.5 rounded-full bg-rose-400" />
-                <span className="inline-block w-3 h-3 rounded-full bg-amber-400" />
-                <span className="inline-block w-2.5 h-2.5 rounded-full bg-brand-500" />
+              <span className="inline-flex items-end gap-1.5" aria-hidden="true">
+                <span className="inline-flex flex-col items-center">
+                  <span className="inline-block w-2.5 h-3.5 rounded-[999px] bg-rose-400" />
+                  <span className="inline-block w-1 h-1 -mt-[1px] rotate-45 bg-rose-400" />
+                  <span className="inline-block w-px h-2 -mt-[1px] bg-rose-300" />
+                </span>
+                <span className="inline-flex flex-col items-center">
+                  <span className="inline-block w-2.5 h-3.5 rounded-[999px] bg-amber-400" />
+                  <span className="inline-block w-1 h-1 -mt-[1px] rotate-45 bg-amber-400" />
+                  <span className="inline-block w-px h-2 -mt-[1px] bg-amber-300" />
+                </span>
+                <span className="inline-flex flex-col items-center">
+                  <span className="inline-block w-2.5 h-3.5 rounded-[999px] bg-brand-500" />
+                  <span className="inline-block w-1 h-1 -mt-[1px] rotate-45 bg-brand-500" />
+                  <span className="inline-block w-px h-2 -mt-[1px] bg-brand-300" />
+                </span>
               </span>
             </div>
           )}
