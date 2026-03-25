@@ -482,36 +482,6 @@ export const ManagerTeamLeaves: React.FC = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4">
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2 text-red-700">
-              <AlertTriangle size={18} />
-              <h2 className="font-bold">Sem férias cadastradas</h2>
-            </div>
-            <button
-              type="button"
-              onClick={() => setShowVacationAlertDetails((prev) => !prev)}
-              className="text-xs font-semibold text-red-700 hover:text-red-800 underline"
-            >
-              {showVacationAlertDetails ? 'Minimizar' : 'Expandir'}
-            </button>
-          </div>
-
-          <p className="text-sm text-red-700 mt-2">{usersWithoutVacation.length} colaborador(es) sem programação de férias no ano.</p>
-
-          {showVacationAlertDetails ? (
-            <>
-              <div className="mt-2 text-xs text-red-800">
-                {usersWithoutVacation.length === 0 ? 'Nenhuma pendência.' : usersWithoutVacation.map((user) => user.name).join(' • ')}
-              </div>
-            </>
-          ) : (
-            <p className="mt-2 text-xs text-red-700">Lista oculta. Use "Expandir" para ver os nomes.</p>
-          )}
-        </div>
-      </div>
-
       <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
         <div className="xl:col-span-3 bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
           <div className="p-4 border-b border-slate-100 bg-slate-50">
@@ -657,6 +627,30 @@ export const ManagerTeamLeaves: React.FC = () => {
         </div>
 
         <div className="space-y-6">
+          {/* Alerta compacto de férias não agendadas */}
+          {usersWithoutVacation.length > 0 && (
+            <div className="rounded-xl border border-red-200 bg-red-50 p-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 text-red-700">
+                  <AlertTriangle size={14} />
+                  <span className="text-xs font-bold">{usersWithoutVacation.length} sem férias no ano</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowVacationAlertDetails((prev) => !prev)}
+                  className="text-[11px] font-semibold text-red-600 hover:text-red-800 underline shrink-0"
+                >
+                  {showVacationAlertDetails ? 'Ocultar' : 'Ver lista'}
+                </button>
+              </div>
+              {showVacationAlertDetails && (
+                <div className="mt-2 text-[11px] text-red-800 leading-relaxed">
+                  {usersWithoutVacation.map((user) => user.name).join(' • ')}
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
             <h3 className="font-bold text-slate-800 mb-3">Cadastrar férias/folga</h3>
             <form onSubmit={handleAddLeave} className="space-y-3">
