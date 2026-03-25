@@ -99,12 +99,19 @@ export const ManagerTeamLeaves: React.FC = () => {
   const teamUsers = useMemo(() => {
     if (!currentUser) return [] as User[];
 
+    const byName = (a: User, b: User) => a.name.localeCompare(b.name, 'pt-BR');
+
     if (currentUser.role === 'ADMIN') {
-      return users.filter((user) => user.isActive !== false && user.role !== 'ADMIN');
+      // inclui o próprio admin logado mesmo que role seja ADMIN
+      return users
+        .filter((user) => user.isActive !== false && (user.role !== 'ADMIN' || user.id === currentUser.id))
+        .sort(byName);
     }
 
     if (currentUser.role === 'MANAGER' && showWholeDirectorate) {
-      return users.filter((user) => user.isActive !== false && user.role !== 'ADMIN');
+      return users
+        .filter((user) => user.isActive !== false && user.role !== 'ADMIN')
+        .sort(byName);
     }
 
     const managedIds = new Set<string>([currentUser.id]);
@@ -120,7 +127,9 @@ export const ManagerTeamLeaves: React.FC = () => {
       });
     }
 
-    return users.filter((user) => managedIds.has(user.id) && user.isActive !== false);
+    return users
+      .filter((user) => managedIds.has(user.id) && user.isActive !== false)
+      .sort(byName);
   }, [users, currentUser, showWholeDirectorate]);
 
   useEffect(() => {
