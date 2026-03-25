@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, Plus, Trash2 } from 'lucide-react';
 import { store } from '../services/store';
 import { CalendarException, Holiday, LeaveType, TeamLeave, User } from '../types';
@@ -28,6 +28,21 @@ const parseDateOnly = (value: string): Date => {
 
 const normalizeCode = (value: string) => value.trim().toUpperCase();
 
+const countLeaveDaysWithinYear = (leave: TeamLeave, year: number) => {
+  const periodStart = parseDateOnly(leave.startDate);
+  const periodEnd = parseDateOnly(leave.endDate);
+  const yearStart = new Date(year, 0, 1, 12, 0, 0, 0);
+  const yearEnd = new Date(year, 11, 31, 12, 0, 0, 0);
+
+  const start = periodStart.getTime() < yearStart.getTime() ? yearStart : periodStart;
+  const end = periodEnd.getTime() > yearEnd.getTime() ? yearEnd : periodEnd;
+
+  if (end.getTime() < start.getTime()) return 0;
+
+  const oneDayMs = 24 * 60 * 60 * 1000;
+  return Math.floor((end.getTime() - start.getTime()) / oneDayMs) + 1;
+};
+
 export const ManagerTeamLeaves: React.FC = () => {
   const currentUser = store.getCurrentUser();
   const currentYear = new Date().getFullYear();
@@ -41,6 +56,9 @@ export const ManagerTeamLeaves: React.FC = () => {
   const [leaveTypes, setLeaveTypes] = useState<LeaveType[]>([]);
   const [leaves, setLeaves] = useState<TeamLeave[]>([]);
   const [selectedUserId, setSelectedUserId] = useState('');
+  const [showVacationAlertDetails, setShowVacationAlertDetails] = useState(true);
+  const [showWholeDirectorate, setShowWholeDirectorate] = useState(false);
+  const calendarScrollRef = useRef<HTMLDivElement | null>(null);
 
   const [formData, setFormData] = useState({
     userId: '',
@@ -84,6 +102,10 @@ export const ManagerTeamLeaves: React.FC = () => {
       return users.filter((user) => user.isActive !== false && user.role !== 'ADMIN');
     }
 
+    if (currentUser.role === 'MANAGER' && showWholeDirectorate) {
+      return users.filter((user) => user.isActive !== false && user.role !== 'ADMIN');
+    }
+
     const managedIds = new Set<string>([currentUser.id]);
     let changed = true;
 
@@ -98,7 +120,15 @@ export const ManagerTeamLeaves: React.FC = () => {
     }
 
     return users.filter((user) => managedIds.has(user.id) && user.isActive !== false);
-  }, [users, currentUser]);
+  }, [users, currentUser, showWholeDirectorate]);
+
+  useEffect(() => {
+    if (!selectedUserId) return;
+    if (teamUsers.some((user) => user.id === selectedUserId)) return;
+
+    setSelectedUserId('');
+    setFormData((prev) => ({ ...prev, userId: '' }));
+  }, [teamUsers, selectedUserId]);
 
   const monthSegments = useMemo(() => {
     return MONTH_LABELS.map((label, month) => ({
@@ -126,6 +156,28 @@ export const ManagerTeamLeaves: React.FC = () => {
 
     return days;
   }, [selectedYear]);
+
+  useEffect(() => {
+    const container = calendarScrollRef.current;
+    if (!container || yearDays.length === 0) return;
+
+    const today = new Date();
+    const targetMonth = selectedYear === today.getFullYear() ? today.getMonth() : 0;
+    const monthStart = yearDays.find((item) => item.month === targetMonth && item.day === 1);
+    if (!monthStart) return;
+
+    const targetCell = container.querySelector<HTMLElement>(`[data-date-key="${monthStart.dateKey}"]`);
+    if (!targetCell) return;
+
+    const containerRect = container.getBoundingClientRect();
+    const targetRect = targetCell.getBoundingClientRect();
+    const desiredLeft = container.scrollLeft + (targetRect.left - containerRect.left) - 260;
+
+    container.scrollTo({
+      left: Math.max(0, desiredLeft),
+      behavior: 'smooth'
+    });
+  }, [selectedYear, yearDays]);
 
   // Mapa de feriados: inclui tanto a tabela holidays quanto as exceções de calendário tipo OFFDAY
   const holidayMap = useMemo(() => {
@@ -263,6 +315,33 @@ export const ManagerTeamLeaves: React.FC = () => {
     return [...(leavesByUser.get(selectedUser.id) || [])].sort((a, b) => a.startDate.localeCompare(b.startDate));
   }, [selectedUser, leavesByUser]);
 
+  const selectedUserLeaveSummary = useMemo(() => {
+    const summaryMap = new Map<string, { code: string; name: string; color?: string; totalDays: number; totalEvents: number }>();
+
+    selectedUserLeaves.forEach((leave) => {
+      const normalizedCode = normalizeCode(leave.leaveTypeCode);
+      const leaveType = leaveTypeMap.get(normalizedCode);
+      const existing = summaryMap.get(normalizedCode);
+      const leaveDays = countLeaveDaysWithinYear(leave, selectedYear);
+
+      if (existing) {
+        existing.totalDays += leaveDays;
+        existing.totalEvents += 1;
+        return;
+      }
+
+      summaryMap.set(normalizedCode, {
+        code: normalizedCode,
+        name: leaveType?.name || leave.leaveTypeCode,
+        color: leaveType?.color,
+        totalDays: leaveDays,
+        totalEvents: 1
+      });
+    });
+
+    return Array.from(summaryMap.values()).sort((a, b) => b.totalDays - a.totalDays || a.name.localeCompare(b.name));
+  }, [selectedUserLeaves, leaveTypeMap, selectedYear]);
+
   const leaveOptions = useMemo(() => {
     return leaveTypes.filter((item) => item.active !== false);
   }, [leaveTypes]);
@@ -349,6 +428,17 @@ export const ManagerTeamLeaves: React.FC = () => {
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Férias e Folgas do Time</h1>
           <p className="text-sm text-slate-500 mt-1">Planejamento anual da equipe com destaque para feriados, férias e folgas especiais.</p>
+          {currentUser?.role === 'MANAGER' && (
+            <label className="mt-2 inline-flex items-center gap-2 text-xs text-slate-600 select-none">
+              <input
+                type="checkbox"
+                checked={showWholeDirectorate}
+                onChange={(e) => setShowWholeDirectorate(e.target.checked)}
+                className="rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+              />
+              Ver toda a diretoria (todo mundo)
+            </label>
+          )}
         </div>
         <div className="w-full md:w-auto">
           <label className="text-xs font-bold text-slate-500 block mb-1">Ano</label>
@@ -361,18 +451,39 @@ export const ManagerTeamLeaves: React.FC = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4">
         <div className="rounded-xl border border-red-200 bg-red-50 p-4">
-          <div className="flex items-center gap-2 text-red-700">
-            <AlertTriangle size={18} />
-            <h2 className="font-bold">Sem férias cadastradas</h2>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-red-700">
+              <AlertTriangle size={18} />
+              <h2 className="font-bold">Sem férias cadastradas</h2>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowVacationAlertDetails((prev) => !prev)}
+              className="text-xs font-semibold text-red-700 hover:text-red-800 underline"
+            >
+              {showVacationAlertDetails ? 'Minimizar' : 'Expandir'}
+            </button>
           </div>
-          <p className="text-sm text-red-700 mt-2">{usersWithoutVacation.length} colaborador(es) sem programação de férias no ano.</p>
-          <div className="mt-2 text-xs text-red-800">
-            {usersWithoutVacation.length === 0 ? 'Nenhuma pendência.' : usersWithoutVacation.map((user) => user.name).join(' • ')}
-          </div>
-        </div>
 
+          <p className="text-sm text-red-700 mt-2">{usersWithoutVacation.length} colaborador(es) sem programação de férias no ano.</p>
+
+          {showVacationAlertDetails ? (
+            <>
+              <div className="mt-2 text-xs text-red-800">
+                {usersWithoutVacation.length === 0 ? 'Nenhuma pendência.' : usersWithoutVacation.map((user) => user.name).join(' • ')}
+              </div>
+              <p className="mt-2 text-[11px] text-red-700">
+                Dica: para pendência de folga de aniversário, use o ícone <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-amber-200 text-amber-800 text-[10px] font-bold align-middle">!</span> ao lado do nome do colaborador.
+              </p>
+            </>
+          ) : (
+            <p className="mt-2 text-xs text-red-700">
+              Lista oculta. Use "Expandir" para ver os nomes ou acompanhe as pendências de aniversário pelo ícone ! na grade.
+            </p>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
@@ -382,7 +493,7 @@ export const ManagerTeamLeaves: React.FC = () => {
             <p className="text-xs text-slate-500">Feriados cadastrados no sistema aparecem em amarelo no calendário.</p>
           </div>
 
-          <div className="overflow-auto">
+          <div ref={calendarScrollRef} className="overflow-auto">
             <table className="min-w-[2200px] text-[11px] border-collapse table-fixed">
               <thead>
                 <tr className="bg-slate-100">
@@ -400,7 +511,11 @@ export const ManagerTeamLeaves: React.FC = () => {
                 <tr className="bg-white">
                   <th className="sticky left-0 z-20 bg-white border border-slate-300 px-2 py-1">&nbsp;</th>
                   {yearDays.map((item) => (
-                    <th key={`week-${item.dateKey}`} className="border border-slate-300 w-7 min-w-7 h-7 font-normal text-slate-500">
+                    <th
+                      key={`week-${item.dateKey}`}
+                      data-date-key={item.dateKey}
+                      className="border border-slate-300 w-7 min-w-7 h-7 font-normal text-slate-500"
+                    >
                       <div className="leading-none text-[9px]">{WEEKDAY_LABELS[item.weekday]}</div>
                       <div className="leading-none mt-0.5">{item.day}</div>
                     </th>
@@ -607,6 +722,29 @@ export const ManagerTeamLeaves: React.FC = () => {
                     <p className="text-xs text-amber-700 mt-1 font-semibold">
                       ! Folga de aniversário ainda não cadastrada no mês ideal.
                     </p>
+                  )}
+                </div>
+
+                <div className="rounded-lg border border-slate-200 bg-white p-3">
+                  <p className="text-xs font-bold text-slate-700 uppercase tracking-wide">Resumo do período</p>
+
+                  {selectedUserLeaveSummary.length > 0 ? (
+                    <div className="mt-2 space-y-2">
+                      {selectedUserLeaveSummary.map((item) => (
+                        <div key={item.code} className="flex items-center justify-between gap-2 text-xs">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span
+                              className="inline-block w-2.5 h-2.5 rounded-sm border border-slate-300"
+                              style={{ backgroundColor: item.color || '#94a3b8' }}
+                            />
+                            <span className="text-slate-700 truncate">{item.name}</span>
+                          </div>
+                          <span className="text-slate-600 font-semibold whitespace-nowrap">{item.totalDays} dia(s) • {item.totalEvents} registro(s)</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-xs text-slate-400">Sem férias/folgas cadastradas para este colaborador neste ano.</p>
                   )}
                 </div>
 
