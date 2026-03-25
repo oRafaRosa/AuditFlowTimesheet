@@ -208,6 +208,15 @@ export interface KPI {
   status: 'positive' | 'negative' | 'neutral';
 }
 
+export interface AppNotice {
+  id: string;
+  title: string;
+  description?: string;
+  expiresAt: string; // yyyy-mm-dd
+  createdAt: string;
+  createdBy?: string;
+}
+
 export interface RiskMatrixRecord {
   id: string;
   code: string;

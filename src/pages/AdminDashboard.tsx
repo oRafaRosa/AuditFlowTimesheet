@@ -2,8 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { store, SUPABASE_SCHEMA_SQL } from '../services/store';
-import { User, Project, TimesheetEntry, CalendarException, UserArea, RiskMatrixAccess, LeaveType, formatHours } from '../types';
-import { Database, Edit, Filter, Calendar, Trash2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { User, Project, TimesheetEntry, CalendarException, UserArea, RiskMatrixAccess, LeaveType, AppNotice, formatHours } from '../types';
+import { Database, Edit, Filter, Calendar, Trash2, ArrowUpDown, ArrowUp, ArrowDown, Bell } from 'lucide-react';
 import { DashboardLoadingState } from '../components/DashboardLoadingState';
 import { formatDateForDisplay } from '../utils/date';
 
@@ -42,6 +42,9 @@ export const AdminDashboard: React.FC = () => {
     const [savingDailyHourLimit, setSavingDailyHourLimit] = useState(false);
     const [leaveTypes, setLeaveTypes] = useState<LeaveType[]>([]);
     const [savingLeaveTypes, setSavingLeaveTypes] = useState(false);
+    const [notices, setNotices] = useState<AppNotice[]>([]);
+    const [savingNotice, setSavingNotice] = useState(false);
+    const [newNotice, setNewNotice] = useState({ title: '', description: '', expiresAt: '' });
     const [newLeaveType, setNewLeaveType] = useState({
         code: '',
         name: '',
@@ -105,6 +108,35 @@ export const AdminDashboard: React.FC = () => {
     }
   }, [location]);
 
+  const handleAddNotice = async () => {
+    if (!newNotice.title.trim() || !newNotice.expiresAt) {
+      alert('Informe o título e a data de expiração do aviso.');
+      return;
+    }
+    setSavingNotice(true);
+    const ok = await store.addNotice({
+      title: newNotice.title.trim(),
+      description: newNotice.description.trim() || undefined,
+      expiresAt: newNotice.expiresAt
+    });
+    setSavingNotice(false);
+    if (ok) {
+      setNewNotice({ title: '', description: '', expiresAt: '' });
+      const updated = await store.getNotices();
+      setNotices(updated);
+    } else {
+      alert('Não foi possível salvar o aviso.');
+    }
+  };
+
+  const handleDeleteNotice = async (id: string) => {
+    if (!window.confirm('Remover este aviso?')) return;
+    const ok = await store.deleteNotice(id);
+    if (ok) {
+      setNotices((prev) => prev.filter((n) => n.id !== id));
+    }
+  };
+
   const handleTabChange = (tab: 'users' | 'projects' | 'reports' | 'settings') => {
       setActiveTab(tab);
     // atualiza url pra bater com a aba
@@ -117,23 +149,25 @@ export const AdminDashboard: React.FC = () => {
     const user = store.getCurrentUser();
     setCurrentUser(user);
 
-    const [u, p, e, ex, periods, configuredDailyLimit, configuredLeaveTypes] = await Promise.all([
+    const [allUsers, allProjects, allEntries, allExceptions, allPeriods, configuredDailyLimit, configuredLeaveTypes, allNotices] = await Promise.all([
         store.getUsers(),
         store.getProjects(),
         store.getEntries(),
         store.getExceptions(),
         store.getTimesheetPeriods(),
         store.getDailyHourLimit(),
-        store.getLeaveTypes()
+        store.getLeaveTypes(),
+        store.getNotices()
     ]);
-    setUsers(u);
-    setProjects(p);
-    setEntries(e);
-    setExceptions(ex);
+    setUsers(allUsers);
+    setProjects(allProjects);
+    setEntries(allEntries);
+    setExceptions(allExceptions);
     setDailyHourLimit(configuredDailyLimit);
-        setLeaveTypes(configuredLeaveTypes);
+    setLeaveTypes(configuredLeaveTypes);
+    setNotices(allNotices);
         setRiskAccessByUser(
-            u.reduce<Record<string, RiskMatrixAccess>>((acc, item) => {
+            allUsers.reduce<Record<string, RiskMatrixAccess>>((acc, item) => {
                 if (item.role === 'ADMIN') {
                     acc[item.id] = 'EDIT';
                 } else {
@@ -143,9 +177,9 @@ export const AdminDashboard: React.FC = () => {
             }, {})
         );
 
-    const activeUsers = u.filter((item) => item.isActive !== false);
+    const activeUsers = allUsers.filter((item) => item.isActive !== false);
     const userMap = new Map(activeUsers.map((item) => [item.id, item]));
-    const submittedPeriods = periods.filter((period) => period.status === 'SUBMITTED' && period.managerId);
+    const submittedPeriods = allPeriods.filter((period) => period.status === 'SUBMITTED' && period.managerId);
     const groupedBacklog = new Map<string, ManagerApprovalBacklogGroup>();
 
     submittedPeriods.forEach((period) => {
@@ -1245,6 +1279,75 @@ export const AdminDashboard: React.FC = () => {
                                     >
                                         {savingRiskAccess ? 'Salvando permissoes...' : 'Salvar permissoes da Matriz'}
                                     </button>
+                                </div>
+
+                                {/* bloco de avisos para usuários */}
+                                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 h-fit">
+                                  <h3 className="font-bold text-slate-800 mb-1 flex items-center gap-2">
+                                    <Bell size={15} className="text-amber-500" />
+                                    Avisos para Usuários
+                                  </h3>
+                                  <p className="text-xs text-slate-500 mb-4">
+                                    Aparecem no painel de cada usuário até a data de expiração.
+                                  </p>
+
+                                  {/* lista de avisos ativos */}
+                                  <div className="space-y-2 mb-4 max-h-44 overflow-y-auto pr-1">
+                                    {notices.length === 0 && (
+                                      <p className="text-xs text-slate-400">Nenhum aviso ativo.</p>
+                                    )}
+                                    {notices.map((notice) => (
+                                      <div key={notice.id} className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs flex items-start justify-between gap-2">
+                                        <div className="min-w-0">
+                                          <p className="font-semibold text-slate-800">{notice.title}</p>
+                                          {notice.description && <p className="text-slate-500 mt-0.5">{notice.description}</p>}
+                                          <p className="text-slate-400 mt-1">Expira em {notice.expiresAt}</p>
+                                        </div>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleDeleteNotice(notice.id)}
+                                          className="text-red-400 hover:text-red-600 shrink-0"
+                                          title="Remover aviso"
+                                        >
+                                          <Trash2 size={14} />
+                                        </button>
+                                      </div>
+                                    ))}
+                                  </div>
+
+                                  {/* form novo aviso */}
+                                  <div className="space-y-2">
+                                    <input
+                                      className="w-full border border-gray-300 rounded-lg p-2 text-xs"
+                                      placeholder="Título do aviso"
+                                      value={newNotice.title}
+                                      onChange={(e) => setNewNotice((prev) => ({ ...prev, title: e.target.value }))}
+                                    />
+                                    <textarea
+                                      className="w-full border border-gray-300 rounded-lg p-2 text-xs resize-none"
+                                      rows={2}
+                                      placeholder="Descrição (opcional)"
+                                      value={newNotice.description}
+                                      onChange={(e) => setNewNotice((prev) => ({ ...prev, description: e.target.value }))}
+                                    />
+                                    <div>
+                                      <label className="block text-xs font-bold text-slate-500 mb-1">Expirar em</label>
+                                      <input
+                                        type="date"
+                                        className="w-full border border-gray-300 rounded-lg p-2 text-xs"
+                                        value={newNotice.expiresAt}
+                                        onChange={(e) => setNewNotice((prev) => ({ ...prev, expiresAt: e.target.value }))}
+                                      />
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={handleAddNotice}
+                                      disabled={savingNotice}
+                                      className="w-full bg-amber-500 hover:bg-amber-600 text-white rounded-lg p-2 text-xs font-bold disabled:opacity-60"
+                                    >
+                                      {savingNotice ? 'Salvando...' : 'Publicar aviso'}
+                                    </button>
+                                  </div>
                                 </div>
 
                                 <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 h-fit">

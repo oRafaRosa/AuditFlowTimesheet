@@ -1,5 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { User, Project, TimesheetEntry, Holiday, CalendarException, HOURS_PER_DAY, TimesheetPeriod, PeriodStatus, FrequentEntryTemplate, TimesheetPeriodEvent, UserActivityEvent, UserActivityType, UserLoginActivity, RiskMatrixAccess, RiskMatrixRecord, LeaveType, TeamLeave } from '../types';
+import { User, Project, TimesheetEntry, Holiday, CalendarException, HOURS_PER_DAY, TimesheetPeriod, PeriodStatus, FrequentEntryTemplate, TimesheetPeriodEvent, UserActivityEvent, UserActivityType, UserLoginActivity, RiskMatrixAccess, RiskMatrixRecord, LeaveType, TeamLeave, AppNotice } from '../types';
 import { formatLocalDate, normalizeDateValue } from '../utils/date';
 import { loadingState } from './loadingState';
 
@@ -1598,6 +1598,69 @@ class StoreService {
         }
     }
     return Math.round(workingDays * HOURS_PER_DAY * 100) / 100;
+  }
+
+  // --- Avisos (app_notices) ---
+
+  async getNotices(): Promise<AppNotice[]> {
+    try {
+      const today = formatLocalDate();
+      const { data, error } = await supabase
+        .from('app_notices')
+        .select('*')
+        .gte('expires_at', today)
+        .order('expires_at', { ascending: true });
+
+      if (error) throw error;
+
+      return (data || []).map((item: any) => ({
+        id: item.id,
+        title: item.title,
+        description: item.description || undefined,
+        expiresAt: item.expires_at,
+        createdAt: item.created_at,
+        createdBy: item.created_by || undefined
+      }));
+    } catch (error) {
+      if (!this.isMissingRelationError(error)) {
+        console.warn('Erro ao buscar avisos:', error);
+      }
+      return [];
+    }
+  }
+
+  async addNotice(payload: Pick<AppNotice, 'title' | 'description' | 'expiresAt'>): Promise<boolean> {
+    const currentUser = this.getCurrentUser();
+    try {
+      const { error } = await supabase
+        .from('app_notices')
+        .insert({
+          title: payload.title,
+          description: payload.description || null,
+          expires_at: payload.expiresAt,
+          created_by: currentUser && isUuid(currentUser.id) ? currentUser.id : null,
+          created_at: new Date().toISOString()
+        });
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      console.warn('Erro ao criar aviso:', error);
+      return false;
+    }
+  }
+
+  async deleteNotice(id: string): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('app_notices')
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      console.warn('Erro ao deletar aviso:', error);
+      return false;
+    }
   }
 }
 
