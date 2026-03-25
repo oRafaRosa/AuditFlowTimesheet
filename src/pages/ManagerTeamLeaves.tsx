@@ -56,9 +56,10 @@ export const ManagerTeamLeaves: React.FC = () => {
   const [leaveTypes, setLeaveTypes] = useState<LeaveType[]>([]);
   const [leaves, setLeaves] = useState<TeamLeave[]>([]);
   const [selectedUserId, setSelectedUserId] = useState('');
-  const [showVacationAlertDetails, setShowVacationAlertDetails] = useState(true);
+  const [showVacationAlertDetails, setShowVacationAlertDetails] = useState(false);
   const [showWholeDirectorate, setShowWholeDirectorate] = useState(false);
   const calendarScrollRef = useRef<HTMLDivElement | null>(null);
+  const hasAutoFocusedMonthRef = useRef(false);
 
   const [formData, setFormData] = useState({
     userId: '',
@@ -169,15 +170,17 @@ export const ManagerTeamLeaves: React.FC = () => {
     const targetCell = container.querySelector<HTMLElement>(`[data-date-key="${monthStart.dateKey}"]`);
     if (!targetCell) return;
 
-    const containerRect = container.getBoundingClientRect();
-    const targetRect = targetCell.getBoundingClientRect();
-    const desiredLeft = container.scrollLeft + (targetRect.left - containerRect.left) - 260;
+    const desiredLeft = Math.max(0, targetCell.offsetLeft - 260);
+
+    // Primeiro foco sem animação para abrir já no mês atual.
+    const isFirstFocus = !hasAutoFocusedMonthRef.current;
+    hasAutoFocusedMonthRef.current = true;
 
     container.scrollTo({
-      left: Math.max(0, desiredLeft),
-      behavior: 'smooth'
+      left: desiredLeft,
+      behavior: isFirstFocus ? 'auto' : 'smooth'
     });
-  }, [selectedYear, yearDays]);
+  }, [selectedYear, yearDays, teamUsers.length]);
 
   // Mapa de feriados: inclui tanto a tabela holidays quanto as exceções de calendário tipo OFFDAY
   const holidayMap = useMemo(() => {
@@ -299,6 +302,25 @@ export const ManagerTeamLeaves: React.FC = () => {
     });
     return map;
   }, [pendingBirthdayLeave]);
+
+  const birthdayDateKeyByUser = useMemo(() => {
+    const map = new Map<string, string>();
+
+    teamUsers.forEach((user) => {
+      if (!user.birthdayDate) return;
+
+      const birthday = parseDateOnly(user.birthdayDate);
+      const month = birthday.getMonth();
+      const baseDay = birthday.getDate();
+      const maxDayInMonth = new Date(selectedYear, month + 1, 0).getDate();
+      const adjustedDay = Math.min(baseDay, maxDayInMonth);
+
+      const dateKey = `${selectedYear}-${String(month + 1).padStart(2, '0')}-${String(adjustedDay).padStart(2, '0')}`;
+      map.set(user.id, dateKey);
+    });
+
+    return map;
+  }, [teamUsers, selectedYear]);
 
   const selectedUser = useMemo(() => {
     if (!selectedUserId) return null;
@@ -474,14 +496,9 @@ export const ManagerTeamLeaves: React.FC = () => {
               <div className="mt-2 text-xs text-red-800">
                 {usersWithoutVacation.length === 0 ? 'Nenhuma pendência.' : usersWithoutVacation.map((user) => user.name).join(' • ')}
               </div>
-              <p className="mt-2 text-[11px] text-red-700">
-                Dica: para pendência de folga de aniversário, use o ícone <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-amber-200 text-amber-800 text-[10px] font-bold align-middle">!</span> ao lado do nome do colaborador.
-              </p>
             </>
           ) : (
-            <p className="mt-2 text-xs text-red-700">
-              Lista oculta. Use "Expandir" para ver os nomes ou acompanhe as pendências de aniversário pelo ícone ! na grade.
-            </p>
+            <p className="mt-2 text-xs text-red-700">Lista oculta. Use "Expandir" para ver os nomes.</p>
           )}
         </div>
       </div>
@@ -558,6 +575,7 @@ export const ManagerTeamLeaves: React.FC = () => {
                         const leaveType = leave ? leaveTypeMap.get(normalizeCode(leave.leaveTypeCode)) : undefined;
                         const holidayName = holidayMap.get(item.dateKey);
                         const isHoliday = !!holidayName;
+                        const isBirthday = birthdayDateKeyByUser.get(user.id) === item.dateKey;
                         const isWeekend = item.weekday === 0 || item.weekday === 6;
                         const highlightBirthdayMonth = isSelected && selectedUserBirthdayMonth === item.month;
 
@@ -576,6 +594,10 @@ export const ManagerTeamLeaves: React.FC = () => {
                           title = `${leaveType.name} • ${formatLeavePeriodLabel(leave)}`;
                         }
 
+                        if (isBirthday) {
+                          title = title ? `${title} • Aniversário` : 'Aniversário';
+                        }
+
                         if (highlightBirthdayMonth) {
                           boxShadow = 'inset 0 0 0 1px rgba(245, 158, 11, 0.65)';
                         }
@@ -583,10 +605,19 @@ export const ManagerTeamLeaves: React.FC = () => {
                         return (
                           <td
                             key={`${user.id}-${item.dateKey}`}
-                            className="border border-slate-300 w-7 min-w-7 h-7"
+                            className="border border-slate-300 w-7 min-w-7 h-7 relative"
                             style={{ backgroundColor, boxShadow }}
                             title={title || undefined}
-                          />
+                          >
+                            {isBirthday && (
+                              <span
+                                className="absolute top-0.5 right-0.5 inline-flex items-center justify-center w-3 h-3 rounded-full bg-rose-500 text-white text-[9px] leading-none font-bold shadow-sm"
+                                aria-label="Aniversário"
+                              >
+                                *
+                              </span>
+                            )}
+                          </td>
                         );
                       })}
                     </tr>
@@ -607,6 +638,10 @@ export const ManagerTeamLeaves: React.FC = () => {
               <span className="inline-flex items-center gap-2">
                 <span className="inline-block w-3 h-3 rounded-sm border border-slate-300 bg-yellow-200" />
                 Feriado
+              </span>
+              <span className="inline-flex items-center gap-2">
+                <span className="inline-flex items-center justify-center w-3 h-3 rounded-full bg-rose-500 text-white text-[9px] leading-none font-bold">*</span>
+                Aniversário
               </span>
             </div>
           </div>
@@ -718,11 +753,6 @@ export const ManagerTeamLeaves: React.FC = () => {
                   <p className="text-xs text-slate-600 mt-1">
                     Mês de aniversário: {selectedUserBirthdayMonth !== undefined ? MONTH_LABELS[selectedUserBirthdayMonth] : 'Não informado'}
                   </p>
-                  {pendingBirthdayMonthByUser.has(selectedUser.id) && (
-                    <p className="text-xs text-amber-700 mt-1 font-semibold">
-                      ! Folga de aniversário ainda não cadastrada no mês ideal.
-                    </p>
-                  )}
                 </div>
 
                 <div className="rounded-lg border border-slate-200 bg-white p-3">
