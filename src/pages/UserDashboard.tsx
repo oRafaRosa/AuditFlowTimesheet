@@ -527,16 +527,18 @@ export const UserDashboard: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+      <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Meu Dashboard</h1>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-2xl font-bold text-slate-800">Meu Dashboard</h1>
+            {isUserBirthdayToday && (
+              <div className="inline-flex items-center gap-2 rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700">
+                Feliz aniversário!
+                <BirthdayBalloons className="h-7 w-12 shrink-0" />
+              </div>
+            )}
+          </div>
           <p className="text-sm text-slate-500 mt-1">Visão rápida do seu progresso no mês e pendências de lançamento</p>
-          {isUserBirthdayToday && (
-            <div className="mt-2 inline-flex items-center gap-2 rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700">
-              Feliz aniversário!
-              <BirthdayBalloons className="h-7 w-12 shrink-0" />
-            </div>
-          )}
         </div>
         <div className="flex gap-3">
              {isUserInactive ? (
