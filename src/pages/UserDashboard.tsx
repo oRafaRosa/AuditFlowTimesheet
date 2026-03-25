@@ -642,92 +642,92 @@ export const UserDashboard: React.FC = () => {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
-        <button
-          type="button"
-          onClick={() => setShowPendingDetails(prev => !prev)}
-          className="w-full p-5 flex items-center justify-between gap-4 text-left hover:bg-slate-50 transition-colors"
-        >
-          <div className="flex items-center gap-4">
-            <div className={`p-3 rounded-lg ${activePendingSummary.days.length > 0 ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-600'}`}>
-              {activePendingSummary.days.length > 0 ? <AlertTriangle size={22} /> : <CheckCircle size={22} />}
-            </div>
-            <div>
-              <p className="text-sm text-slate-500 font-medium">Dias com pendência</p>
-              <p className="text-lg font-bold text-slate-900">
-                {activePendingSummary.days.length > 0
-                  ? `${activePendingSummary.days.length} dia(s) • ${formatHours(activePendingSummary.totalMissingHours)}h faltando`
-                  : 'Nenhuma pendência no período'}
-              </p>
-              <p className="text-xs text-slate-400 mt-1">
-                {dashboardPeriod === 'current'
-                  ? 'Agrupei tudo aqui para manter a visualização mais organizada. Se quiser, é só expandir.'
-                  : 'Em meses já encerrados, essa visão facilita a revisão das pendências de lançamento.'}
-              </p>
-            </div>
-          </div>
-          <div className="text-slate-400">
-            {showPendingDetails ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-          </div>
-        </button>
-
-        {showPendingDetails && (
-          <div className="border-t border-slate-100 px-5 py-4">
-            {activePendingSummary.days.length > 0 ? (
-              <div className="space-y-2">
-                <div className="mb-3 flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setEntryFilterDate(activePendingSummary.days[0].date)}
-                    className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800 hover:bg-amber-100 transition-colors"
-                  >
-                    Filtrar primeiro dia pendente
-                  </button>
-                  {!isUserInactive && !isCurrentPeriodLocked && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditingId(null);
-                        setFormMode('single');
-                        setFormData({
-                          projectId: '',
-                          date: activePendingSummary.days[0].date,
-                          endDate: activePendingSummary.days[0].date,
-                          hours: HOURS_PER_DAY,
-                          description: ''
-                        });
-                        setIsFormOpen(true);
-                      }}
-                      className="rounded-lg border border-brand-200 bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-700 hover:bg-brand-100 transition-colors"
-                    >
-                      Lançar horas nesse dia
-                    </button>
-                  )}
-                </div>
-                {activePendingSummary.days.map((day) => (
-                  <div key={day.date} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 rounded-lg border border-amber-100 bg-amber-50/70 px-4 py-3">
-                    <div>
-                      <p className="font-medium text-slate-800">{formatDateForDisplay(day.date)}</p>
-                      <p className="text-xs text-slate-500">Lançado: {formatHours(day.loggedHours)}h</p>
-                    </div>
-                    <div className="text-sm font-semibold text-amber-700">
-                      Faltam {formatHours(day.missingHours)}h
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-slate-500">Não há pendências neste período. Tudo está em dia.</p>
-            )}
-          </div>
-        )}
-      </div>
-
     {/* grid principal */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* coluna esquerda: gráfico + histórico */}
         <div className="lg:col-span-2 space-y-6">
+
+            <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setShowPendingDetails(prev => !prev)}
+                className="w-full p-4 flex items-center justify-between gap-3 text-left hover:bg-slate-50 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`p-2.5 rounded-lg ${activePendingSummary.days.length > 0 ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                    {activePendingSummary.days.length > 0 ? <AlertTriangle size={20} /> : <CheckCircle size={20} />}
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-slate-500 font-semibold">Dias com pendência</p>
+                    <p className="text-base font-bold text-slate-900">
+                      {activePendingSummary.days.length > 0
+                        ? `${activePendingSummary.days.length} dia(s) • ${formatHours(activePendingSummary.totalMissingHours)}h faltando`
+                        : 'Nenhuma pendência no período'}
+                    </p>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      {dashboardPeriod === 'current'
+                        ? 'Resumo consolidado. Expanda para ver os detalhes.'
+                        : 'Visão útil para revisar meses já encerrados.'}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-slate-400">
+                  {showPendingDetails ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                </div>
+              </button>
+
+              {showPendingDetails && (
+                <div className="border-t border-slate-100 px-4 py-3">
+                  {activePendingSummary.days.length > 0 ? (
+                    <div className="space-y-2">
+                      <div className="mb-2.5 flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setEntryFilterDate(activePendingSummary.days[0].date)}
+                          className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800 hover:bg-amber-100 transition-colors"
+                        >
+                          Filtrar primeiro dia pendente
+                        </button>
+                        {!isUserInactive && !isCurrentPeriodLocked && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingId(null);
+                              setFormMode('single');
+                              setFormData({
+                                projectId: '',
+                                date: activePendingSummary.days[0].date,
+                                endDate: activePendingSummary.days[0].date,
+                                hours: HOURS_PER_DAY,
+                                description: ''
+                              });
+                              setIsFormOpen(true);
+                            }}
+                            className="rounded-lg border border-brand-200 bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-700 hover:bg-brand-100 transition-colors"
+                          >
+                            Lançar horas nesse dia
+                          </button>
+                        )}
+                      </div>
+                      {activePendingSummary.days.map((day) => (
+                        <div key={day.date} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 rounded-lg border border-amber-100 bg-amber-50/70 px-3.5 py-2.5">
+                          <div>
+                            <p className="font-medium text-slate-800">{formatDateForDisplay(day.date)}</p>
+                            <p className="text-xs text-slate-500">Lançado: {formatHours(day.loggedHours)}h</p>
+                          </div>
+                          <div className="text-sm font-semibold text-amber-700">
+                            Faltam {formatHours(day.missingHours)}h
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-slate-500">Não há pendências neste período. Tudo está em dia.</p>
+                  )}
+                </div>
+              )}
+            </div>
             
             {/* gráfico */}
             <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 h-80 relative transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md">
