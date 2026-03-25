@@ -96,6 +96,33 @@ export const ManagerTeamLeaves: React.FC = () => {
     loadData();
   }, []);
 
+  const managedUserIdSet = useMemo(() => {
+    if (!currentUser) return new Set<string>();
+
+    if (currentUser.role === 'ADMIN') {
+      return new Set(
+        users
+          .filter((user) => user.isActive !== false && (user.role !== 'ADMIN' || user.id === currentUser.id))
+          .map((user) => user.id)
+      );
+    }
+
+    const managedIds = new Set<string>([currentUser.id]);
+    let changed = true;
+
+    while (changed) {
+      changed = false;
+      users.forEach((user) => {
+        if (user.managerId && managedIds.has(user.managerId) && !managedIds.has(user.id)) {
+          managedIds.add(user.id);
+          changed = true;
+        }
+      });
+    }
+
+    return managedIds;
+  }, [users, currentUser]);
+
   const teamUsers = useMemo(() => {
     if (!currentUser) return [] as User[];
 
@@ -114,23 +141,14 @@ export const ManagerTeamLeaves: React.FC = () => {
         .sort(byName);
     }
 
-    const managedIds = new Set<string>([currentUser.id]);
-    let changed = true;
-
-    while (changed) {
-      changed = false;
-      users.forEach((user) => {
-        if (user.managerId && managedIds.has(user.managerId) && !managedIds.has(user.id)) {
-          managedIds.add(user.id);
-          changed = true;
-        }
-      });
-    }
-
     return users
-      .filter((user) => managedIds.has(user.id) && user.isActive !== false)
+      .filter((user) => managedUserIdSet.has(user.id) && user.isActive !== false)
       .sort(byName);
-  }, [users, currentUser, showWholeDirectorate]);
+  }, [users, currentUser, showWholeDirectorate, managedUserIdSet]);
+
+  const manageableUsers = useMemo(() => {
+    return teamUsers.filter((user) => managedUserIdSet.has(user.id));
+  }, [teamUsers, managedUserIdSet]);
 
   useEffect(() => {
     if (!selectedUserId) return;
@@ -336,6 +354,11 @@ export const ManagerTeamLeaves: React.FC = () => {
     return teamUsers.find((user) => user.id === selectedUserId) || null;
   }, [teamUsers, selectedUserId]);
 
+  const selectedUserIsManaged = useMemo(() => {
+    if (!selectedUser) return false;
+    return managedUserIdSet.has(selectedUser.id);
+  }, [selectedUser, managedUserIdSet]);
+
   const selectedUserBirthdayMonth = useMemo(() => {
     if (!selectedUser?.birthdayDate) return undefined;
     return parseDateOnly(selectedUser.birthdayDate).getMonth();
@@ -394,6 +417,11 @@ export const ManagerTeamLeaves: React.FC = () => {
       return;
     }
 
+    if (!managedUserIdSet.has(formData.userId)) {
+      alert('Você só pode cadastrar férias/folgas para você e membros da sua equipe.');
+      return;
+    }
+
     const effectiveEndDate = isSingleDateLeave ? formData.startDate : formData.endDate;
     if (!effectiveEndDate) {
       alert('Informe a data final para férias.');
@@ -432,6 +460,11 @@ export const ManagerTeamLeaves: React.FC = () => {
   };
 
   const handleDeleteLeave = async (id: string) => {
+    if (selectedUser && !managedUserIdSet.has(selectedUser.id)) {
+      alert('Este registro está em modo somente visualização.');
+      return;
+    }
+
     const confirmed = window.confirm('Deseja remover este agendamento de folga/férias?');
     if (!confirmed) return;
 
@@ -460,15 +493,17 @@ export const ManagerTeamLeaves: React.FC = () => {
           <h1 className="text-2xl font-bold text-slate-800">Férias e Folgas do Time</h1>
           <p className="text-sm text-slate-500 mt-1">Planejamento anual da equipe com destaque para feriados, férias e folgas especiais.</p>
           {currentUser?.role === 'MANAGER' && (
-            <label className="mt-2 inline-flex items-center gap-2 text-xs text-slate-600 select-none">
-              <input
-                type="checkbox"
-                checked={showWholeDirectorate}
-                onChange={(e) => setShowWholeDirectorate(e.target.checked)}
-                className="rounded border-slate-300 text-brand-600 focus:ring-brand-500"
-              />
-              Ver toda a diretoria (todo mundo)
-            </label>
+            <button
+              type="button"
+              onClick={() => setShowWholeDirectorate((prev) => !prev)}
+              className={`mt-2 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-semibold transition-colors ${
+                showWholeDirectorate
+                  ? 'border-brand-300 bg-brand-50 text-brand-700'
+                  : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              {showWholeDirectorate ? 'Vendo toda a diretoria' : 'Ver toda a diretoria'}
+            </button>
           )}
         </div>
         <div className="w-full md:w-auto">
@@ -531,7 +566,9 @@ export const ManagerTeamLeaves: React.FC = () => {
                           type="button"
                           onClick={() => {
                             setSelectedUserId((prev) => prev === user.id ? '' : user.id);
-                            setFormData((prev) => ({ ...prev, userId: user.id }));
+                            if (managedUserIdSet.has(user.id)) {
+                              setFormData((prev) => ({ ...prev, userId: user.id }));
+                            }
                           }}
                           className={`w-full text-left rounded px-1 py-1 transition-colors ${isSelected ? 'bg-brand-100' : 'hover:bg-slate-100'}`}
                         >
@@ -663,10 +700,15 @@ export const ManagerTeamLeaves: React.FC = () => {
                   required
                 >
                   <option value="">Selecione</option>
-                  {teamUsers.map((user) => (
+                  {manageableUsers.map((user) => (
                     <option key={user.id} value={user.id}>{user.name}</option>
                   ))}
                 </select>
+                {showWholeDirectorate && (
+                  <p className="mt-1 text-[11px] text-slate-500">
+                    Com a visão da diretoria ativada, colaboradores fora da sua equipe ficam em modo somente visualização.
+                  </p>
+                )}
               </div>
 
               <div>
@@ -793,18 +835,26 @@ export const ManagerTeamLeaves: React.FC = () => {
                             <p className="text-slate-600 mt-1">{formatLeavePeriodLabel(leave)}</p>
                             {leave.notes && <p className="text-slate-500 mt-1">{leave.notes}</p>}
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteLeave(leave.id)}
-                            className="text-red-500 hover:text-red-700"
-                            title="Remover"
-                          >
-                            <Trash2 size={14} />
-                          </button>
+                          {selectedUserIsManaged && (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteLeave(leave.id)}
+                              className="text-red-500 hover:text-red-700"
+                              title="Remover"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          )}
                         </div>
                       </div>
                     );
                   })}
+
+                  {selectedUser && !selectedUserIsManaged && (
+                    <p className="text-[11px] text-slate-500">
+                      Visualização apenas. Para este colaborador não é possível incluir ou remover registros.
+                    </p>
+                  )}
 
                   {selectedUserLeaves.length === 0 && (
                     <p className="text-xs text-slate-400">Nenhum agendamento para este colaborador no ano selecionado.</p>
