@@ -8,6 +8,7 @@ import { buildGamificationProfiles } from '../utils/gamification';
 import { buildCalendarMaps, isExpectedWorkingDay, listPendingDaysForMonth } from '../utils/workCalendar';
 import { isBirthdayToday } from '../utils/birthdays';
 import { GAMIFICATION_ENABLED } from '../config/features';
+import { BirthdayBalloons } from './BirthdayBalloons';
 import { LoadingIndicator } from './LoadingIndicator';
 import { 
   LayoutDashboard, 
@@ -726,23 +727,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           className={`${isSidebarCollapsed ? 'w-[72px] h-[72px]' : 'w-[200px] h-[100px]'} object-cover object-center transition-all duration-300 group-hover:scale-105`}
          />
          {isUserBirthdayToday && (
-           <span className="pointer-events-none absolute right-3 top-2 inline-flex items-end gap-1.5" aria-hidden="true">
-             <span className="inline-flex flex-col items-center">
-               <span className="inline-block w-2.5 h-3.5 rounded-[999px] bg-rose-400" />
-               <span className="inline-block w-1 h-1 -mt-[1px] rotate-45 bg-rose-400" />
-               <span className="inline-block w-px h-2 -mt-[1px] bg-rose-300" />
-             </span>
-             <span className="inline-flex flex-col items-center">
-               <span className="inline-block w-3 h-4 rounded-[999px] bg-amber-400" />
-               <span className="inline-block w-1 h-1 -mt-[1px] rotate-45 bg-amber-400" />
-               <span className="inline-block w-px h-2.5 -mt-[1px] bg-amber-300" />
-             </span>
-             <span className="inline-flex flex-col items-center">
-               <span className="inline-block w-2.5 h-3.5 rounded-[999px] bg-brand-500" />
-               <span className="inline-block w-1 h-1 -mt-[1px] rotate-45 bg-brand-500" />
-               <span className="inline-block w-px h-2 -mt-[1px] bg-brand-300" />
-             </span>
-           </span>
+           <BirthdayBalloons className="pointer-events-none absolute right-3 top-1 h-10 w-16" />
          )}
        </button>
      );

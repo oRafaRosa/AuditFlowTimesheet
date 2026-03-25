@@ -7,6 +7,7 @@ import { Clock, Calendar, CheckCircle, AlertTriangle, Plus, Trash2, Lock, XCircl
 import { MyStatusWidget } from '../components/MyStatusWidget';
 import { GamificationSnapshot } from '../components/GamificationSnapshot';
 import { DashboardLoadingState } from '../components/DashboardLoadingState';
+import { BirthdayBalloons } from '../components/BirthdayBalloons';
 import { BirthdaySidebarCard } from '../components/BirthdaySidebarCard';
 import { formatDateForDisplay, formatLocalDate, parseDateOnly } from '../utils/date';
 import { buildCalendarMaps, listPendingDaysForMonth, PendingDay } from '../utils/workCalendar';
@@ -515,23 +516,7 @@ export const UserDashboard: React.FC = () => {
           {isUserBirthdayToday && (
             <div className="mt-2 inline-flex items-center gap-2 rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700">
               Feliz aniversário!
-              <span className="inline-flex items-end gap-1.5" aria-hidden="true">
-                <span className="inline-flex flex-col items-center">
-                  <span className="inline-block w-2.5 h-3.5 rounded-[999px] bg-rose-400" />
-                  <span className="inline-block w-1 h-1 -mt-[1px] rotate-45 bg-rose-400" />
-                  <span className="inline-block w-px h-2 -mt-[1px] bg-rose-300" />
-                </span>
-                <span className="inline-flex flex-col items-center">
-                  <span className="inline-block w-2.5 h-3.5 rounded-[999px] bg-amber-400" />
-                  <span className="inline-block w-1 h-1 -mt-[1px] rotate-45 bg-amber-400" />
-                  <span className="inline-block w-px h-2 -mt-[1px] bg-amber-300" />
-                </span>
-                <span className="inline-flex flex-col items-center">
-                  <span className="inline-block w-2.5 h-3.5 rounded-[999px] bg-brand-500" />
-                  <span className="inline-block w-1 h-1 -mt-[1px] rotate-45 bg-brand-500" />
-                  <span className="inline-block w-px h-2 -mt-[1px] bg-brand-300" />
-                </span>
-              </span>
+              <BirthdayBalloons className="h-7 w-12 shrink-0" />
             </div>
           )}
         </div>

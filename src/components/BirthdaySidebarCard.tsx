@@ -1,6 +1,7 @@
 import React from 'react';
 import { Calendar } from 'lucide-react';
 import { BirthdayListItem } from '../utils/birthdays';
+import { BirthdayBalloons } from './BirthdayBalloons';
 
 interface BirthdaySidebarCardProps {
   monthlyBirthdays: BirthdayListItem[];
@@ -20,14 +21,6 @@ export const BirthdaySidebarCard: React.FC<BirthdaySidebarCardProps> = ({
   const previousInMonth = monthlyBirthdays.filter((person) => person.daysUntil < 0 && !person.isToday);
   const upcomingInMonth = monthlyBirthdays.filter((person) => person.daysUntil >= 0 || person.isToday);
 
-  const Balloon = ({ bodyClass, stringClass }: { bodyClass: string; stringClass: string }) => (
-    <span className="inline-flex flex-col items-center justify-start" aria-hidden="true">
-      <span className={`inline-block w-2.5 h-3.5 rounded-[999px] ${bodyClass}`} />
-      <span className={`inline-block w-1 h-1 -mt-[1px] rotate-45 ${bodyClass}`} />
-      <span className={`inline-block w-px h-2 -mt-[1px] ${stringClass}`} />
-    </span>
-  );
-
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
       <div className="px-4 py-3 border-b border-slate-100 bg-slate-50 flex items-center gap-2 relative">
@@ -40,11 +33,7 @@ export const BirthdaySidebarCard: React.FC<BirthdaySidebarCardProps> = ({
         </div>
 
         {showBirthdayBalloons && (
-          <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 flex items-end gap-1.5" aria-hidden="true">
-            <Balloon bodyClass="bg-rose-400" stringClass="bg-rose-300" />
-            <Balloon bodyClass="bg-amber-400" stringClass="bg-amber-300" />
-            <Balloon bodyClass="bg-brand-500" stringClass="bg-brand-300" />
-          </div>
+          <BirthdayBalloons className="pointer-events-none absolute right-3 top-1/2 h-10 w-16 -translate-y-1/2" />
         )}
       </div>
 
