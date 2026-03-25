@@ -1151,98 +1151,97 @@ export const AdminDashboard: React.FC = () => {
                                 </div>
 
                                 <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 h-fit">
+                                    <h3 className="font-bold text-slate-800 mb-4">Tipos de Folga e Férias</h3>
+                                    <p className="text-xs text-slate-500 mb-4">
+                                        Cadastre novas folgas para aparecerem na agenda dos gestores.
+                                    </p>
+
+                                    <div className="space-y-2 max-h-40 overflow-y-auto pr-1 mb-3">
+                                        {leaveTypes.map((type) => (
+                                            <div key={type.code} className="rounded-md border border-slate-200 bg-slate-50 px-2 py-2 text-xs flex items-center justify-between gap-2">
+                                                <div>
+                                                    <div className="font-semibold text-slate-700">{type.name}</div>
+                                                    <div className="text-slate-500">
+                                                        {type.code}
+                                                        {type.yearlyLimit !== undefined ? ` • limite/ano: ${type.yearlyLimit}` : ''}
+                                                        {type.preferredBirthdayMonth ? ' • mês do aniversário' : ''}
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleRemoveLeaveType(type.code)}
+                                                    className="text-red-500 hover:text-red-700"
+                                                    title="Remover tipo"
+                                                >
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <input
+                                            className="border border-gray-300 rounded-lg p-2 text-xs"
+                                            placeholder="Código (ex: ABONO_EQUIPE)"
+                                            value={newLeaveType.code}
+                                            onChange={(e) => setNewLeaveType((prev) => ({ ...prev, code: e.target.value }))}
+                                        />
+                                        <input
+                                            className="border border-gray-300 rounded-lg p-2 text-xs"
+                                            placeholder="Nome"
+                                            value={newLeaveType.name}
+                                            onChange={(e) => setNewLeaveType((prev) => ({ ...prev, name: e.target.value }))}
+                                        />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2 mt-2">
+                                        <input
+                                            type="color"
+                                            className="w-full border border-gray-300 rounded-lg p-1 h-9"
+                                            value={newLeaveType.color}
+                                            onChange={(e) => setNewLeaveType((prev) => ({ ...prev, color: e.target.value }))}
+                                        />
+                                        <input
+                                            type="number"
+                                            min={0}
+                                            className="border border-gray-300 rounded-lg p-2 text-xs"
+                                            placeholder="Limite por ano (opcional)"
+                                            value={newLeaveType.yearlyLimit}
+                                            onChange={(e) => setNewLeaveType((prev) => ({ ...prev, yearlyLimit: e.target.value }))}
+                                        />
+                                    </div>
+                                    <label className="flex items-center gap-2 text-xs text-slate-600 mt-2">
+                                        <input
+                                            type="checkbox"
+                                            checked={newLeaveType.preferredBirthdayMonth}
+                                            onChange={(e) => setNewLeaveType((prev) => ({ ...prev, preferredBirthdayMonth: e.target.checked }))}
+                                        />
+                                        Usar no mês de aniversário (quando aplicável)
+                                    </label>
+                                    <div className="grid grid-cols-2 gap-2 mt-3">
+                                        <button
+                                            type="button"
+                                            onClick={handleAddLeaveType}
+                                            className="bg-slate-200 text-slate-700 rounded-lg p-2 text-xs font-bold hover:bg-slate-300"
+                                        >
+                                            Adicionar tipo
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={handleSaveLeaveTypes}
+                                            disabled={savingLeaveTypes}
+                                            className="bg-brand-600 text-white rounded-lg p-2 text-xs font-bold hover:bg-brand-700 disabled:opacity-60"
+                                        >
+                                            {savingLeaveTypes ? 'Salvando...' : 'Salvar tipos'}
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 h-fit">
                                     <h3 className="font-bold text-slate-800 mb-4">Permissões - Matriz de Riscos</h3>
                                     <p className="text-xs text-slate-500 mb-4">
                                         Defina quem pode acessar a Matriz de Riscos e o nivel de permissao.
                                         Administradores sempre possuem permissao de edicao.
                                     </p>
-
-                                    <div className="mb-5 border border-slate-200 rounded-lg p-3 bg-slate-50 space-y-3">
-                                        <h4 className="text-xs font-bold text-slate-600 uppercase">Tipos de folga e férias</h4>
-                                        <p className="text-[11px] text-slate-500">
-                                            Cadastre novas folgas para aparecerem na agenda dos gestores.
-                                        </p>
-
-                                        <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
-                                            {leaveTypes.map((type) => (
-                                                <div key={type.code} className="rounded-md border border-slate-200 bg-white px-2 py-2 text-xs flex items-center justify-between gap-2">
-                                                    <div>
-                                                        <div className="font-semibold text-slate-700">{type.name}</div>
-                                                        <div className="text-slate-500">
-                                                            {type.code}
-                                                            {type.yearlyLimit !== undefined ? ` • limite/ano: ${type.yearlyLimit}` : ''}
-                                                            {type.preferredBirthdayMonth ? ' • mês do aniversário' : ''}
-                                                        </div>
-                                                    </div>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleRemoveLeaveType(type.code)}
-                                                        className="text-red-500 hover:text-red-700"
-                                                        title="Remover tipo"
-                                                    >
-                                                        <Trash2 size={14} />
-                                                    </button>
-                                                </div>
-                                            ))}
-                                        </div>
-
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <input
-                                                className="border border-gray-300 rounded-lg p-2 text-xs"
-                                                placeholder="Código (ex: ABONO_EQUIPE)"
-                                                value={newLeaveType.code}
-                                                onChange={(e) => setNewLeaveType((prev) => ({ ...prev, code: e.target.value }))}
-                                            />
-                                            <input
-                                                className="border border-gray-300 rounded-lg p-2 text-xs"
-                                                placeholder="Nome"
-                                                value={newLeaveType.name}
-                                                onChange={(e) => setNewLeaveType((prev) => ({ ...prev, name: e.target.value }))}
-                                            />
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <input
-                                                type="color"
-                                                className="w-full border border-gray-300 rounded-lg p-1 h-9"
-                                                value={newLeaveType.color}
-                                                onChange={(e) => setNewLeaveType((prev) => ({ ...prev, color: e.target.value }))}
-                                            />
-                                            <input
-                                                type="number"
-                                                min={0}
-                                                className="border border-gray-300 rounded-lg p-2 text-xs"
-                                                placeholder="Limite por ano (opcional)"
-                                                value={newLeaveType.yearlyLimit}
-                                                onChange={(e) => setNewLeaveType((prev) => ({ ...prev, yearlyLimit: e.target.value }))}
-                                            />
-                                        </div>
-                                        <label className="flex items-center gap-2 text-xs text-slate-600">
-                                            <input
-                                                type="checkbox"
-                                                checked={newLeaveType.preferredBirthdayMonth}
-                                                onChange={(e) => setNewLeaveType((prev) => ({ ...prev, preferredBirthdayMonth: e.target.checked }))}
-                                            />
-                                            Usar no mês de aniversário (quando aplicável)
-                                        </label>
-
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <button
-                                                type="button"
-                                                onClick={handleAddLeaveType}
-                                                className="bg-slate-200 text-slate-700 rounded-lg p-2 text-xs font-bold hover:bg-slate-300"
-                                            >
-                                                Adicionar tipo
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={handleSaveLeaveTypes}
-                                                disabled={savingLeaveTypes}
-                                                className="bg-brand-600 text-white rounded-lg p-2 text-xs font-bold hover:bg-brand-700 disabled:opacity-60"
-                                            >
-                                                {savingLeaveTypes ? 'Salvando...' : 'Salvar tipos'}
-                                            </button>
-                                        </div>
-                                    </div>
 
                                     <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
                                         {users.map((user) => (
