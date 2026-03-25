@@ -74,6 +74,51 @@ const getCellColor = (col: number, row: number) => {
   return colorMap[row]?.[col] ?? 'rgba(255, 255, 255, 1)';
 };
 
+const clampRiskScale = (value: number) => Math.min(5, Math.max(0, value));
+
+const IMPACT_BANDS = [
+  { min: 0, max: 1.5 },
+  { min: 1.5, max: 2.5 },
+  { min: 2.5, max: 3.5 },
+  { min: 3.5, max: 4.51 },
+  { min: 4.51, max: 5 }
+] as const;
+
+const PROBABILITY_BANDS = [
+  { min: 0, max: 1 },
+  { min: 1, max: 2 },
+  { min: 2, max: 3 },
+  { min: 3, max: 4 },
+  { min: 4, max: 5 }
+] as const;
+
+const resolveBandProgress = (value: number, min: number, max: number) => {
+  if (max <= min) return 0;
+  return Math.min(1, Math.max(0, (value - min) / (max - min)));
+};
+
+const resolveImpactPlacement = (value: number) => {
+  const clamped = clampRiskScale(value);
+  const bandIndex = IMPACT_BANDS.findIndex((band, index) => clamped <= band.max || index === IMPACT_BANDS.length - 1);
+  const band = IMPACT_BANDS[Math.max(0, bandIndex)];
+
+  return {
+    col: Math.max(0, bandIndex),
+    progress: resolveBandProgress(clamped, band.min, band.max)
+  };
+};
+
+const resolveProbabilityPlacement = (value: number) => {
+  const clamped = clampRiskScale(value);
+  const bandIndex = PROBABILITY_BANDS.findIndex((band, index) => clamped <= band.max || index === PROBABILITY_BANDS.length - 1);
+  const band = PROBABILITY_BANDS[Math.max(0, bandIndex)];
+
+  return {
+    row: 4 - Math.max(0, bandIndex),
+    progress: resolveBandProgress(clamped, band.min, band.max)
+  };
+};
+
 export const RiskMatrix: React.FC = () => {
   const [records, setRecords] = useState<RiskMatrixRecord[]>([]);
   const [drafts, setDrafts] = useState<Record<string, RiskMatrixRecord>>({});
@@ -130,23 +175,6 @@ export const RiskMatrix: React.FC = () => {
       document.body.style.overflow = previousOverflow;
     };
   }, [isFullScreen]);
-
-  const axis = useMemo(() => {
-    const allValues = records.flatMap((r) => [
-      r.inherentImpact,
-      r.inherentProbability,
-      r.residualImpact,
-      r.residualProbability
-    ]);
-
-    const min = Math.min(...allValues, 0.00001);
-    const max = Math.max(...allValues, 1);
-    const span = Math.max(max - min, 0.00001);
-
-    return { min, max, span };
-  }, [records]);
-
-  const normalize = (value: number) => (value - axis.min) / axis.span;
 
   const matrixLayout = useMemo(() => {
     const cellWidth = isFullScreen ? matrixWidth : 80;
@@ -222,17 +250,6 @@ export const RiskMatrix: React.FC = () => {
   const RADIUS_RESIDUAL_MOVEMENT = 12;
 
   const positionedPointsByKey = useMemo(() => {
-    const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
-
-    const computeCellFromNorm = (impactNorm: number, probabilityNorm: number) => {
-      const clampedImpact = clamp01(impactNorm);
-      const clampedProbability = clamp01(probabilityNorm);
-
-      const col = Math.min(4, Math.max(0, Math.floor(clampedImpact * 5)));
-      const row = Math.min(4, Math.max(0, Math.floor((1 - clampedProbability) * 5)));
-      return { row, col };
-    };
-
     const clampToCell = (
       x: number,
       y: number,
@@ -338,18 +355,24 @@ export const RiskMatrix: React.FC = () => {
     const groups = new Map<string, PositionInput[]>();
 
     selected.forEach((record, index) => {
-      const inherentImpactNorm = normalize(record.inherentImpact);
-      const inherentProbabilityNorm = normalize(record.inherentProbability);
-      const residualImpactNorm = normalize(record.residualImpact);
-      const residualProbabilityNorm = normalize(record.residualProbability);
+      const inherentImpactPlacement = resolveImpactPlacement(record.inherentImpact);
+      const inherentProbabilityPlacement = resolveProbabilityPlacement(record.inherentProbability);
+      const residualImpactPlacement = resolveImpactPlacement(record.residualImpact);
+      const residualProbabilityPlacement = resolveProbabilityPlacement(record.residualProbability);
 
-      const inherentCell = computeCellFromNorm(inherentImpactNorm, inherentProbabilityNorm);
-      const residualCell = computeCellFromNorm(residualImpactNorm, residualProbabilityNorm);
+      const inherentCell = {
+        row: inherentProbabilityPlacement.row,
+        col: inherentImpactPlacement.col
+      };
+      const residualCell = {
+        row: residualProbabilityPlacement.row,
+        col: residualImpactPlacement.col
+      };
 
-      const inherentTargetX = matrixLayout.matrixLeft + clamp01(inherentImpactNorm) * matrixLayout.matrixPixelWidth;
-      const inherentTargetY = matrixLayout.matrixBottom - clamp01(inherentProbabilityNorm) * matrixLayout.matrixPixelHeight;
-      const residualTargetX = matrixLayout.matrixLeft + clamp01(residualImpactNorm) * matrixLayout.matrixPixelWidth;
-      const residualTargetY = matrixLayout.matrixBottom - clamp01(residualProbabilityNorm) * matrixLayout.matrixPixelHeight;
+      const inherentTargetX = matrixLayout.matrixLeft + (inherentImpactPlacement.col + inherentImpactPlacement.progress) * matrixLayout.cellWidth;
+      const inherentTargetY = matrixLayout.matrixBottom - ((4 - inherentProbabilityPlacement.row) + inherentProbabilityPlacement.progress) * matrixLayout.cellHeight;
+      const residualTargetX = matrixLayout.matrixLeft + (residualImpactPlacement.col + residualImpactPlacement.progress) * matrixLayout.cellWidth;
+      const residualTargetY = matrixLayout.matrixBottom - ((4 - residualProbabilityPlacement.row) + residualProbabilityPlacement.progress) * matrixLayout.cellHeight;
 
       const addPoint = (point: PositionInput) => {
         const cellKey = `${point.row}:${point.col}`;
@@ -428,7 +451,7 @@ export const RiskMatrix: React.FC = () => {
     });
 
     return result;
-  }, [records, selectedCodes, view, matrixLayout, normalize]);
+  }, [records, selectedCodes, view, matrixLayout]);
 
   // Tooltip SVG renderizado sobre a bolinha em hover
   const tooltipEl = useMemo(() => {
@@ -715,10 +738,15 @@ export const RiskMatrix: React.FC = () => {
         const inherentPosition = positionedPointsByKey.get(`${record.id}:inherent`);
         const residualPosition = positionedPointsByKey.get(`${record.id}:residual`);
 
-        const fallbackIx = matrixLayout.matrixLeft + normalize(record.inherentImpact) * matrixLayout.matrixPixelWidth;
-        const fallbackIy = matrixLayout.matrixBottom - normalize(record.inherentProbability) * matrixLayout.matrixPixelHeight;
-        const fallbackRx = matrixLayout.matrixLeft + normalize(record.residualImpact) * matrixLayout.matrixPixelWidth;
-        const fallbackRy = matrixLayout.matrixBottom - normalize(record.residualProbability) * matrixLayout.matrixPixelHeight;
+        const inherentImpactPlacement = resolveImpactPlacement(record.inherentImpact);
+        const inherentProbabilityPlacement = resolveProbabilityPlacement(record.inherentProbability);
+        const residualImpactPlacement = resolveImpactPlacement(record.residualImpact);
+        const residualProbabilityPlacement = resolveProbabilityPlacement(record.residualProbability);
+
+        const fallbackIx = matrixLayout.matrixLeft + (inherentImpactPlacement.col + inherentImpactPlacement.progress) * matrixLayout.cellWidth;
+        const fallbackIy = matrixLayout.matrixBottom - ((4 - inherentProbabilityPlacement.row) + inherentProbabilityPlacement.progress) * matrixLayout.cellHeight;
+        const fallbackRx = matrixLayout.matrixLeft + (residualImpactPlacement.col + residualImpactPlacement.progress) * matrixLayout.cellWidth;
+        const fallbackRy = matrixLayout.matrixBottom - ((4 - residualProbabilityPlacement.row) + residualProbabilityPlacement.progress) * matrixLayout.cellHeight;
 
         const ix = inherentPosition?.x ?? fallbackIx;
         const iy = inherentPosition?.y ?? fallbackIy;
