@@ -897,7 +897,6 @@ export const UserDashboard: React.FC = () => {
                   {notice.description && (
                     <p className="text-slate-600 mt-0.5 leading-snug">{notice.description}</p>
                   )}
-                  <p className="text-slate-400 mt-1">Válido até {formatDateForDisplay(notice.expiresAt)}</p>
                 </div>
               ))}
             </div>
