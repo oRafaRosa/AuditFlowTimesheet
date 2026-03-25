@@ -514,7 +514,7 @@ export const UserDashboard: React.FC = () => {
           <p className="text-sm text-slate-500 mt-1">Visão rápida do seu progresso no mês e pendências de lançamento</p>
           {isUserBirthdayToday && (
             <div className="mt-2 inline-flex items-center gap-2 rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700">
-              Hoje é seu aniversário
+              Feliz aniversário!
               <span className="inline-flex items-end gap-1.5" aria-hidden="true">
                 <span className="inline-flex flex-col items-center">
                   <span className="inline-block w-2.5 h-3.5 rounded-[999px] bg-rose-400" />
