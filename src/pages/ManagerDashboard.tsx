@@ -407,126 +407,8 @@ export const ManagerDashboard: React.FC = () => {
     const excessAlerts = activeTeamStats.stats.filter(s => s.divergence > 10);
     const passivePanelClass = 'bg-white rounded-xl shadow-sm border border-slate-100 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md';
 
-    return (
-            <div className="space-y-8">
-            
-            {/* alerta de delegação - quando este gestor recebeu */}
-            {receivedDelegation && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start gap-3">
-                    <Info className="text-blue-600 mt-0.5 flex-shrink-0" size={20} />
-                    <div>
-                        <p className="font-semibold text-blue-900">Delegação de Equipe Ativa</p>
-                        <p className="text-sm text-blue-800 mt-1">
-                            <strong>{receivedDelegation}</strong> delegou sua equipe a você. Você é responsável pelas aprovações de sua equipe enquanto ele está ausente.
-                        </p>
-                    </div>
-                </div>
-            )}
-
-            {/* alertas de delegação */}
-            {delegationAlert && delegationAlert.type === 'received' && (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-start justify-between">
-                    <div className="flex items-start gap-3">
-                        <CheckCircle className="text-green-600 mt-0.5" size={20} />
-                        <div>
-                            <p className="font-semibold text-green-900">Equipe delegada com sucesso!</p>
-                            <p className="text-sm text-green-800 mt-1">A equipe foi delegada a <strong>{delegationAlert.managerName}</strong>. Notificação enviada!</p>
-                        </div>
-                    </div>
-                    <button onClick={() => setDelegationAlert(null)} className="text-green-600 hover:text-green-800">
-                        <X size={18} />
-                    </button>
-                </div>
-            )}
-            {delegationAlert && delegationAlert.type === 'removed' && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start justify-between">
-                    <div className="flex items-start gap-3">
-                        <CheckCircle className="text-blue-600 mt-0.5" size={20} />
-                        <div>
-                            <p className="font-semibold text-blue-900">Gestão recuperada!</p>
-                            <p className="text-sm text-blue-800 mt-1">Você recuperou o controle de sua equipe. Notificação enviada ao gestor anterior.</p>
-                        </div>
-                    </div>
-                    <button onClick={() => setDelegationAlert(null)} className="text-blue-600 hover:text-blue-800">
-                        <X size={18} />
-                    </button>
-                </div>
-            )}
-
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-                <div className="xl:col-span-2">
-                    {/* seção de aprovações pendentes */}
-                    {pendingApprovals.length > 0 ? (
-                        <div className="bg-white rounded-xl shadow-md border border-brand-100 overflow-hidden ring-1 ring-brand-100 h-full">
-                            <div className="p-4 bg-brand-50 border-b border-brand-100 flex justify-between items-center">
-                                <h3 className="font-bold text-brand-800 flex items-center gap-2">
-                                    <Clock size={20} className="text-brand-600" />
-                                    Aprovações Pendentes <span className="bg-brand-600 text-white text-xs px-2 py-0.5 rounded-full">{pendingApprovals.length}</span>
-                                </h3>
-                            </div>
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-left text-sm">
-                                    <thead className="text-slate-500 font-semibold border-b border-gray-100 bg-white">
-                                        <tr>
-                                            <th className="px-6 py-3">Colaborador</th>
-                                            <th className="px-6 py-3">Período de Referência</th>
-                                            <th className="px-6 py-3 text-right">Ação</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-100 bg-white">
-                                        {pendingApprovals.map(p => (
-                                            <tr key={p.id} className="hover:bg-brand-50/30 transition-colors">
-                                                <td className="px-6 py-4">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="w-8 h-8 rounded-full bg-brand-100 flex items-center justify-center text-brand-700 font-bold text-xs">
-                                                            {(p.userName || 'U').substring(0, 2).toUpperCase()}
-                                                        </div>
-                                                        <div>
-                                                            <p className="font-medium text-slate-800">{p.userName}</p>
-                                                            <p className="text-xs text-slate-500">Solicitado em: {new Date(p.updatedAt).toLocaleDateString()}</p>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4 font-medium text-slate-600">
-                                                    {new Date(p.year, p.month, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }).toUpperCase()}
-                                                </td>
-                                                <td className="px-6 py-4 text-right">
-                                                    <button
-                                                        onClick={() => openReviewModal(p)}
-                                                        disabled={processingAction}
-                                                        className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-brand-700 shadow-sm shadow-brand-500/20 flex items-center gap-2 ml-auto"
-                                                    >
-                                                        <Search size={16} /> Analisar
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    ) : (
-                        <div className={`${passivePanelClass} p-8 text-center h-full`}>
-                            <div className="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-3">
-                                <CheckCircle size={24} />
-                            </div>
-                            <h3 className="text-lg font-medium text-slate-800">Tudo em dia</h3>
-                            <p className="text-slate-500">Não há timesheets pendentes de aprovação no momento.</p>
-                        </div>
-                    )}
-                </div>
-
-                <div>
-                    <BirthdaySidebarCard
-                        monthlyBirthdays={monthlyTeamBirthdays}
-                        upcomingBirthdays={nextMonthsTeamBirthdays}
-                        title="Aniversariantes do Mês"
-                        subtitle="Quadrinho rápido da equipe"
-                    />
-                </div>
-            </div>
-
-            <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+        const renderBacklogPanel = () => (
+            <>
                 <button
                     type="button"
                     onClick={() => setShowBacklogDetails(prev => !prev)}
@@ -583,11 +465,11 @@ export const ManagerDashboard: React.FC = () => {
                                             </td>
                                             <td className="px-6 py-4">
                                                 <span className={`px-2 py-1 rounded text-xs font-bold ${
-                                                  period.status === 'SUBMITTED'
-                                                    ? 'bg-brand-100 text-brand-700'
-                                                    : period.status === 'REJECTED'
-                                                      ? 'bg-red-100 text-red-700'
-                                                      : 'bg-amber-100 text-amber-700'
+                                                    period.status === 'SUBMITTED'
+                                                        ? 'bg-brand-100 text-brand-700'
+                                                        : period.status === 'REJECTED'
+                                                            ? 'bg-red-100 text-red-700'
+                                                            : 'bg-amber-100 text-amber-700'
                                                 }`}>
                                                     {period.status === 'SUBMITTED' ? 'AGUARDANDO APROVAÇÃO' : period.status === 'REJECTED' ? 'DEVOLVIDO' : 'NÃO ENVIADO'}
                                                 </span>
@@ -620,6 +502,135 @@ export const ManagerDashboard: React.FC = () => {
                         </div>
                     )
                 )}
+            </>
+        );
+
+    return (
+            <div className="space-y-8">
+            
+            {/* alerta de delegação - quando este gestor recebeu */}
+            {receivedDelegation && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start gap-3">
+                    <Info className="text-blue-600 mt-0.5 flex-shrink-0" size={20} />
+                    <div>
+                        <p className="font-semibold text-blue-900">Delegação de Equipe Ativa</p>
+                        <p className="text-sm text-blue-800 mt-1">
+                            <strong>{receivedDelegation}</strong> delegou sua equipe a você. Você é responsável pelas aprovações de sua equipe enquanto ele está ausente.
+                        </p>
+                    </div>
+                </div>
+            )}
+
+            {/* alertas de delegação */}
+            {delegationAlert && delegationAlert.type === 'received' && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-start justify-between">
+                    <div className="flex items-start gap-3">
+                        <CheckCircle className="text-green-600 mt-0.5" size={20} />
+                        <div>
+                            <p className="font-semibold text-green-900">Equipe delegada com sucesso!</p>
+                            <p className="text-sm text-green-800 mt-1">A equipe foi delegada a <strong>{delegationAlert.managerName}</strong>. Notificação enviada!</p>
+                        </div>
+                    </div>
+                    <button onClick={() => setDelegationAlert(null)} className="text-green-600 hover:text-green-800">
+                        <X size={18} />
+                    </button>
+                </div>
+            )}
+            {delegationAlert && delegationAlert.type === 'removed' && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start justify-between">
+                    <div className="flex items-start gap-3">
+                        <CheckCircle className="text-blue-600 mt-0.5" size={20} />
+                        <div>
+                            <p className="font-semibold text-blue-900">Gestão recuperada!</p>
+                            <p className="text-sm text-blue-800 mt-1">Você recuperou o controle de sua equipe. Notificação enviada ao gestor anterior.</p>
+                        </div>
+                    </div>
+                    <button onClick={() => setDelegationAlert(null)} className="text-blue-600 hover:text-blue-800">
+                        <X size={18} />
+                    </button>
+                </div>
+            )}
+
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                <div className="xl:col-span-2 space-y-6">
+                    {/* seção de aprovações pendentes */}
+                    {pendingApprovals.length > 0 ? (
+                        <>
+                            <div className="bg-white rounded-xl shadow-md border border-brand-100 overflow-hidden ring-1 ring-brand-100">
+                                <div className="p-4 bg-brand-50 border-b border-brand-100 flex justify-between items-center">
+                                    <h3 className="font-bold text-brand-800 flex items-center gap-2">
+                                        <Clock size={20} className="text-brand-600" />
+                                        Aprovações Pendentes <span className="bg-brand-600 text-white text-xs px-2 py-0.5 rounded-full">{pendingApprovals.length}</span>
+                                    </h3>
+                                </div>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left text-sm">
+                                        <thead className="text-slate-500 font-semibold border-b border-gray-100 bg-white">
+                                            <tr>
+                                                <th className="px-6 py-3">Colaborador</th>
+                                                <th className="px-6 py-3">Período de Referência</th>
+                                                <th className="px-6 py-3 text-right">Ação</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-100 bg-white">
+                                            {pendingApprovals.map(p => (
+                                                <tr key={p.id} className="hover:bg-brand-50/30 transition-colors">
+                                                    <td className="px-6 py-4">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-8 h-8 rounded-full bg-brand-100 flex items-center justify-center text-brand-700 font-bold text-xs">
+                                                                {(p.userName || 'U').substring(0, 2).toUpperCase()}
+                                                            </div>
+                                                            <div>
+                                                                <p className="font-medium text-slate-800">{p.userName}</p>
+                                                                <p className="text-xs text-slate-500">Solicitado em: {new Date(p.updatedAt).toLocaleDateString()}</p>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4 font-medium text-slate-600">
+                                                        {new Date(p.year, p.month, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }).toUpperCase()}
+                                                    </td>
+                                                    <td className="px-6 py-4 text-right">
+                                                        <button
+                                                            onClick={() => openReviewModal(p)}
+                                                            disabled={processingAction}
+                                                            className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-brand-700 shadow-sm shadow-brand-500/20 flex items-center gap-2 ml-auto"
+                                                        >
+                                                            <Search size={16} /> Analisar
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+                                {renderBacklogPanel()}
+                            </div>
+                        </>
+                    ) : (
+                        <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+                            <div className="p-6 text-center border-b border-slate-100">
+                                <div className="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-3">
+                                    <CheckCircle size={24} />
+                                </div>
+                                <h3 className="text-lg font-medium text-slate-800">Tudo em dia</h3>
+                                <p className="text-slate-500">Não há timesheets pendentes de aprovação no momento.</p>
+                            </div>
+                            {renderBacklogPanel()}
+                        </div>
+                    )}
+                </div>
+
+                <div>
+                    <BirthdaySidebarCard
+                        monthlyBirthdays={monthlyTeamBirthdays}
+                        upcomingBirthdays={nextMonthsTeamBirthdays}
+                        title="Aniversariantes do Mês"
+                        subtitle="Quadrinho rápido da equipe"
+                    />
+                </div>
             </div>
 
             <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
