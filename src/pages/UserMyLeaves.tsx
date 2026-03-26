@@ -171,6 +171,8 @@ export const UserMyLeaves: React.FC = () => {
   }, [selectedYear]);
 
   useEffect(() => {
+    if (loading) return;
+
     const container = calendarScrollRef.current;
     if (!container || yearDays.length === 0) return;
 
@@ -194,7 +196,7 @@ export const UserMyLeaves: React.FC = () => {
       left: desiredLeft,
       behavior: isFirstFocus ? 'auto' : 'smooth'
     });
-  }, [selectedYear, yearDays]);
+  }, [selectedYear, yearDays, loading]);
 
   const holidayMap = useMemo(() => {
     const map = new Map<string, string>();
