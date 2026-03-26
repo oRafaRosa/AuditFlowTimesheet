@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, Plus, Trash2 } from 'lucide-react';
+import { AlertTriangle, Plus, Trash2, Filter, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { store } from '../services/store';
 import { CalendarException, Holiday, LeaveType, TeamLeave, User } from '../types';
 import { formatDateForDisplay } from '../utils/date';
@@ -7,6 +7,7 @@ import { formatDateForDisplay } from '../utils/date';
 const MONTH_LABELS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 const WEEKDAY_LABELS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
 const TODAY_COLUMN_LINE = 'linear-gradient(to right, transparent calc(50% - 0.5px), rgba(239, 68, 68, 0.95) calc(50% - 0.5px), rgba(239, 68, 68, 0.95) calc(50% + 0.5px), transparent calc(50% + 0.5px))';
+const NO_TEAM_FILTER = 'SEM_GESTOR';
 
 interface YearDayCell {
   dateKey: string;
@@ -59,6 +60,11 @@ export const ManagerTeamLeaves: React.FC = () => {
   const [selectedUserId, setSelectedUserId] = useState('');
   const [showVacationAlertDetails, setShowVacationAlertDetails] = useState(false);
   const [showWholeDirectorate, setShowWholeDirectorate] = useState(false);
+  const [filterUserId, setFilterUserId] = useState('');
+  const [filterTeamId, setFilterTeamId] = useState('');
+  const [filterWithoutVacation, setFilterWithoutVacation] = useState(false);
+  const [filterWithoutBirthdayLeave, setFilterWithoutBirthdayLeave] = useState(false);
+  const [nameSortDirection, setNameSortDirection] = useState<'asc' | 'desc'>('asc');
   const calendarScrollRef = useRef<HTMLDivElement | null>(null);
   const hasAutoFocusedMonthRef = useRef(false);
 
@@ -150,6 +156,38 @@ export const ManagerTeamLeaves: React.FC = () => {
   const manageableUsers = useMemo(() => {
     return teamUsers.filter((user) => managedUserIdSet.has(user.id));
   }, [teamUsers, managedUserIdSet]);
+
+  const managerMap = useMemo(() => {
+    const map = new Map<string, User>();
+    users.forEach((user) => map.set(user.id, user));
+    return map;
+  }, [users]);
+
+  const teamFilterOptions = useMemo(() => {
+    return teamUsers
+      .filter((user) => user.role === 'MANAGER' || user.role === 'ADMIN')
+      .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+  }, [teamUsers]);
+
+  const selectedTeamScopeIds = useMemo(() => {
+    if (!filterTeamId || filterTeamId === NO_TEAM_FILTER) return new Set<string>();
+
+    const scope = new Set<string>([filterTeamId]);
+    let changed = true;
+
+    while (changed) {
+      changed = false;
+
+      teamUsers.forEach((user) => {
+        if (user.managerId && scope.has(user.managerId) && !scope.has(user.id)) {
+          scope.add(user.id);
+          changed = true;
+        }
+      });
+    }
+
+    return scope;
+  }, [filterTeamId, teamUsers]);
 
   useEffect(() => {
     if (!selectedUserId) return;
@@ -301,6 +339,10 @@ export const ManagerTeamLeaves: React.FC = () => {
     });
   }, [teamUsers, leavesByUser]);
 
+  const usersWithoutVacationSet = useMemo(() => {
+    return new Set(usersWithoutVacation.map((user) => user.id));
+  }, [usersWithoutVacation]);
+
   const pendingBirthdayLeave = useMemo(() => {
     return teamUsers
       .filter((user) => !!user.birthdayDate)
@@ -335,6 +377,62 @@ export const ManagerTeamLeaves: React.FC = () => {
     return map;
   }, [pendingBirthdayLeave]);
 
+  const usersWithoutBirthdayLeaveSet = useMemo(() => {
+    return new Set(pendingBirthdayLeave.map((user) => user.id));
+  }, [pendingBirthdayLeave]);
+
+  const filteredTeamUsers = useMemo(() => {
+    const sorted = [...teamUsers]
+      .filter((user) => {
+        if (!filterUserId) return true;
+        return user.id === filterUserId;
+      })
+      .filter((user) => {
+        if (!filterTeamId) return true;
+        if (filterTeamId === NO_TEAM_FILTER) return !user.managerId;
+        return selectedTeamScopeIds.has(user.id);
+      })
+      .filter((user) => {
+        if (!filterWithoutVacation) return true;
+        return usersWithoutVacationSet.has(user.id);
+      })
+      .filter((user) => {
+        if (!filterWithoutBirthdayLeave) return true;
+        return usersWithoutBirthdayLeaveSet.has(user.id);
+      });
+
+    sorted.sort((a, b) => {
+      const compare = a.name.localeCompare(b.name, 'pt-BR');
+      return nameSortDirection === 'asc' ? compare : -compare;
+    });
+
+    return sorted;
+  }, [
+    teamUsers,
+    filterUserId,
+    filterTeamId,
+    filterWithoutVacation,
+    filterWithoutBirthdayLeave,
+    selectedTeamScopeIds,
+    usersWithoutVacationSet,
+    usersWithoutBirthdayLeaveSet,
+    nameSortDirection
+  ]);
+
+  const clearFilters = () => {
+    setFilterUserId('');
+    setFilterTeamId('');
+    setFilterWithoutVacation(false);
+    setFilterWithoutBirthdayLeave(false);
+  };
+
+  useEffect(() => {
+    if (!selectedUserId) return;
+    if (filteredTeamUsers.some((user) => user.id === selectedUserId)) return;
+
+    setSelectedUserId('');
+  }, [filteredTeamUsers, selectedUserId]);
+
   const birthdayDateKeyByUser = useMemo(() => {
     const map = new Map<string, string>();
 
@@ -362,8 +460,8 @@ export const ManagerTeamLeaves: React.FC = () => {
 
   const selectedUser = useMemo(() => {
     if (!selectedUserId) return null;
-    return teamUsers.find((user) => user.id === selectedUserId) || null;
-  }, [teamUsers, selectedUserId]);
+    return filteredTeamUsers.find((user) => user.id === selectedUserId) || null;
+  }, [filteredTeamUsers, selectedUserId]);
 
   const selectedUserIsManaged = useMemo(() => {
     if (!selectedUser) return false;
@@ -528,6 +626,73 @@ export const ManagerTeamLeaves: React.FC = () => {
         </div>
       </div>
 
+      <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-3">
+        <div className="flex items-center gap-2 text-slate-500 mb-2">
+          <Filter size={14} />
+          <span className="text-xs font-semibold uppercase tracking-wide">Filtros</span>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-2.5">
+          <div>
+            <label className="block text-[11px] font-bold text-slate-500 mb-1">Colaborador</label>
+            <select
+              className="w-full border border-gray-300 px-2 py-1.5 rounded-lg text-xs"
+              value={filterUserId}
+              onChange={(e) => setFilterUserId(e.target.value)}
+            >
+              <option value="">Todos</option>
+              {teamUsers.map((user) => (
+                <option key={user.id} value={user.id}>{user.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-bold text-slate-500 mb-1">Equipe (Gestor)</label>
+            <select
+              className="w-full border border-gray-300 px-2 py-1.5 rounded-lg text-xs"
+              value={filterTeamId}
+              onChange={(e) => setFilterTeamId(e.target.value)}
+            >
+              <option value="">Todas</option>
+              <option value={NO_TEAM_FILTER}>Sem gestor</option>
+              {teamFilterOptions.map((manager) => (
+                <option key={manager.id} value={manager.id}>{manager.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <label className="inline-flex items-center gap-2 text-xs text-slate-600 mt-5">
+            <input
+              type="checkbox"
+              checked={filterWithoutVacation}
+              onChange={(e) => setFilterWithoutVacation(e.target.checked)}
+              className="rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+            />
+            Sem férias programadas
+          </label>
+
+          <label className="inline-flex items-center gap-2 text-xs text-slate-600 mt-5">
+            <input
+              type="checkbox"
+              checked={filterWithoutBirthdayLeave}
+              onChange={(e) => setFilterWithoutBirthdayLeave(e.target.checked)}
+              className="rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+            />
+            Sem folga aniversário
+          </label>
+
+          <div className="flex items-end">
+            <button
+              type="button"
+              onClick={clearFilters}
+              className="w-full border border-slate-300 bg-white px-2 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-50"
+            >
+              Limpar filtros
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
         <div className="xl:col-span-3 bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
           <div className="p-4 border-b border-slate-100 bg-slate-50">
@@ -539,7 +704,18 @@ export const ManagerTeamLeaves: React.FC = () => {
             <table className="min-w-[2200px] text-[11px] border-collapse table-fixed">
               <thead>
                 <tr className="bg-slate-100">
-                  <th className="sticky left-0 z-30 bg-amber-100 border border-slate-300 px-2 py-2 w-[240px] min-w-[240px]">Colaborador</th>
+                  <th className="sticky left-0 z-30 bg-amber-100 border border-slate-300 px-2 py-2 w-[240px] min-w-[240px]">
+                    <button
+                      type="button"
+                      onClick={() => setNameSortDirection((prev) => prev === 'asc' ? 'desc' : 'asc')}
+                      className="inline-flex items-center gap-1.5 text-xs font-bold hover:text-slate-700 transition-colors"
+                      title={`Ordenar por nome (${nameSortDirection === 'asc' ? 'A-Z' : 'Z-A'})`}
+                    >
+                      Colaborador
+                      {nameSortDirection === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />}
+                      <ArrowUpDown size={12} className="text-slate-400" />
+                    </button>
+                  </th>
                   {monthSegments.map((segment) => (
                     <th
                       key={segment.month}
@@ -566,7 +742,7 @@ export const ManagerTeamLeaves: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {teamUsers.map((user) => {
+                {filteredTeamUsers.map((user) => {
                   const userDayMap = leavesByUserDay.get(user.id) || new Map<string, TeamLeave>();
                   const pendingBirthdayMonth = pendingBirthdayMonthByUser.get(user.id);
                   const isSelected = selectedUserId === user.id;
@@ -597,6 +773,7 @@ export const ManagerTeamLeaves: React.FC = () => {
                           </div>
                         </button>
                         <div className="text-[10px] text-slate-500">{user.email}</div>
+                        <div className="text-[10px] text-slate-400">{user.managerId ? (managerMap.get(user.managerId)?.name || 'Sem gestor') : 'Sem gestor'}</div>
                       </td>
                       {yearDays.map((item) => {
                         const leave = userDayMap.get(item.dateKey);
