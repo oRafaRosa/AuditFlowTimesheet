@@ -20,7 +20,9 @@ export const BirthdaySidebarCard: React.FC<BirthdaySidebarCardProps> = ({
   subtitle = 'Resumo rápido do mês',
   showBirthdayBalloons = false
 }) => {
-  const previousInMonth = monthlyBirthdays.filter((person) => person.daysUntil < 0 && !person.isToday);
+  const previousInMonth = monthlyBirthdays
+    .filter((person) => person.daysUntil < 0 && !person.isToday)
+    .sort((a, b) => b.daysUntil - a.daysUntil || a.name.localeCompare(b.name));
   const upcomingInMonth = monthlyBirthdays.filter((person) => person.daysUntil >= 0 || person.isToday);
 
   return (
@@ -44,7 +46,7 @@ export const BirthdaySidebarCard: React.FC<BirthdaySidebarCardProps> = ({
           <p className="text-[11px] font-bold uppercase tracking-wide text-slate-600">Anteriores</p>
           {previousInMonth.length > 0 ? (
             <div className="mt-2 space-y-1.5">
-              {previousInMonth.slice(0, 4).map((person) => (
+              {previousInMonth.slice(0, 3).map((person) => (
                 <div key={person.id} className="flex items-center justify-between gap-2 text-xs text-slate-500">
                   <span className="truncate">{person.name}</span>
                   <span className="whitespace-nowrap">{person.dateLabel}</span>

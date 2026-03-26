@@ -38,6 +38,7 @@ export const ManagerDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [teamMembers, setTeamMembers] = useState<User[]>([]);
+    const [birthdayUsers, setBirthdayUsers] = useState<User[]>([]);
   const [teamEntries, setTeamEntries] = useState<TimesheetEntry[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [teamPerformancePeriod, setTeamPerformancePeriod] = useState<TeamPerformancePeriodKey>('current');
@@ -95,6 +96,7 @@ export const ManagerDashboard: React.FC = () => {
     
         // checa se este gestor recebeu delegação de alguém
         const activeUsers = allUsers.filter(u => u.isActive !== false);
+        setBirthdayUsers(activeUsers);
         const delegatingManagers = activeUsers.filter(u => u.delegatedManagerId === freshUserData.id);
         if (delegatingManagers.length > 0) {
             setReceivedDelegation(delegatingManagers.map(m => m.name).join(', '));
@@ -200,8 +202,8 @@ export const ManagerDashboard: React.FC = () => {
     setLoading(false);
   };
 
-        const monthlyTeamBirthdays = useMemo(() => getMonthlyBirthdays(teamMembers), [teamMembers]);
-        const upcomingTeamBirthdays = useMemo(() => getUpcomingBirthdays(teamMembers, 8), [teamMembers]);
+        const monthlyTeamBirthdays = useMemo(() => getMonthlyBirthdays(birthdayUsers), [birthdayUsers]);
+        const upcomingTeamBirthdays = useMemo(() => getUpcomingBirthdays(birthdayUsers, 8), [birthdayUsers]);
         const currentMonth = useMemo(() => new Date().getMonth(), []);
         const nextMonthsTeamBirthdays = useMemo(
             () => upcomingTeamBirthdays.filter((person) => person.month !== currentMonth).slice(0, 3),
@@ -768,7 +770,7 @@ export const ManagerDashboard: React.FC = () => {
                         monthlyBirthdays={monthlyTeamBirthdays}
                         upcomingBirthdays={nextMonthsTeamBirthdays}
                         title="Aniversariantes do Mês"
-                        subtitle="Quadrinho rápido da equipe"
+                        subtitle="Quadrinho geral da diretoria"
                     />
                 </div>
             </div>
