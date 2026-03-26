@@ -22,7 +22,7 @@ const withTimeout = async <T,>(promise: Promise<T>, timeoutMs: number): Promise<
 };
 
 export const UserMyLeaves: React.FC = () => {
-  const currentUser = store.getCurrentUser();
+  const currentUserId = store.getCurrentUser()?.id || '';
   const currentYear = new Date().getFullYear();
 
   const [loading, setLoading] = useState(true);
@@ -49,6 +49,7 @@ export const UserMyLeaves: React.FC = () => {
       setLoadError('');
 
       try {
+        const currentUser = store.getCurrentUser();
         const resolvedUser = currentUser || await withTimeout(store.syncCurrentUserFromDatabase(), LOAD_TIMEOUT_MS);
 
         if (!resolvedUser) {
@@ -89,7 +90,7 @@ export const UserMyLeaves: React.FC = () => {
       isMounted = false;
       window.clearTimeout(watchdog);
     };
-  }, [currentUser, selectedYear, reloadKey]);
+  }, [currentUserId, selectedYear, reloadKey]);
 
   const leaveTypeMap = useMemo(() => {
     const map = new Map<string, LeaveType>();
