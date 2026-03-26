@@ -6,6 +6,7 @@ import { formatDateForDisplay } from '../utils/date';
 
 const MONTH_LABELS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 const WEEKDAY_LABELS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+const TODAY_COLUMN_LINE = 'linear-gradient(to right, transparent calc(50% - 0.5px), rgba(239, 68, 68, 0.95) calc(50% - 0.5px), rgba(239, 68, 68, 0.95) calc(50% + 0.5px), transparent calc(50% + 0.5px))';
 
 interface YearDayCell {
   dateKey: string;
@@ -190,14 +191,18 @@ export const ManagerTeamLeaves: React.FC = () => {
     if (!container || yearDays.length === 0) return;
 
     const today = new Date();
-    const targetMonth = selectedYear === today.getFullYear() ? today.getMonth() : 0;
-    const monthStart = yearDays.find((item) => item.month === targetMonth && item.day === 1);
-    if (!monthStart) return;
+    const targetMonth = today.getMonth();
+    const targetDay = selectedYear === today.getFullYear()
+      ? today.getDate()
+      : Math.min(today.getDate(), new Date(selectedYear, targetMonth + 1, 0).getDate());
+    const targetDate = yearDays.find((item) => item.month === targetMonth && item.day === targetDay)
+      || yearDays.find((item) => item.month === targetMonth && item.day === 1);
+    if (!targetDate) return;
 
-    const targetCell = container.querySelector<HTMLElement>(`[data-date-key="${monthStart.dateKey}"]`);
+    const targetCell = container.querySelector<HTMLElement>(`[data-date-key="${targetDate.dateKey}"]`);
     if (!targetCell) return;
 
-    const desiredLeft = Math.max(0, targetCell.offsetLeft - 260);
+    const desiredLeft = Math.max(0, targetCell.offsetLeft - (container.clientWidth / 2) + (targetCell.clientWidth / 2));
 
     // Primeiro foco sem animação para abrir já no mês atual.
     const isFirstFocus = !hasAutoFocusedMonthRef.current;
@@ -348,6 +353,12 @@ export const ManagerTeamLeaves: React.FC = () => {
 
     return map;
   }, [teamUsers, selectedYear]);
+
+  const todayDateKey = useMemo(() => {
+    const today = new Date();
+    if (selectedYear !== today.getFullYear()) return undefined;
+    return toDateKey(new Date(today.getFullYear(), today.getMonth(), today.getDate(), 12, 0, 0, 0));
+  }, [selectedYear]);
 
   const selectedUser = useMemo(() => {
     if (!selectedUserId) return null;
@@ -546,6 +557,7 @@ export const ManagerTeamLeaves: React.FC = () => {
                       key={`week-${item.dateKey}`}
                       data-date-key={item.dateKey}
                       className="border border-slate-300 w-7 min-w-7 h-7 font-normal text-slate-500"
+                      style={item.dateKey === todayDateKey ? { backgroundImage: TODAY_COLUMN_LINE } : undefined}
                     >
                       <div className="leading-none text-[9px]">{WEEKDAY_LABELS[item.weekday]}</div>
                       <div className="leading-none mt-0.5">{item.day}</div>
@@ -592,12 +604,14 @@ export const ManagerTeamLeaves: React.FC = () => {
                         const holidayName = holidayMap.get(item.dateKey);
                         const isHoliday = !!holidayName;
                         const isBirthday = birthdayDateKeyByUser.get(user.id) === item.dateKey;
+                        const isTodayColumn = item.dateKey === todayDateKey;
                         const isWeekend = item.weekday === 0 || item.weekday === 6;
                         const highlightBirthdayMonth = isSelected && selectedUserBirthdayMonth === item.month;
 
                         let backgroundColor = '#ffffff';
                         let title = '';
                         let boxShadow = '';
+                        let backgroundImage: string | undefined;
 
                         if (isWeekend) backgroundColor = '#f8fafc';
                         if (isHoliday) {
@@ -618,11 +632,15 @@ export const ManagerTeamLeaves: React.FC = () => {
                           boxShadow = 'inset 0 0 0 1px rgba(245, 158, 11, 0.65)';
                         }
 
+                        if (isTodayColumn) {
+                          backgroundImage = TODAY_COLUMN_LINE;
+                        }
+
                         return (
                           <td
                             key={`${user.id}-${item.dateKey}`}
                             className="border border-slate-300 w-7 min-w-7 h-7 relative"
-                            style={{ backgroundColor, boxShadow }}
+                            style={{ backgroundColor, boxShadow, backgroundImage }}
                             title={title || undefined}
                           >
                             {isBirthday && (

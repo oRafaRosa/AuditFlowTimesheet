@@ -7,6 +7,7 @@ import { formatDateForDisplay } from '../utils/date';
 const MONTH_LABELS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 const WEEKDAY_LABELS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
 const LOAD_TIMEOUT_MS = 12000;
+const TODAY_COLUMN_LINE = 'linear-gradient(to right, transparent calc(50% - 0.5px), rgba(239, 68, 68, 0.95) calc(50% - 0.5px), rgba(239, 68, 68, 0.95) calc(50% + 0.5px), transparent calc(50% + 0.5px))';
 
 interface YearDayCell {
   dateKey: string;
@@ -174,14 +175,18 @@ export const UserMyLeaves: React.FC = () => {
     if (!container || yearDays.length === 0) return;
 
     const today = new Date();
-    const targetMonth = selectedYear === today.getFullYear() ? today.getMonth() : 0;
-    const monthStart = yearDays.find((item) => item.month === targetMonth && item.day === 1);
-    if (!monthStart) return;
+    const targetMonth = today.getMonth();
+    const targetDay = selectedYear === today.getFullYear()
+      ? today.getDate()
+      : Math.min(today.getDate(), new Date(selectedYear, targetMonth + 1, 0).getDate());
+    const targetDate = yearDays.find((item) => item.month === targetMonth && item.day === targetDay)
+      || yearDays.find((item) => item.month === targetMonth && item.day === 1);
+    if (!targetDate) return;
 
-    const targetCell = container.querySelector<HTMLElement>(`[data-date-key="${monthStart.dateKey}"]`);
+    const targetCell = container.querySelector<HTMLElement>(`[data-date-key="${targetDate.dateKey}"]`);
     if (!targetCell) return;
 
-    const desiredLeft = Math.max(0, targetCell.offsetLeft - 260);
+    const desiredLeft = Math.max(0, targetCell.offsetLeft - (container.clientWidth / 2) + (targetCell.clientWidth / 2));
     const isFirstFocus = !hasAutoFocusedMonthRef.current;
     hasAutoFocusedMonthRef.current = true;
 
@@ -242,6 +247,12 @@ export const UserMyLeaves: React.FC = () => {
 
     return `${selectedYear}-${String(month + 1).padStart(2, '0')}-${String(adjustedDay).padStart(2, '0')}`;
   }, [resolvedUser, selectedYear]);
+
+  const todayDateKey = useMemo(() => {
+    const today = new Date();
+    if (selectedYear !== today.getFullYear()) return undefined;
+    return toDateKey(new Date(today.getFullYear(), today.getMonth(), today.getDate(), 12, 0, 0, 0));
+  }, [selectedYear]);
 
   const leaveSummary = useMemo(() => {
     const summaryMap = new Map<string, { code: string; name: string; color?: string; totalDays: number; totalEvents: number }>();
@@ -338,6 +349,7 @@ export const UserMyLeaves: React.FC = () => {
                       key={`week-${item.dateKey}`}
                       data-date-key={item.dateKey}
                       className="border border-slate-300 w-7 min-w-7 h-7 font-normal text-slate-500"
+                      style={item.dateKey === todayDateKey ? { backgroundImage: TODAY_COLUMN_LINE } : undefined}
                     >
                       <div className="leading-none text-[9px]">{WEEKDAY_LABELS[item.weekday]}</div>
                       <div className="leading-none mt-0.5">{item.day}</div>
@@ -357,10 +369,12 @@ export const UserMyLeaves: React.FC = () => {
                     const holidayName = holidayMap.get(item.dateKey);
                     const isHoliday = !!holidayName;
                     const isBirthday = birthdayDateKey === item.dateKey;
+                    const isTodayColumn = item.dateKey === todayDateKey;
                     const isWeekend = item.weekday === 0 || item.weekday === 6;
 
                     let backgroundColor = '#ffffff';
                     let title = '';
+                    let backgroundImage: string | undefined;
 
                     if (isWeekend) backgroundColor = '#f8fafc';
                     if (isHoliday) {
@@ -377,11 +391,15 @@ export const UserMyLeaves: React.FC = () => {
                       title = title ? `${title} • Aniversário` : 'Aniversário';
                     }
 
+                    if (isTodayColumn) {
+                      backgroundImage = TODAY_COLUMN_LINE;
+                    }
+
                     return (
                       <td
                         key={item.dateKey}
                         className="border border-slate-300 w-7 min-w-7 h-7 relative"
-                        style={{ backgroundColor }}
+                        style={{ backgroundColor, backgroundImage }}
                         title={title || undefined}
                       >
                         {isBirthday && (
