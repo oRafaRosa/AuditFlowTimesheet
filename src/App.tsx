@@ -4,6 +4,7 @@ import { Login } from './pages/Login';
 import { Layout } from './components/Layout';
 import { UserDashboard } from './pages/UserDashboard';
 import { UserReports } from './pages/UserReports'; // Import
+import { UserMyLeaves } from './pages/UserMyLeaves';
 import { ManagerDashboard } from './pages/ManagerDashboard';
 import { ManagerProjectBudget } from './pages/ManagerProjectBudget';
 import { ManagerReports } from './pages/ManagerReports';
@@ -111,6 +112,14 @@ const App: React.FC = () => {
               <UserReports /> 
             </ProtectedRoute>
           } 
+        />
+        <Route
+          path="/my-leaves"
+          element={
+            <ProtectedRoute>
+              <UserMyLeaves />
+            </ProtectedRoute>
+          }
         />
         <Route
           path="/achievements"
