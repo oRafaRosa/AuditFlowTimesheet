@@ -5,10 +5,20 @@ import { LeaveType, TeamLeave } from '../types';
 import { formatDateForDisplay } from '../utils/date';
 
 const normalizeCode = (value: string) => value.trim().toUpperCase();
+const LOAD_TIMEOUT_MS = 12000;
 
 const formatLeavePeriodLabel = (leave: TeamLeave) => {
   if (leave.startDate === leave.endDate) return formatDateForDisplay(leave.startDate);
   return `${formatDateForDisplay(leave.startDate)} a ${formatDateForDisplay(leave.endDate)}`;
+};
+
+const withTimeout = async <T,>(promise: Promise<T>, timeoutMs: number): Promise<T> => {
+  return await Promise.race([
+    promise,
+    new Promise<T>((_, reject) => {
+      setTimeout(() => reject(new Error('timeout')), timeoutMs);
+    })
+  ]);
 };
 
 export const UserMyLeaves: React.FC = () => {
@@ -19,10 +29,13 @@ export const UserMyLeaves: React.FC = () => {
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [leaves, setLeaves] = useState<TeamLeave[]>([]);
   const [leaveTypes, setLeaveTypes] = useState<LeaveType[]>([]);
+  const [reloadKey, setReloadKey] = useState(0);
+  const [loadError, setLoadError] = useState('');
 
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
+      setLoadError('');
 
       try {
         const resolvedUser = currentUser || await store.syncCurrentUserFromDatabase();
@@ -30,23 +43,32 @@ export const UserMyLeaves: React.FC = () => {
         if (!resolvedUser) {
           setLeaves([]);
           setLeaveTypes([]);
+          setLoadError('Não foi possível identificar seu usuário agora. Recarregue para tentar novamente.');
           return;
         }
 
-        const [scopedLeaves, allLeaveTypes] = await Promise.all([
-          store.getTeamLeaves({ userIds: [resolvedUser.id], year: selectedYear }),
-          store.getLeaveTypes()
-        ]);
+        const [scopedLeaves, allLeaveTypes] = await withTimeout(
+          Promise.all([
+            store.getTeamLeaves({ userIds: [resolvedUser.id], year: selectedYear }),
+            store.getLeaveTypes()
+          ]),
+          LOAD_TIMEOUT_MS
+        );
 
         setLeaves(scopedLeaves);
         setLeaveTypes(allLeaveTypes.filter((type) => type.active !== false));
+      } catch (error) {
+        console.warn('Erro ao carregar programação de férias/folgas do usuário:', error);
+        setLeaves([]);
+        setLeaveTypes([]);
+        setLoadError('Não consegui carregar sua programação agora. Tente novamente em instantes.');
       } finally {
         setLoading(false);
       }
     };
 
     loadData();
-  }, [currentUser, selectedYear]);
+  }, [currentUser, selectedYear, reloadKey]);
 
   const leaveTypeMap = useMemo(() => {
     const map = new Map<string, LeaveType>();
@@ -83,6 +105,19 @@ export const UserMyLeaves: React.FC = () => {
           />
         </div>
       </div>
+
+      {loadError && (
+        <div className="bg-slate-50 rounded-xl border border-slate-200 shadow-sm p-4 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-slate-600">{loadError}</p>
+          <button
+            type="button"
+            onClick={() => setReloadKey((prev) => prev + 1)}
+            className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+          >
+            Tentar novamente
+          </button>
+        </div>
+      )}
 
       {sortedLeaves.length === 0 ? (
         <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
