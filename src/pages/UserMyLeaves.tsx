@@ -22,17 +22,27 @@ export const UserMyLeaves: React.FC = () => {
 
   useEffect(() => {
     const loadData = async () => {
-      if (!currentUser) return;
-
       setLoading(true);
-      const [scopedLeaves, allLeaveTypes] = await Promise.all([
-        store.getTeamLeaves({ userIds: [currentUser.id], year: selectedYear }),
-        store.getLeaveTypes()
-      ]);
 
-      setLeaves(scopedLeaves);
-      setLeaveTypes(allLeaveTypes.filter((type) => type.active !== false));
-      setLoading(false);
+      try {
+        const resolvedUser = currentUser || await store.syncCurrentUserFromDatabase();
+
+        if (!resolvedUser) {
+          setLeaves([]);
+          setLeaveTypes([]);
+          return;
+        }
+
+        const [scopedLeaves, allLeaveTypes] = await Promise.all([
+          store.getTeamLeaves({ userIds: [resolvedUser.id], year: selectedYear }),
+          store.getLeaveTypes()
+        ]);
+
+        setLeaves(scopedLeaves);
+        setLeaveTypes(allLeaveTypes.filter((type) => type.active !== false));
+      } finally {
+        setLoading(false);
+      }
     };
 
     loadData();
