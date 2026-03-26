@@ -288,7 +288,7 @@ export const UserMyLeaves: React.FC = () => {
   if (loading) {
     return (
       <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-8 text-center text-slate-500">
-        Carregando sua programação de férias e folgas...
+        Carregando sua programação...
       </div>
     );
   }
@@ -297,8 +297,8 @@ export const UserMyLeaves: React.FC = () => {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Minhas Férias e Folgas</h1>
-          <p className="text-sm text-slate-500 mt-1">Consulta do seu planejamento anual com o mesmo calendário usado pela gestão.</p>
+          <h1 className="text-2xl font-bold text-slate-800">Minha Programação</h1>
+          <p className="text-sm text-slate-500 mt-1">Consulta do seu calendário anual para acompanhar a programação no AuditFlow.</p>
         </div>
         <div className="w-full md:w-auto">
           <label className="text-xs font-bold text-slate-500 block mb-1">Ano</label>
@@ -327,7 +327,7 @@ export const UserMyLeaves: React.FC = () => {
       <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
         <div className="xl:col-span-3 bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
           <div className="p-4 border-b border-slate-100 bg-slate-50">
-            <h3 className="font-semibold text-slate-700">Programação de férias e folgas</h3>
+            <h3 className="font-semibold text-slate-700">Minha programação anual</h3>
             <p className="text-xs text-slate-500">Feriados cadastrados no sistema aparecem em amarelo no calendário.</p>
           </div>
 

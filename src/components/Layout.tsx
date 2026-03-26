@@ -793,7 +793,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           {!isSidebarCollapsed && <div className="px-4 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider mt-4">Meu Espaço</div>}
           <NavItem to="/dashboard" icon={LayoutDashboard} label="Meu Dashboard" />
           <NavItem to="/timesheet" icon={Clock} label="Meus Lançamentos" />
-          <NavItem to="/my-leaves" icon={CalendarDays} label="Férias e Folgas" />
+          <NavItem to="/my-leaves" icon={CalendarDays} label={user.role === 'MANAGER' || user.role === 'ADMIN' ? 'Férias e Folgas' : 'Minha Programação'} />
           <NavItem to="/reports" icon={TableProperties} label="Relatórios Detalhados" />
           {riskMatrixAccess !== 'NONE' && (
             <NavItem to="/risk-matrix" icon={TrendingUp} label="Matriz de Riscos" />
@@ -984,7 +984,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               <div className="px-4 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider mt-4">Meu Espaço</div>
               <NavItem to="/dashboard" icon={LayoutDashboard} label="Meu Dashboard" onClick={() => setMobileMenuOpen(false)} />
               <NavItem to="/timesheet" icon={Clock} label="Meus Lançamentos" onClick={() => setMobileMenuOpen(false)} />
-              <NavItem to="/my-leaves" icon={CalendarDays} label="Férias e Folgas" onClick={() => setMobileMenuOpen(false)} />
+              <NavItem to="/my-leaves" icon={CalendarDays} label={user.role === 'MANAGER' || user.role === 'ADMIN' ? 'Férias e Folgas' : 'Minha Programação'} onClick={() => setMobileMenuOpen(false)} />
               <NavItem to="/reports" icon={TableProperties} label="Relatórios Detalhados" onClick={() => setMobileMenuOpen(false)} />
               <NavItem to="/achievements" icon={Trophy} label="Ranking & Conquistas" locked={!GAMIFICATION_ENABLED} onClick={() => setMobileMenuOpen(false)} />
 
