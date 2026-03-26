@@ -33,14 +33,26 @@ export const UserMyLeaves: React.FC = () => {
   const [loadError, setLoadError] = useState('');
 
   useEffect(() => {
+    let isMounted = true;
+    const watchdog = window.setTimeout(() => {
+      if (!isMounted) return;
+      setLeaves([]);
+      setLeaveTypes([]);
+      setLoadError('Não consegui carregar sua programação agora. Tente novamente em instantes.');
+      setLoading(false);
+    }, LOAD_TIMEOUT_MS);
+
     const loadData = async () => {
+      if (!isMounted) return;
+
       setLoading(true);
       setLoadError('');
 
       try {
-        const resolvedUser = currentUser || await store.syncCurrentUserFromDatabase();
+        const resolvedUser = currentUser || await withTimeout(store.syncCurrentUserFromDatabase(), LOAD_TIMEOUT_MS);
 
         if (!resolvedUser) {
+          if (!isMounted) return;
           setLeaves([]);
           setLeaveTypes([]);
           setLoadError('Não foi possível identificar seu usuário agora. Recarregue para tentar novamente.');
@@ -55,19 +67,28 @@ export const UserMyLeaves: React.FC = () => {
           LOAD_TIMEOUT_MS
         );
 
+        if (!isMounted) return;
         setLeaves(scopedLeaves);
         setLeaveTypes(allLeaveTypes.filter((type) => type.active !== false));
       } catch (error) {
+        if (!isMounted) return;
         console.warn('Erro ao carregar programação de férias/folgas do usuário:', error);
         setLeaves([]);
         setLeaveTypes([]);
         setLoadError('Não consegui carregar sua programação agora. Tente novamente em instantes.');
       } finally {
+        if (!isMounted) return;
+        window.clearTimeout(watchdog);
         setLoading(false);
       }
     };
 
     loadData();
+
+    return () => {
+      isMounted = false;
+      window.clearTimeout(watchdog);
+    };
   }, [currentUser, selectedYear, reloadKey]);
 
   const leaveTypeMap = useMemo(() => {
