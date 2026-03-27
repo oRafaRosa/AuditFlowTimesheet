@@ -203,6 +203,33 @@ export const ManagerCapacity: React.FC = () => {
       });
     }
 
+    // Se o gestor selecionado recebeu delegação, exclui do filtro os gestores titulares
+    // que delegaram para ele e toda a subárvore desses gestores.
+    const delegatedRoots = new Set(
+      scopedUsers
+        .filter((user) => user.id !== selectedManagerId)
+        .filter((user) => user.delegatedManagerId === selectedManagerId)
+        .map((user) => user.id)
+    );
+
+    if (delegatedRoots.size > 0) {
+      const blockedIds = new Set<string>(delegatedRoots);
+      let blockedChanged = true;
+
+      while (blockedChanged) {
+        blockedChanged = false;
+
+        scopedUsers.forEach((user) => {
+          if (user.managerId && blockedIds.has(user.managerId) && !blockedIds.has(user.id)) {
+            blockedIds.add(user.id);
+            blockedChanged = true;
+          }
+        });
+      }
+
+      blockedIds.forEach((id) => scope.delete(id));
+    }
+
     return scope;
   }, [selectedManagerId, scopedUsers]);
 
@@ -662,13 +689,24 @@ export const ManagerCapacity: React.FC = () => {
           className="bg-white rounded-xl border border-slate-100 shadow-sm p-5 text-left transition-colors hover:border-brand-200 hover:bg-brand-50/30"
           title="Clique para ver quem pode estar sem apontamento correto de timesheet."
         >
-          <p className="text-xs text-slate-500 font-bold uppercase">Horas consumidas até hoje</p>
+          <div className="flex items-start justify-between gap-3">
+            <p className="text-xs text-slate-500 font-bold uppercase">Horas consumidas até hoje</p>
+            <span className="relative group inline-flex shrink-0">
+              <span
+                className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-slate-300 bg-white text-[11px] font-bold leading-none text-slate-500"
+                aria-label="Informacoes do calculo"
+              >
+                !
+              </span>
+              <span className="pointer-events-none absolute right-0 top-6 z-20 hidden w-72 rounded-lg border border-slate-200 bg-white p-3 text-[11px] font-medium leading-relaxed text-slate-600 shadow-lg group-hover:block">
+                <p>Com base nas horas apontadas no timesheet.</p>
+                <p className="mt-2">{formatHours(timesheetGapSummary.elapsedHours)}h uteis ja decorridas ate hoje no ano (somente quem exige timesheet).</p>
+                <p className="mt-2">Gap estimado de apontamento: {formatHours(timesheetGapSummary.missingHours)}h.</p>
+              </span>
+            </span>
+          </div>
           <p className="mt-2 text-2xl font-bold text-brand-700">{formatHours(summary.totalConsumedToDate)}</p>
           <p className="text-xs text-slate-500 mt-1">Com base nas horas apontadas no timesheet</p>
-          <p className="text-[11px] text-slate-400 mt-2">{formatHours(timesheetGapSummary.elapsedHours)}h úteis já decorridas até hoje no ano (somente quem exige timesheet)</p>
-          <p className="text-[11px] text-amber-700 mt-2 font-semibold">
-            Gap estimado de apontamento: {formatHours(timesheetGapSummary.missingHours)}h
-          </p>
         </button>
 
         <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
