@@ -235,6 +235,5 @@ Se precisar explicar rapidamente o projeto para criar outro material, a definica
 
 > AuditFlow e uma plataforma privada em evolucao para GRC, com operacao atual centrada em timesheet, gestao de horas, capacidade, administracao e matriz de riscos, desenhada para evoluir de forma incremental para cobrir Auditoria Interna, Riscos, Compliance e Canal de Denuncias.
 
-## Assinatura
 
 Desenvolvido por **R² Solutions Group**.
