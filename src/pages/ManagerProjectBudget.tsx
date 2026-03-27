@@ -236,6 +236,11 @@ export const ManagerProjectBudget: React.FC = () => {
     navigate(`/manager/reports?projectId=${projectId}`);
   };
 
+  const handleAreaChartClick = (data: { areaValue?: UserArea }) => {
+    if (!data.areaValue) return;
+    setAreaFilter(data.areaValue);
+  };
+
   const handleSort = (column: 'name' | 'budgeted' | 'consumed' | 'available' | 'percentage') => {
     if (sortColumn === column) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
@@ -277,14 +282,22 @@ export const ManagerProjectBudget: React.FC = () => {
 
   // dados do gráfico: orçado vs realizado por área
   const areaChartData = useMemo(() => {
-    const byArea = new Map<string, { orcado: number; realizado: number }>();
+    const byArea = new Map<UserArea, { area: string; areaValue: UserArea; orcado: number; realizado: number }>();
     filteredData.forEach((p) => {
-      const key = p.areaLabel;
-      const curr = byArea.get(key) || { orcado: 0, realizado: 0 };
-      byArea.set(key, { orcado: curr.orcado + p.budgeted, realizado: curr.realizado + p.consumed });
+      const curr = byArea.get(p.area) || {
+        area: p.areaLabel,
+        areaValue: p.area,
+        orcado: 0,
+        realizado: 0
+      };
+      byArea.set(p.area, {
+        ...curr,
+        orcado: curr.orcado + p.budgeted,
+        realizado: curr.realizado + p.consumed
+      });
     });
-    return Array.from(byArea.entries())
-      .map(([area, vals]) => ({ area, ...vals, disponivel: vals.orcado - vals.realizado }))
+    return Array.from(byArea.values())
+      .map((vals) => ({ ...vals, disponivel: vals.orcado - vals.realizado }))
       .sort((a, b) => b.orcado - a.orcado);
   }, [filteredData]);
 
@@ -377,8 +390,8 @@ export const ManagerProjectBudget: React.FC = () => {
                     <span className="h-2 w-2 rounded-full bg-slate-300 flex-shrink-0" />
                     <span className="text-slate-500 truncate text-[11px]">Saldo</span>
                   </div>
-                  <span className="col-span-2 text-right text-[11px] font-bold {totalAvailable >= 0 ? 'text-emerald-600' : 'text-red-600'}">
-                    <span className={totalAvailable >= 0 ? 'text-emerald-600' : 'text-red-600'}>{formatHours(totalAvailable)}h</span>
+                  <span className={`col-span-2 text-right text-[11px] font-bold ${totalAvailable >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                    {formatHours(totalAvailable)}h
                   </span>
                 </div>
               </div>
@@ -390,7 +403,21 @@ export const ManagerProjectBudget: React.FC = () => {
       {/* gráfico orçado vs realizado por área */}
       {areaChartData.length > 0 && (
         <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
-          <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-4">Orçado vs Realizado por Área</h3>
+          <div className="flex items-start justify-between gap-4 mb-4">
+            <div>
+              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wide">Orçado vs Realizado por Área</h3>
+              <p className="text-xs text-slate-400 mt-1">Clique em qualquer barra para filtrar a tela pela área.</p>
+            </div>
+            {areaFilter && (
+              <button
+                type="button"
+                onClick={() => setAreaFilter('')}
+                className="text-xs font-medium text-brand-600 hover:text-brand-700"
+              >
+                Limpar área
+              </button>
+            )}
+          </div>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={areaChartData} margin={{ top: 4, right: 16, left: 0, bottom: 4 }} barGap={4}>
               <XAxis
@@ -418,9 +445,9 @@ export const ManagerProjectBudget: React.FC = () => {
                 formatter={(value) => value === 'orcado' ? 'Orçado' : value === 'realizado' ? 'Realizado' : 'Disponível'}
                 wrapperStyle={{ fontSize: 12, paddingTop: 8 }}
               />
-              <Bar dataKey="orcado" name="orcado" fill="#cbd5e1" radius={[4, 4, 0, 0]} maxBarSize={40} />
-              <Bar dataKey="realizado" name="realizado" fill="#0033C6" radius={[4, 4, 0, 0]} maxBarSize={40} />
-              <Bar dataKey="disponivel" name="disponivel" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={40} />
+              <Bar dataKey="orcado" name="orcado" fill="#cbd5e1" radius={[4, 4, 0, 0]} maxBarSize={40} cursor="pointer" onClick={handleAreaChartClick} />
+              <Bar dataKey="realizado" name="realizado" fill="#0033C6" radius={[4, 4, 0, 0]} maxBarSize={40} cursor="pointer" onClick={handleAreaChartClick} />
+              <Bar dataKey="disponivel" name="disponivel" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={40} cursor="pointer" onClick={handleAreaChartClick} />
             </BarChart>
           </ResponsiveContainer>
         </div>
