@@ -271,10 +271,13 @@ export const ManagerProjectBudget: React.FC = () => {
     .reduce((acc, project) => acc + project.budgeted, 0);
   const totalSegregatedConsumed = technicalConsumed + administrativeConsumed;
 
-  // fatias da pizza relativas ao orçado total (3 fatias: técnico, admin, saldo)
-  const techSlice = totalBudgeted > 0 ? (technicalConsumed / totalBudgeted) * 100 : 0;
-  const adminSlice = totalBudgeted > 0 ? (administrativeConsumed / totalBudgeted) * 100 : 0;
-  const remainingSlice = Math.max(0, 100 - techSlice - adminSlice);
+  // fatias do donut "realizado" (relativo ao total consumido)
+  const techSlice = totalSegregatedConsumed > 0 ? (technicalConsumed / totalSegregatedConsumed) * 100 : 0;
+  const adminSlice = totalSegregatedConsumed > 0 ? (administrativeConsumed / totalSegregatedConsumed) * 100 : 0;
+
+  // fatias do donut "orçado" (relativo ao total orçado)
+  const techBudgetSlice = totalBudgeted > 0 ? (technicalBudgeted / totalBudgeted) * 100 : 0;
+  const adminBudgetSlice = totalBudgeted > 0 ? (administrativeBudgeted / totalBudgeted) * 100 : 0;
 
   // dados do gráfico: orçado vs realizado por área
   const areaChartData = useMemo(() => {
@@ -323,67 +326,62 @@ export const ManagerProjectBudget: React.FC = () => {
           </div>
         </div>
 
-        {/* card de segregação */}
-        <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-4 flex flex-col justify-center">
-          <div className="flex items-center gap-4">
-            {/* donut */}
-            <div className="flex-shrink-0">
-              {totalBudgeted > 0 ? (
-                <div className="relative h-24 w-24">
-                  <div
-                    className="h-24 w-24 rounded-full"
-                    style={{
-                      background: totalSegregatedConsumed > 0
-                        ? `conic-gradient(#0033C6 0% ${techSlice}%, #E71A3B ${techSlice}% ${techSlice + adminSlice}%, #e2e8f0 ${techSlice + adminSlice}% 100%)`
-                        : '#e2e8f0'
-                    }}
-                  />
-                  <div className="absolute inset-4 rounded-full bg-white flex flex-col items-center justify-center text-center">
-                    <span className="text-[8px] font-bold text-slate-400 uppercase leading-tight">Realizado</span>
-                    <span className="text-xs font-bold text-slate-800 leading-tight">{formatHours(totalSegregatedConsumed)}h</span>
-                  </div>
+        {/* dois donuts: orçado e realizado */}
+        <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-4">
+          <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-3">Segregação de Horas</h3>
+          <div className="grid grid-cols-2 gap-3">
+            {/* donut orçado */}
+            <div className="flex flex-col items-center gap-2">
+              <div className="relative h-20 w-20">
+                <div
+                  className="h-20 w-20 rounded-full"
+                  style={{
+                    background: totalBudgeted > 0
+                      ? `conic-gradient(#0033C6 0% ${techBudgetSlice}%, #E71A3B ${techBudgetSlice}% ${techBudgetSlice + adminBudgetSlice}%, #e2e8f0 ${techBudgetSlice + adminBudgetSlice}% 100%)`
+                      : '#e2e8f0'
+                  }}
+                />
+                <div className="absolute inset-3 rounded-full bg-white flex flex-col items-center justify-center text-center">
+                  <span className="text-[8px] font-bold text-slate-800 leading-tight">{formatHours(totalBudgeted)}h</span>
                 </div>
-              ) : (
-                <div className="h-24 w-24 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-[10px] text-slate-400 text-center px-2">
-                  Sem dados
+              </div>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Orçado</span>
+              <div className="w-full space-y-1">
+                <div className="flex items-center justify-between text-[10px]">
+                  <div className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-brand-600 flex-shrink-0" /><span className="text-slate-500">Téc.</span></div>
+                  <span className="font-medium text-slate-700">{formatHours(technicalBudgeted)}h</span>
                 </div>
-              )}
+                <div className="flex items-center justify-between text-[10px]">
+                  <div className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-red-500 flex-shrink-0" /><span className="text-slate-500">Adm.</span></div>
+                  <span className="font-medium text-slate-700">{formatHours(administrativeBudgeted)}h</span>
+                </div>
+              </div>
             </div>
 
-            {/* legenda */}
-            <div className="flex-1 min-w-0">
-              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Segregação de Horas</h3>
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <span className="h-2 w-2 rounded-full bg-brand-600 flex-shrink-0" />
-                    <span className="text-xs text-slate-600 truncate">Técnicas</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs flex-shrink-0">
-                    <span className="text-slate-400">orç. <span className="text-slate-600 font-medium">{formatHours(technicalBudgeted)}h</span></span>
-                    <span className="font-bold text-slate-800">{formatHours(technicalConsumed)}h</span>
-                    <span className="text-slate-400 w-7 text-right">{totalBudgeted > 0 ? `${formatPercentage(techSlice)}%` : '–'}</span>
-                  </div>
+            {/* donut realizado */}
+            <div className="flex flex-col items-center gap-2">
+              <div className="relative h-20 w-20">
+                <div
+                  className="h-20 w-20 rounded-full"
+                  style={{
+                    background: totalSegregatedConsumed > 0
+                      ? `conic-gradient(#0033C6 0% ${techSlice}%, #E71A3B ${techSlice}% ${techSlice + adminSlice}%, #e2e8f0 ${techSlice + adminSlice}% 100%)`
+                      : '#e2e8f0'
+                  }}
+                />
+                <div className="absolute inset-3 rounded-full bg-white flex flex-col items-center justify-center text-center">
+                  <span className="text-[8px] font-bold text-slate-800 leading-tight">{formatHours(totalSegregatedConsumed)}h</span>
                 </div>
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <span className="h-2 w-2 rounded-full bg-red-500 flex-shrink-0" />
-                    <span className="text-xs text-slate-600 truncate">Administrativas</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs flex-shrink-0">
-                    <span className="text-slate-400">orç. <span className="text-slate-600 font-medium">{formatHours(administrativeBudgeted)}h</span></span>
-                    <span className="font-bold text-slate-800">{formatHours(administrativeConsumed)}h</span>
-                    <span className="text-slate-400 w-7 text-right">{totalBudgeted > 0 ? `${formatPercentage(adminSlice)}%` : '–'}</span>
-                  </div>
+              </div>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Realizado</span>
+              <div className="w-full space-y-1">
+                <div className="flex items-center justify-between text-[10px]">
+                  <div className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-brand-600 flex-shrink-0" /><span className="text-slate-500">Téc.</span></div>
+                  <span className="font-medium text-slate-700">{formatHours(technicalConsumed)}h</span>
                 </div>
-                <div className="border-t border-slate-100 pt-1.5 flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <span className="h-2 w-2 rounded-full bg-slate-200 flex-shrink-0" />
-                    <span className="text-xs text-slate-500 truncate">Saldo</span>
-                  </div>
-                  <span className={`text-xs font-bold flex-shrink-0 ${totalAvailable >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                    {formatHours(totalAvailable)}h
-                  </span>
+                <div className="flex items-center justify-between text-[10px]">
+                  <div className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-red-500 flex-shrink-0" /><span className="text-slate-500">Adm.</span></div>
+                  <span className="font-medium text-slate-700">{formatHours(administrativeConsumed)}h</span>
                 </div>
               </div>
             </div>
