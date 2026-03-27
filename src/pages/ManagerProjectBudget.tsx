@@ -8,6 +8,7 @@ interface ProjectBudgetData {
   id: string;
   name: string;
   code: string;
+  classification: Project['classification'];
   area: UserArea;
   areaLabel: string;
   budgeted: number;
@@ -20,6 +21,13 @@ interface ProjectBudgetData {
 type ProjectCodeFilter = '' | 'HT' | 'BO' | 'AD';
 
 const matchesProjectType = (projectCode: string, typeFilter: ProjectCodeFilter) => !typeFilter || projectCode.toUpperCase().startsWith(typeFilter);
+
+const isTechnicalProject = (projectCode: string, classification: Project['classification']) => {
+  const normalizedCode = projectCode.toUpperCase();
+  if (normalizedCode.startsWith('HT')) return true;
+  if (normalizedCode.startsWith('BO') || normalizedCode.startsWith('AD')) return false;
+  return classification !== 'Backoffice';
+};
 
 const AREA_LABEL: Record<UserArea, string> = {
   AUDITORIA_INTERNA: 'Auditoria Interna',
@@ -72,6 +80,7 @@ export const ManagerProjectBudget: React.FC = () => {
         id: p.id,
         name: p.name,
         code: p.code,
+        classification: p.classification,
         area,
         areaLabel: AREA_LABEL[area],
         budgeted: p.budgetedHours,
@@ -104,6 +113,36 @@ export const ManagerProjectBudget: React.FC = () => {
     setFilteredData(budgetData);
     setLoading(false);
   };
+
+  const selectedTeamScopeUserIds = useMemo(() => {
+    if (!teamFilter) return null;
+
+    const reportsByManager = new Map<string, string[]>();
+    users.forEach((user) => {
+      if (!user.managerId) return;
+      const current = reportsByManager.get(user.managerId) || [];
+      reportsByManager.set(user.managerId, [...current, user.id]);
+    });
+
+    const scopedUsers = new Set<string>();
+    const queue: string[] = [teamFilter];
+
+    while (queue.length > 0) {
+      const managerId = queue.shift() as string;
+      if (scopedUsers.has(managerId)) continue;
+
+      scopedUsers.add(managerId);
+
+      const directReports = reportsByManager.get(managerId) || [];
+      directReports.forEach((reportId) => {
+        if (!scopedUsers.has(reportId)) {
+          queue.push(reportId);
+        }
+      });
+    }
+
+    return scopedUsers;
+  }, [teamFilter, users]);
 
   useEffect(() => {
     let result = projectData;
@@ -139,7 +178,7 @@ export const ManagerProjectBudget: React.FC = () => {
     // ordenação por coluna selecionada
     result = [...result].sort((a, b) => {
       let comparison = 0;
-      
+
       switch (sortColumn) {
         case 'name':
           comparison = a.name.localeCompare(b.name);
@@ -157,42 +196,36 @@ export const ManagerProjectBudget: React.FC = () => {
           comparison = a.percentage - b.percentage;
           break;
       }
-      
+
       return sortDirection === 'asc' ? comparison : -comparison;
     });
 
     setFilteredData(result);
-  }, [searchTerm, statusFilter, projectData, selectedProjectIds, codePrefixFilter, areaFilter, teamFilter, sortColumn, sortDirection]);
+  }, [searchTerm, statusFilter, projectData, selectedProjectIds, codePrefixFilter, areaFilter, sortColumn, sortDirection]);
 
   useEffect(() => {
     if (!projects.length) return;
 
     let scopedEntries = entries;
 
-    if (teamFilter) {
-      const teamUserIds = users
-        .filter(u => u.managerId === teamFilter || u.id === teamFilter)
-        .map(u => u.id);
-      scopedEntries = entries.filter(e => teamUserIds.includes(e.userId));
+    if (selectedTeamScopeUserIds && selectedTeamScopeUserIds.size > 0) {
+      scopedEntries = entries.filter((entry) => selectedTeamScopeUserIds.has(entry.userId));
     }
 
     const updatedData = buildProjectData(projects, scopedEntries);
     setProjectData(updatedData);
     setSelectedProjectIds(new Set());
-  }, [teamFilter, projects, entries, users]);
+  }, [selectedTeamScopeUserIds, projects, entries]);
 
   const projectOptions = useMemo(() => {
-    if (!teamFilter) return projects;
+    if (!selectedTeamScopeUserIds || selectedTeamScopeUserIds.size === 0) return projects;
 
-    const teamUserIds = users
-      .filter(u => u.managerId === teamFilter || u.id === teamFilter)
-      .map(u => u.id);
     const teamProjectIds = new Set(
-      entries.filter(e => teamUserIds.includes(e.userId)).map(e => e.projectId)
+      entries.filter((entry) => selectedTeamScopeUserIds.has(entry.userId)).map((entry) => entry.projectId)
     );
 
-    return projects.filter(p => teamProjectIds.has(p.id));
-  }, [teamFilter, projects, users, entries]);
+    return projects.filter((project) => teamProjectIds.has(project.id));
+  }, [selectedTeamScopeUserIds, projects, entries]);
 
   const handleProjectClick = (projectId: string) => {
     navigate(`/manager/reports?projectId=${projectId}`);
@@ -220,6 +253,16 @@ export const ManagerProjectBudget: React.FC = () => {
   const totalAvailable = filteredData.reduce((acc, p) => acc + p.available, 0);
   const overBudget = filteredData.filter(p => p.status === 'danger').length;
   const atRisk = filteredData.filter(p => p.status === 'warning').length;
+
+  const technicalConsumed = filteredData
+    .filter((project) => isTechnicalProject(project.code, project.classification))
+    .reduce((acc, project) => acc + project.consumed, 0);
+  const administrativeConsumed = filteredData
+    .filter((project) => !isTechnicalProject(project.code, project.classification))
+    .reduce((acc, project) => acc + project.consumed, 0);
+  const totalSegregatedConsumed = technicalConsumed + administrativeConsumed;
+  const technicalConsumedPercentage = totalSegregatedConsumed > 0 ? (technicalConsumed / totalSegregatedConsumed) * 100 : 0;
+  const administrativeConsumedPercentage = totalSegregatedConsumed > 0 ? (administrativeConsumed / totalSegregatedConsumed) * 100 : 0;
 
   if (loading) {
     return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin text-brand-600" size={48} /></div>;
@@ -262,6 +305,51 @@ export const ManagerProjectBudget: React.FC = () => {
           <p className="text-xs font-bold text-slate-500 uppercase mb-2">Acima do Orçado</p>
           <div className="text-3xl font-bold text-red-600">{overBudget}</div>
           <p className="text-xs text-slate-400 mt-2">{formatHours(filteredData.filter(p => p.status === 'danger').reduce((acc, p) => acc + (p.consumed - p.budgeted), 0))}h de excesso</p>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wide">Segregação de Horas Realizadas</h3>
+            <p className="text-xs text-slate-500 mt-1">Dinâmico conforme filtros aplicados no relatório.</p>
+
+            <div className="mt-4 space-y-2">
+              <div className="flex items-center gap-3">
+                <span className="h-3 w-3 rounded-full bg-sky-500" />
+                <span className="text-sm text-slate-700">Horas Técnicas</span>
+                <span className="text-sm font-bold text-slate-800">{formatHours(technicalConsumed)}h</span>
+                <span className="text-xs text-slate-500">({formatPercentage(technicalConsumedPercentage)}%)</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="h-3 w-3 rounded-full bg-amber-500" />
+                <span className="text-sm text-slate-700">Administrativas / Backoffice</span>
+                <span className="text-sm font-bold text-slate-800">{formatHours(administrativeConsumed)}h</span>
+                <span className="text-xs text-slate-500">({formatPercentage(administrativeConsumedPercentage)}%)</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-center">
+            {totalSegregatedConsumed > 0 ? (
+              <div className="relative h-44 w-44">
+                <div
+                  className="h-44 w-44 rounded-full"
+                  style={{
+                    background: `conic-gradient(#0ea5e9 0% ${technicalConsumedPercentage}%, #f59e0b ${technicalConsumedPercentage}% 100%)`
+                  }}
+                />
+                <div className="absolute inset-6 rounded-full bg-white border border-slate-100 flex flex-col items-center justify-center text-center px-2">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase">Total Realizado</span>
+                  <span className="text-lg font-bold text-slate-800">{formatHours(totalSegregatedConsumed)}h</span>
+                </div>
+              </div>
+            ) : (
+              <div className="h-44 w-44 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-xs text-slate-500 text-center px-6">
+                Sem horas no recorte atual
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
