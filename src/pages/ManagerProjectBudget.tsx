@@ -223,14 +223,45 @@ export const ManagerProjectBudget: React.FC = () => {
   }, [selectedTeamScopeUserIds, projects, entries]);
 
   const projectOptions = useMemo(() => {
-    if (!selectedTeamScopeUserIds || selectedTeamScopeUserIds.size === 0) return projects;
+    let result = projectData;
 
-    const teamProjectIds = new Set(
-      entries.filter((entry) => selectedTeamScopeUserIds.has(entry.userId)).map((entry) => entry.projectId)
-    );
+    if (searchTerm.trim()) {
+      result = result.filter((project) =>
+        project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        project.code.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
 
-    return projects.filter((project) => teamProjectIds.has(project.id));
-  }, [selectedTeamScopeUserIds, projects, entries]);
+    if (codePrefixFilter) {
+      result = result.filter((project) => matchesProjectType(project.code, codePrefixFilter));
+    }
+
+    if (areaFilter) {
+      result = result.filter((project) => project.area === areaFilter);
+    }
+
+    if (statusFilter !== 'all') {
+      result = result.filter((project) => project.status === statusFilter);
+    }
+
+    return [...result].sort((a, b) => a.name.localeCompare(b.name));
+  }, [projectData, searchTerm, codePrefixFilter, areaFilter, statusFilter]);
+
+  useEffect(() => {
+    const availableProjectIds = new Set(projectOptions.map((project) => project.id));
+
+    setSelectedProjectIds((currentSelection) => {
+      const nextSelection = new Set(
+        [...currentSelection].filter((projectId) => availableProjectIds.has(projectId))
+      );
+
+      if (nextSelection.size === currentSelection.size) {
+        return currentSelection;
+      }
+
+      return nextSelection;
+    });
+  }, [projectOptions]);
 
   const handleProjectClick = (projectId: string) => {
     navigate(`/manager/reports?projectId=${projectId}`);
