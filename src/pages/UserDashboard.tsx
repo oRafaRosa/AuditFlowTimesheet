@@ -10,7 +10,7 @@ import { DashboardLoadingState } from '../components/DashboardLoadingState';
 import { BirthdayBalloons } from '../components/BirthdayBalloons';
 import { BirthdaySidebarCard } from '../components/BirthdaySidebarCard';
 import { formatDateForDisplay, formatLocalDate, parseDateOnly } from '../utils/date';
-import { buildCalendarMaps, listPendingDaysForMonth, PendingDay } from '../utils/workCalendar';
+import { buildCalendarMaps, listPendingDaysForMonth, PendingDay, isExpectedWorkingDay, CalendarMaps } from '../utils/workCalendar';
 import { getMonthlyBirthdays, getUpcomingBirthdays, isBirthdayToday } from '../utils/birthdays';
 
 type DashboardPeriodKey = 'current' | 'previous';
@@ -32,6 +32,19 @@ interface HolidayMarker {
 interface PendingPeriodSummary {
   days: PendingDay[];
   totalMissingHours: number;
+}
+
+type ConsistencyDayStatus = 'no-entry' | 'on-track' | 'missing' | 'excess';
+
+interface ConsistencyDayCell {
+  key: string;
+  date: string;
+  dayLabel: number;
+  loggedHours: number;
+  expectedHours: number;
+  deltaHours: number;
+  status: ConsistencyDayStatus;
+  isFutureDay: boolean;
 }
 
 export const UserDashboard: React.FC = () => {
@@ -60,6 +73,11 @@ export const UserDashboard: React.FC = () => {
   });
   const [monthlyData, setMonthlyData] = useState<any[]>([]);
   const [holidayMarkers, setHolidayMarkers] = useState<Record<string, HolidayMarker>>({});
+  const [calendarMapsState, setCalendarMapsState] = useState<CalendarMaps>({
+    holidayMap: {},
+    offdayMap: {},
+    workdayMap: {}
+  });
   const [dailyHourLimit, setDailyHourLimit] = useState(10);
   const [pendingDaysByPeriod, setPendingDaysByPeriod] = useState<Record<DashboardPeriodKey, PendingPeriodSummary>>({
     current: { days: [], totalMissingHours: 0 },
@@ -209,6 +227,7 @@ export const UserDashboard: React.FC = () => {
     });
 
     const calendarMaps = buildCalendarMaps(holidays, exceptions);
+    setCalendarMapsState(calendarMaps);
     const todayStr = formatLocalDate(today);
     const currentPendingDays = listPendingDaysForMonth({
       entries: allEntries,
@@ -510,6 +529,116 @@ export const UserDashboard: React.FC = () => {
     [upcomingBirthdays, currentMonth]
   );
   const isUserBirthdayToday = useMemo(() => isBirthdayToday(user?.birthdayDate), [user?.birthdayDate]);
+  const consistencyCalendarData = useMemo(() => {
+    const year = activeIndicators.year;
+    const month = activeIndicators.month;
+
+    if (!year || month < 0) {
+      return {
+        monthLabel: '',
+        weekDays: ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'],
+        leadingEmptyCells: 0,
+        trailingEmptyCells: 0,
+        days: [] as ConsistencyDayCell[]
+      };
+    }
+
+    const monthEntries = entries.filter((entry) => {
+      const entryDate = parseDateOnly(entry.date);
+      return entryDate.getFullYear() === year && entryDate.getMonth() === month;
+    });
+
+    const totalsByDate: Record<string, number> = {};
+    monthEntries.forEach((entry) => {
+      totalsByDate[entry.date] = Math.round(((totalsByDate[entry.date] || 0) + entry.hours) * 100) / 100;
+    });
+
+    const lastDay = new Date(year, month + 1, 0).getDate();
+    const firstWeekDay = new Date(year, month, 1).getDay();
+    const todayStr = formatLocalDate(new Date());
+
+    const days: ConsistencyDayCell[] = [];
+    for (let day = 1; day <= lastDay; day++) {
+      const currentDate = new Date(year, month, day, 12);
+      const dateStr = formatLocalDate(currentDate);
+      const loggedHours = totalsByDate[dateStr] || 0;
+      const expectedHours = isExpectedWorkingDay(dateStr, calendarMapsState) ? HOURS_PER_DAY : 0;
+      const deltaHours = Math.round((loggedHours - expectedHours) * 100) / 100;
+      const isFutureDay = dashboardPeriod === 'current' && dateStr > todayStr;
+
+      let status: ConsistencyDayStatus = 'no-entry';
+      if (loggedHours > 0) {
+        if (expectedHours === 0) {
+          status = 'excess';
+        } else if (Math.abs(deltaHours) <= 0.01) {
+          status = 'on-track';
+        } else if (deltaHours < 0) {
+          status = 'missing';
+        } else {
+          status = 'excess';
+        }
+      }
+
+      days.push({
+        key: `${year}-${month + 1}-${day}`,
+        date: dateStr,
+        dayLabel: day,
+        loggedHours,
+        expectedHours,
+        deltaHours,
+        status,
+        isFutureDay
+      });
+    }
+
+    const totalCells = firstWeekDay + lastDay;
+    const trailingEmptyCells = (7 - (totalCells % 7)) % 7;
+
+    return {
+      monthLabel: new Date(year, month, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }),
+      weekDays: ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'],
+      leadingEmptyCells: firstWeekDay,
+      trailingEmptyCells,
+      days
+    };
+  }, [activeIndicators.month, activeIndicators.year, calendarMapsState, dashboardPeriod, entries]);
+
+  const getConsistencyDayStyle = (status: ConsistencyDayStatus) => {
+    if (status === 'on-track') {
+      return 'border-emerald-200 bg-emerald-100 text-emerald-800';
+    }
+    if (status === 'missing') {
+      return 'border-amber-200 bg-amber-100 text-amber-800';
+    }
+    if (status === 'excess') {
+      return 'border-rose-200 bg-rose-100 text-rose-800';
+    }
+    return 'border-slate-200 bg-white text-slate-500';
+  };
+
+  const getConsistencyTooltip = (day: ConsistencyDayCell) => {
+    if (day.isFutureDay && day.loggedHours === 0) {
+      return `${formatDateForDisplay(day.date)}\nDia futuro sem lançamento.`;
+    }
+
+    if (day.loggedHours === 0) {
+      return `${formatDateForDisplay(day.date)}\nSem registro de horas.`;
+    }
+
+    if (day.expectedHours === 0) {
+      return `${formatDateForDisplay(day.date)}\nLançado: ${formatHours(day.loggedHours)}h\nSem carga esperada (feriado/folga/fim de semana).`;
+    }
+
+    if (Math.abs(day.deltaHours) <= 0.01) {
+      return `${formatDateForDisplay(day.date)}\nLançado: ${formatHours(day.loggedHours)}h\nSem pendência.`;
+    }
+
+    if (day.deltaHours < 0) {
+      return `${formatDateForDisplay(day.date)}\nLançado: ${formatHours(day.loggedHours)}h\nFaltam ${formatHours(Math.abs(day.deltaHours))}h.`;
+    }
+
+    return `${formatDateForDisplay(day.date)}\nLançado: ${formatHours(day.loggedHours)}h\nExcesso de ${formatHours(day.deltaHours)}h.`;
+  };
 
     // lógica de filtro das entradas
   const displayEntries = entryFilterDate 
@@ -729,6 +858,44 @@ export const UserDashboard: React.FC = () => {
                   )}
                 </div>
               )}
+            </div>
+
+            <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-5">
+              <div className="mb-4 flex items-center justify-between">
+                <h3 className="text-base font-semibold text-slate-800">Calendário de Consistência</h3>
+                <p className="text-xs capitalize text-slate-400">{consistencyCalendarData.monthLabel}</p>
+              </div>
+
+              <div className="grid grid-cols-7 gap-2 text-center text-[11px] font-semibold uppercase text-slate-400">
+                {consistencyCalendarData.weekDays.map((day, index) => (
+                  <div key={`week-${day}-${index}`}>{day}</div>
+                ))}
+              </div>
+
+              <div className="mt-2 grid grid-cols-7 gap-2">
+                {Array.from({ length: consistencyCalendarData.leadingEmptyCells }).map((_, index) => (
+                  <div key={`empty-start-${index}`} className="h-10 rounded-lg border border-transparent" />
+                ))}
+
+                {consistencyCalendarData.days.map((day) => (
+                  <div
+                    key={day.key}
+                    className={`group relative flex h-10 items-center justify-center rounded-lg border text-sm font-semibold transition-colors ${getConsistencyDayStyle(day.status)}`}
+                    title={getConsistencyTooltip(day)}
+                  >
+                    {day.dayLabel}
+                    <div className="pointer-events-none absolute -top-1 left-1/2 z-10 hidden w-44 -translate-x-1/2 -translate-y-full rounded-md bg-slate-900 px-2 py-1.5 text-[11px] font-medium leading-snug text-white shadow-xl group-hover:block">
+                      {getConsistencyTooltip(day).split('\n').map((line) => (
+                        <div key={`${day.key}-${line}`}>{line}</div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+
+                {Array.from({ length: consistencyCalendarData.trailingEmptyCells }).map((_, index) => (
+                  <div key={`empty-end-${index}`} className="h-10 rounded-lg border border-transparent" />
+                ))}
+              </div>
             </div>
             
             {/* gráfico */}
