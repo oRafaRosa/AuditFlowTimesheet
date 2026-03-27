@@ -498,6 +498,10 @@ export const UserDashboard: React.FC = () => {
       }
   };
 
+  const handleConsistencyDayClick = (date: string) => {
+    navigate(`/reports?startDate=${date}&endDate=${date}`);
+  };
+
   const isDuplicate = (entry: TimesheetEntry) => {
       return entries.filter(e => 
           e.id !== entry.id && 
@@ -860,44 +864,6 @@ export const UserDashboard: React.FC = () => {
               )}
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-5">
-              <div className="mb-4 flex items-center justify-between">
-                <h3 className="text-base font-semibold text-slate-800">Calendário de Consistência</h3>
-                <p className="text-xs capitalize text-slate-400">{consistencyCalendarData.monthLabel}</p>
-              </div>
-
-              <div className="grid grid-cols-7 gap-2 text-center text-[11px] font-semibold uppercase text-slate-400">
-                {consistencyCalendarData.weekDays.map((day, index) => (
-                  <div key={`week-${day}-${index}`}>{day}</div>
-                ))}
-              </div>
-
-              <div className="mt-2 grid grid-cols-7 gap-2">
-                {Array.from({ length: consistencyCalendarData.leadingEmptyCells }).map((_, index) => (
-                  <div key={`empty-start-${index}`} className="h-10 rounded-lg border border-transparent" />
-                ))}
-
-                {consistencyCalendarData.days.map((day) => (
-                  <div
-                    key={day.key}
-                    className={`group relative flex h-10 items-center justify-center rounded-lg border text-sm font-semibold transition-colors ${getConsistencyDayStyle(day.status)}`}
-                    title={getConsistencyTooltip(day)}
-                  >
-                    {day.dayLabel}
-                    <div className="pointer-events-none absolute -top-1 left-1/2 z-10 hidden w-44 -translate-x-1/2 -translate-y-full rounded-md bg-slate-900 px-2 py-1.5 text-[11px] font-medium leading-snug text-white shadow-xl group-hover:block">
-                      {getConsistencyTooltip(day).split('\n').map((line) => (
-                        <div key={`${day.key}-${line}`}>{line}</div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-
-                {Array.from({ length: consistencyCalendarData.trailingEmptyCells }).map((_, index) => (
-                  <div key={`empty-end-${index}`} className="h-10 rounded-lg border border-transparent" />
-                ))}
-              </div>
-            </div>
-            
             {/* gráfico */}
             <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 h-80 relative transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md">
                 <h3 className="text-lg font-semibold text-slate-800 mb-4">Histórico Semestral</h3>
@@ -1029,6 +995,47 @@ export const UserDashboard: React.FC = () => {
 
         {/* coluna direita: status e histórico */}
         <div className="space-y-6">
+
+          <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-slate-800">Calendário de Consistência</h3>
+              <p className="text-[11px] capitalize text-slate-400">{consistencyCalendarData.monthLabel}</p>
+            </div>
+
+            <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-semibold uppercase text-slate-400">
+              {consistencyCalendarData.weekDays.map((day, index) => (
+                <div key={`week-${day}-${index}`}>{day}</div>
+              ))}
+            </div>
+
+            <div className="mt-1.5 grid grid-cols-7 gap-1">
+              {Array.from({ length: consistencyCalendarData.leadingEmptyCells }).map((_, index) => (
+                <div key={`empty-start-${index}`} className="h-8 rounded-md border border-transparent" />
+              ))}
+
+              {consistencyCalendarData.days.map((day) => (
+                <button
+                  key={day.key}
+                  type="button"
+                  onClick={() => handleConsistencyDayClick(day.date)}
+                  className={`group relative flex h-8 items-center justify-center rounded-md border text-xs font-semibold transition-colors hover:brightness-95 ${getConsistencyDayStyle(day.status)}`}
+                  title={`${getConsistencyTooltip(day)}\nClique para abrir no relatório.`}
+                >
+                  {day.dayLabel}
+                  <div className="pointer-events-none absolute -top-1 left-1/2 z-10 hidden w-44 -translate-x-1/2 -translate-y-full rounded-md bg-slate-900 px-2 py-1.5 text-[11px] font-medium leading-snug text-white shadow-xl group-hover:block">
+                    {getConsistencyTooltip(day).split('\n').map((line) => (
+                      <div key={`${day.key}-${line}`}>{line}</div>
+                    ))}
+                    <div className="mt-1 border-t border-slate-700 pt-1 text-[10px] text-slate-200">Clique para abrir no relatório</div>
+                  </div>
+                </button>
+              ))}
+
+              {Array.from({ length: consistencyCalendarData.trailingEmptyCells }).map((_, index) => (
+                <div key={`empty-end-${index}`} className="h-8 rounded-md border border-transparent" />
+              ))}
+            </div>
+          </div>
 
           {/* widget de avisos: só aparece se tiver algo */}
           {(notices.length > 0 || upcomingLeaves.length > 0) && (
