@@ -31,3 +31,8 @@ AGENTS.md
 migrations/
 .antigravity/
 .github/copilot-instructions.md
+.github/agents/
+*.agent.md
+*.instructions.md
+*.prompt.md
+copilot-instructions.md
