@@ -36,3 +36,4 @@ migrations/
 *.instructions.md
 *.prompt.md
 copilot-instructions.md
+GITHUB_SECRETS_SETUP.md

@@ -166,7 +166,6 @@ AuditFlowTimesheet/
 |-- README.md              documento base do projeto
 |-- IDEIAS_E_INSIGHTS.md   anotacoes de evolucao
 |-- RISK_MATRIX_SETUP.md   referencia do modulo de riscos
-|-- GITHUB_SECRETS_SETUP.md apoio de configuracao interna
 `-- todo-capacity-mobile.md acompanhamento de pendencia especifica
 ```
 
@@ -191,7 +190,6 @@ Arquivos que ja servem como base para documentacao complementar:
 - `AGENTS.md` -> regras locais de trabalho no projeto;
 - `IDEIAS_E_INSIGHTS.md` -> backlog mais livre e anotacoes;
 - `RISK_MATRIX_SETUP.md` -> contexto especifico da matriz de riscos;
-- `GITHUB_SECRETS_SETUP.md` -> referencia de configuracoes internas;
 - `todo-capacity-mobile.md` -> pendencias conhecidas sobre capacidade no mobile.
 
 ## Direcao de evolucao do produto
