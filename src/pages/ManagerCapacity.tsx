@@ -50,6 +50,7 @@ type CapacitySortColumn =
   | 'utilizationPct';
 
 type AreaFilterValue = UserArea | '';
+type ProjectCodeFilter = '' | 'HT' | 'BO' | 'AD';
 
 const NO_MANAGER_FILTER = 'SEM_GESTOR';
 
@@ -72,6 +73,7 @@ const toDateKey = (d: Date) => formatLocalDate(d);
 
 const maxDate = (a: Date, b: Date): Date => (a.getTime() >= b.getTime() ? a : b);
 const minDate = (a: Date, b: Date): Date => (a.getTime() <= b.getTime() ? a : b);
+const matchesProjectType = (project: Project, typeFilter: ProjectCodeFilter) => !typeFilter || project.code.toUpperCase().startsWith(typeFilter);
 
 const getUtilizationTone = (utilization: number) => {
   if (utilization >= 85) {
@@ -124,6 +126,7 @@ export const ManagerCapacity: React.FC = () => {
   const [selectedYear, setSelectedYear] = useState<number>(currentYear);
   const [selectedManagerId, setSelectedManagerId] = useState('');
   const [selectedArea, setSelectedArea] = useState<AreaFilterValue>('');
+  const [selectedProjectType, setSelectedProjectType] = useState<ProjectCodeFilter>('');
   const [nameFilter, setNameFilter] = useState('');
   const [showTimesheetGapDetails, setShowTimesheetGapDetails] = useState(false);
   const [sortColumn, setSortColumn] = useState<CapacitySortColumn>('utilizationPct');
@@ -220,6 +223,7 @@ export const ManagerCapacity: React.FC = () => {
   const scopedProjects = useMemo(() => {
     return visibleProjects
       .filter((project) => project.active)
+      .filter((project) => matchesProjectType(project, selectedProjectType))
       .filter((project) => {
         if (!selectedManagerId) return true;
         if (selectedManagerId === NO_MANAGER_FILTER) return !project.allowedManagerIds?.length;
@@ -229,7 +233,19 @@ export const ManagerCapacity: React.FC = () => {
         if (!selectedArea) return true;
         return project.area === selectedArea;
       });
-  }, [visibleProjects, selectedManagerId, selectedArea, selectedManagerScopeIds]);
+  }, [visibleProjects, selectedManagerId, selectedArea, selectedProjectType, selectedManagerScopeIds]);
+
+  const scopedEntries = useMemo(() => {
+    if (!selectedProjectType) return entries;
+
+    const typedProjectIds = new Set(
+      visibleProjects
+        .filter((project) => matchesProjectType(project, selectedProjectType))
+        .map((project) => project.id)
+    );
+
+    return entries.filter((entry) => typedProjectIds.has(entry.projectId));
+  }, [entries, visibleProjects, selectedProjectType]);
 
   const rows = useMemo(() => {
     const today = parseDateOnly(formatLocalDate());
@@ -237,7 +253,7 @@ export const ManagerCapacity: React.FC = () => {
     const yearEnd = new Date(selectedYear, 11, 31, 12);
 
     const entriesByUser = new Map<string, TimesheetEntry[]>();
-    entries.forEach((entry) => {
+    scopedEntries.forEach((entry) => {
       const list = entriesByUser.get(entry.userId) || [];
       list.push(entry);
       entriesByUser.set(entry.userId, list);
@@ -355,7 +371,7 @@ export const ManagerCapacity: React.FC = () => {
     });
   }, [
     scopedUsers,
-    entries,
+    scopedEntries,
     holidays,
     exceptions,
     selectedYear,
@@ -382,6 +398,7 @@ export const ManagerCapacity: React.FC = () => {
     setSelectedYear(currentYear);
     setSelectedManagerId('');
     setSelectedArea('');
+    setSelectedProjectType('');
     setNameFilter('');
     setShowTimesheetGapDetails(false);
   };
@@ -592,7 +609,7 @@ export const ManagerCapacity: React.FC = () => {
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-3">
           <div>
             <label className="block text-xs text-slate-500 font-bold mb-1">Ano</label>
             <input
@@ -631,6 +648,20 @@ export const ManagerCapacity: React.FC = () => {
               {Object.entries(AREA_LABEL).map(([value, label]) => (
                 <option key={value} value={value}>{label}</option>
               ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs text-slate-500 font-bold mb-1">Tipo de Trabalho</label>
+            <select
+              className="w-full rounded-lg border border-slate-300 p-2 text-sm outline-none focus:ring-2 focus:ring-brand-500"
+              value={selectedProjectType}
+              onChange={(e) => setSelectedProjectType((e.target.value || '') as ProjectCodeFilter)}
+            >
+              <option value="">Todos</option>
+              <option value="HT">HT - Horas Técnicas</option>
+              <option value="BO">BO - Backoffice</option>
+              <option value="AD">AD - Administrativas</option>
             </select>
           </div>
 

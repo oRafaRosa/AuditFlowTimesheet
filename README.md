@@ -1,156 +1,248 @@
 # AuditFlow
 
-> desenvolvido por **[R² Solutions Group](https://orafarosa.github.io/R2-Solutions-Group/)** 🚀  
-> tech & consulting
+## Objetivo deste README
 
-AuditFlow e uma plataforma web para apoiar as frentes de Auditoria Interna, Riscos, Compliance e Canal de Denuncias no Grupo Casas Bahia.
+Este arquivo existe como documentacao interna do projeto.
 
-No estado atual, os modulos em producao estao focados em registro de horas (timesheet) e gestao de horas/planejamento. A evolucao do produto segue para consolidar uma suite GRC completa, mantendo o que ja funciona em producao com entregas incrementais.
+O foco aqui nao e ensinar instalacao ou publicacao. O objetivo e centralizar contexto funcional e tecnico para:
 
-## 🚀 Funcionalidades Atuais (em Producao)
+- organizar a evolucao do produto;
+- facilitar a criacao de manuais e documentos futuros;
+- registrar rapidamente o estado atual da aplicacao;
+- servir como ponto de entrada para manutencao do codigo.
 
-### Para Usuários
-- **Dashboard Pessoal**: Visualize suas horas trabalhadas, projetos ativos e alertas de limite diário.
-- **Registro de Tempo**: Adicione entradas de tempo por projeto e data.
-- **Relatórios Individuais**: Gere relatórios das suas horas trabalhadas.
+## Visao geral
 
-### Para Gerentes
-- **Dashboard Gerencial**: Monitore a equipe, aprove entradas e visualize métricas.
-- **Aprovação de Horas**: Revise e aprove registros de tempo dos membros da equipe.
-- **Relatórios de Equipe**: Acesse relatórios consolidados da equipe.
-- **Delegação de Equipe**: Delegue temporariamente a gestão de sua equipe a outro gerente durante ausências. Todas as aprovações serão direcionadas ao gestor designado.
+AuditFlow e uma plataforma privada voltada ao Grupo Casas Bahia para suportar operacao e evolucao das frentes de:
 
-### Para Administradores
-- **Painel Administrativo**: Gerencie usuários, projetos e configurações do sistema.
-- **Centro de Ajuda**: Acesse documentação e suporte integrado.
+- Auditoria Interna;
+- Riscos;
+- Compliance;
+- Canal de Denuncias.
 
-## 🧭 Roadmap de Evolucao (Plataforma GRC)
+Hoje, o produto ja opera com foco principal em timesheet, gestao de horas, capacidade e controles administrativos. A direcao do projeto e crescer de forma incremental ate uma suite GRC completa, sem quebrar os fluxos que ja estao estaveis em producao.
 
-- **Auditoria Interna**: plano anual, escopo, execucao, achados, recomendacoes e plano de acao.
-- **Riscos**: catalogo de riscos, avaliacao de impacto/probabilidade e monitoramento continuo.
-- **Compliance**: controles, evidencias e acompanhamento de obrigacoes regulatorias.
-- **Canal de Denuncias**: recebimento, triagem, investigacao e tratamento com trilha de auditoria.
+## Escopo atual em producao
 
-## 🛠️ Tecnologias Utilizadas
+Os modulos mais maduros hoje sao:
 
-- **Frontend**: React 18 com TypeScript
-- **Build Tool**: Vite
-- **Roteamento**: React Router DOM
-- **Backend**: Supabase (PostgreSQL como banco de dados)
-- **Estilização**: Tailwind CSS (via CDN)
-- **Ícones**: Lucide React
-- **Gráficos**: Recharts
-- **Deploy**: GitHub Pages
+- registro de horas por colaborador;
+- acompanhamento individual de horas e relatorios;
+- visao gerencial de equipe, capacidade e orcamento;
+- administracao de usuarios, projetos e configuracoes;
+- folgas e ausencias de equipe;
+- matriz de riscos com controle de acesso;
+- recursos de engajamento, avisos e ajuda interna.
 
-## 📋 Pré-requisitos
+## Perfis de acesso
 
-- Node.js (versão 18 ou superior)
-- Conta no Supabase para configuração do backend
+### Usuario
 
-## 🏃‍♂️ Como Executar Localmente
+- login e sessao;
+- dashboard pessoal;
+- apontamento de horas;
+- relatorios individuais;
+- minhas folgas e ausencias;
+- hub de conquistas.
 
-1. **Clone o repositório**:
-   ```bash
-   git clone https://github.com/oRafaRosa/AuditFlowTimesheet.git
-   cd AuditFlowTimesheet
-   ```
+### Gestor
 
-2. **Instale as dependências**:
-   ```bash
-   npm install
-   ```
+- dashboard gerencial;
+- relatorios consolidados;
+- capacidade do time;
+- folgas da equipe;
+- acompanhamento de budget por projeto.
 
-3. **Configure as variáveis de ambiente**:
-   - Copie o arquivo `.env.example` para `.env`:
-     ```bash
-     cp .env.example .env
-     ```
-   - Edite o arquivo `.env` e adicione suas credenciais do Supabase:
-     ```
-     VITE_SUPABASE_URL=sua_url_do_supabase
-     VITE_SUPABASE_KEY=sua_chave_publica_do_supabase
-     ```
-   - **IMPORTANTE**: Nunca commite o arquivo `.env` no Git!
+### Administrador
 
-4. **Configure o Supabase**:
-   - Crie um projeto no [Supabase](https://supabase.com)
-   - Configure as tabelas e políticas de segurança conforme necessário
-   - Copie a URL do projeto e a chave pública (anon key) para o arquivo `.env`
+- painel administrativo;
+- configuracoes gerais;
+- gestao de usuarios, projetos e parametros;
+- controle de acesso a funcionalidades mais sensiveis.
 
-5. **Execute o aplicativo**:
-   ```bash
-   npm run dev
-   ```
+### Acesso especifico da matriz de riscos
 
-5. **Acesse no navegador**:
-   Abra [http://localhost:5173](http://localhost:5173)
+O modulo de matriz de riscos possui controle adicional de permissao com niveis:
 
-## 🚀 Deploy
+- `NONE`;
+- `READ`;
+- `EDIT`.
 
-O deploy está configurado para **GitHub Pages via branch** (main / root).
+## Mapa rapido das rotas
 
-### Para publicar via branch
+Rotas principais identificadas hoje na aplicacao:
 
-1. **Build do projeto** (gera `index.html` e `assets/` na raiz):
-   ```bash
-   npm run build
-   ```
+- `/` -> login;
+- `/dashboard` -> dashboard do usuario;
+- `/timesheet` -> entrada principal de apontamento;
+- `/reports` -> relatorios do usuario;
+- `/my-leaves` -> folgas e ausencias do usuario;
+- `/achievements` -> hub de conquistas;
+- `/risk-matrix` -> matriz de riscos;
+- `/help` -> central de ajuda;
+- `/manager` -> dashboard do gestor;
+- `/manager/reports` -> relatorios gerenciais;
+- `/manager/reports/capacity` -> capacidade do time;
+- `/manager/team-leaves` -> ausencias da equipe;
+- `/manager/budget` -> budget por projeto;
+- `/admin/*` -> painel administrativo.
 
-2. **Commit dos artefatos de build**:
-   ```bash
-   git add index.html assets/
-   git commit -m "build: update static bundle"
-   ```
+## Estrutura funcional do frontend
 
-3. **Push para a branch `main`**:
-   ```bash
-   git push
-   ```
+### Camada de paginas
 
-4. **Configure no GitHub**:
-   - Settings → Pages → Deploy from a branch
-   - Branch: `main` / Folder: `/ (root)`
+As paginas principais ficam em `src/pages` e representam os fluxos de negocio e navegacao.
 
-## 📁 Estrutura do Projeto
+Paginas atuais mapeadas:
 
-```
+- `Login`;
+- `UserDashboard`;
+- `UserReports`;
+- `UserMyLeaves`;
+- `ManagerDashboard`;
+- `ManagerReports`;
+- `ManagerCapacity`;
+- `ManagerTeamLeaves`;
+- `ManagerProjectBudget`;
+- `AdminDashboard`;
+- `AchievementsHub`;
+- `RiskMatrix`;
+- `HelpCenter`.
+
+### Camada de componentes
+
+Os componentes em `src/components` concentram blocos reutilizaveis de UI e widgets de apoio, com destaque para:
+
+- layout base da aplicacao;
+- indicadores de carregamento;
+- widget de status pessoal;
+- recursos de aniversario;
+- snapshot de gamificacao;
+- tela de bloqueio de funcionalidade.
+
+### Camada de servicos
+
+Os servicos em `src/services` concentram regras transversais do app.
+
+Hoje os arquivos mais relevantes sao:
+
+- `store.ts` -> servico central de autenticacao, leitura e escrita de dados, sessao local e integracao com Supabase;
+- `notifications.ts` -> notificacoes;
+- `loadingState.ts` -> estado global de carregamento.
+
+## Arquitetura tecnica resumida
+
+- frontend em React 18 com TypeScript;
+- build com Vite;
+- roteamento com `HashRouter`;
+- backend e banco em Supabase;
+- graficos com Recharts;
+- icones com Lucide React;
+- exportacoes e planilhas com `xlsx`.
+
+### Observacoes tecnicas relevantes
+
+- a autenticacao atual trabalha em modelo hibrido, com sessao local e verificacao remota;
+- o servico central do sistema esta bastante concentrado em `src/services/store.ts`;
+- o projeto usa variaveis de ambiente para integracoes sensiveis, mas existem fallbacks no codigo para viabilizar determinados cenarios de build;
+- a matriz de riscos possui camada propria de permissao e suporte a criptografia do payload.
+
+## Estrutura do repositorio
+
+```text
 AuditFlowTimesheet/
-├── public/                 # Arquivos estáticos
-├── src/
-│   ├── components/         # Componentes reutilizáveis
-│   ├── pages/             # Páginas da aplicação
-│   ├── services/          # Serviços (Supabase, notificações)
-│   ├── App.tsx            # Componente principal
-│   ├── index.tsx          # Ponto de entrada
-│   └── types.ts           # Definições de tipos TypeScript
-├── .github/workflows/     # Configurações do CI/CD
-├── package.json           # Dependências e scripts
-├── vite.config.ts         # Configuração do Vite
-└── README.md             # Este arquivo
+|-- src/
+|   |-- components/        componentes reutilizaveis
+|   |-- config/            configuracoes internas
+|   |-- pages/             paginas e fluxos principais
+|   |-- services/          integracoes e regra transversal
+|   |-- utils/             funcoes utilitarias
+|   |-- App.tsx            definicao de rotas
+|   |-- index.tsx          bootstrap do frontend
+|   `-- types.ts           tipos compartilhados
+|-- migrations/            scripts SQL versionados
+|-- public/                arquivos publicos estaticos
+|-- assets/                bundle publicado
+|-- README.md              documento base do projeto
+|-- IDEIAS_E_INSIGHTS.md   anotacoes de evolucao
+|-- RISK_MATRIX_SETUP.md   referencia do modulo de riscos
+|-- GITHUB_SECRETS_SETUP.md apoio de configuracao interna
+`-- todo-capacity-mobile.md acompanhamento de pendencia especifica
 ```
 
-## 🤝 Contribuição
+## Banco de dados e migracoes
 
-1. Fork o projeto
-2. Crie uma branch para sua feature (`git checkout -b feature/AmazingFeature`)
-3. Commit suas mudanças (`git commit -m 'Add some AmazingFeature'`)
-4. Push para a branch (`git push origin feature/AmazingFeature`)
-5. Abra um Pull Request
+O banco esta no Supabase e deve ser tratado como ambiente sensivel.
 
-## 📄 Licença
+Migracoes ja versionadas no repositorio indicam a evolucao recente de:
 
-Este projeto está sob a licença MIT. Veja o arquivo `LICENSE` para mais detalhes.
+- area em projetos;
+- campos de capacidade em perfis;
+- estrutura da matriz de riscos;
+- ajuste de RLS da matriz;
+- data de aniversario em perfis;
+- avisos da aplicacao;
+- eventos de folga da equipe.
 
-## 📞 Suporte
+## Documentos de apoio no repositorio
 
-Para dúvidas ou suporte, acesse o Centro de Ajuda dentro da aplicação ou entre em contato com a equipe de desenvolvimento.
+Arquivos que ja servem como base para documentacao complementar:
 
----
+- `AGENTS.md` -> regras locais de trabalho no projeto;
+- `IDEIAS_E_INSIGHTS.md` -> backlog mais livre e anotacoes;
+- `RISK_MATRIX_SETUP.md` -> contexto especifico da matriz de riscos;
+- `GITHUB_SECRETS_SETUP.md` -> referencia de configuracoes internas;
+- `todo-capacity-mobile.md` -> pendencias conhecidas sobre capacidade no mobile.
 
-<div align="center">
+## Direcao de evolucao do produto
 
-**desenvolvido com 💙 por [R² Solutions Group](https://orafarosa.github.io/R2-Solutions-Group/)**
+As proximas frentes devem continuar respeitando a visao de plataforma integrada entre segunda e terceira linha de defesa.
 
-*tech & consulting - transformando ideias em soluções*
+### Auditoria Interna
 
-</div>
+- planejamento anual;
+- execucao de trabalhos;
+- achados;
+- recomendacoes;
+- planos de acao.
+
+### Riscos
+
+- cadastro estruturado de riscos;
+- avaliacao de probabilidade e impacto;
+- resposta ao risco;
+- monitoramento continuo.
+
+### Compliance
+
+- controles;
+- evidencias;
+- obrigacoes regulatorias;
+- monitoramento de aderencia.
+
+### Canal de Denuncias
+
+- recebimento;
+- triagem;
+- investigacao;
+- tratamento;
+- trilha de auditoria.
+
+## Checklist para futuras documentacoes
+
+Quando uma nova feature for documentada, vale registrar pelo menos:
+
+- objetivo funcional;
+- perfil de acesso envolvido;
+- regra de negocio principal;
+- telas e rotas afetadas;
+- tabelas ou migracoes impactadas;
+- riscos de regressao;
+- dependencia com outros modulos;
+- pontos que precisam entrar em manual do usuario ou manual operacional.
+
+## Resumo executivo
+
+Se precisar explicar rapidamente o projeto para criar outro material, a definicao base hoje e:
+
+> AuditFlow e uma plataforma privada em evolucao para GRC, com operacao atual centrada em timesheet, gestao de horas, capacidade, administracao e matriz de riscos, desenhada para evoluir de forma incremental para cobrir Auditoria Interna, Riscos, Compliance e Canal de Denuncias.

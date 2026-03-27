@@ -12,9 +12,14 @@ interface ProjectBudgetData {
   areaLabel: string;
   budgeted: number;
   consumed: number;
+  available: number;
   percentage: number;
   status: 'safe' | 'warning' | 'danger';
 }
+
+type ProjectCodeFilter = '' | 'HT' | 'BO' | 'AD';
+
+const matchesProjectType = (projectCode: string, typeFilter: ProjectCodeFilter) => !typeFilter || projectCode.toUpperCase().startsWith(typeFilter);
 
 const AREA_LABEL: Record<UserArea, string> = {
   AUDITORIA_INTERNA: 'Auditoria Interna',
@@ -38,8 +43,8 @@ export const ManagerProjectBudget: React.FC = () => {
   const [selectedProjectIds, setSelectedProjectIds] = useState<Set<string>>(new Set());
   const [teamFilter, setTeamFilter] = useState('');
   const [areaFilter, setAreaFilter] = useState<UserArea | ''>('');
-  const [codePrefixFilter, setCodePrefixFilter] = useState('');
-  const [sortColumn, setSortColumn] = useState<'name' | 'budgeted' | 'consumed' | 'percentage'>('percentage');
+  const [codePrefixFilter, setCodePrefixFilter] = useState<ProjectCodeFilter>('');
+  const [sortColumn, setSortColumn] = useState<'name' | 'budgeted' | 'consumed' | 'available' | 'percentage'>('percentage');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   useEffect(() => {
@@ -53,6 +58,7 @@ export const ManagerProjectBudget: React.FC = () => {
       const consumed = entriesList
         .filter(e => e.projectId === p.id)
         .reduce((acc, curr) => acc + curr.hours, 0);
+      const available = p.budgetedHours - consumed;
 
       const percentage = p.budgetedHours > 0 ? (consumed / p.budgetedHours) * 100 : 0;
 
@@ -70,6 +76,7 @@ export const ManagerProjectBudget: React.FC = () => {
         areaLabel: AREA_LABEL[area],
         budgeted: p.budgetedHours,
         consumed: consumed,
+        available,
         percentage: percentage,
         status: status
       };
@@ -116,7 +123,7 @@ export const ManagerProjectBudget: React.FC = () => {
 
     // filtro por prefixo do código (ht, bo, ad)
     if (codePrefixFilter) {
-      result = result.filter(p => p.code.startsWith(codePrefixFilter));
+      result = result.filter(p => matchesProjectType(p.code, codePrefixFilter));
     }
 
     // filtro por área do projeto
@@ -142,6 +149,9 @@ export const ManagerProjectBudget: React.FC = () => {
           break;
         case 'consumed':
           comparison = a.consumed - b.consumed;
+          break;
+        case 'available':
+          comparison = a.available - b.available;
           break;
         case 'percentage':
           comparison = a.percentage - b.percentage;
@@ -188,7 +198,7 @@ export const ManagerProjectBudget: React.FC = () => {
     navigate(`/manager/reports?projectId=${projectId}`);
   };
 
-  const handleSort = (column: 'name' | 'budgeted' | 'consumed' | 'percentage') => {
+  const handleSort = (column: 'name' | 'budgeted' | 'consumed' | 'available' | 'percentage') => {
     if (sortColumn === column) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
     } else {
@@ -197,7 +207,7 @@ export const ManagerProjectBudget: React.FC = () => {
     }
   };
 
-  const SortIcon = ({ column }: { column: 'name' | 'budgeted' | 'consumed' | 'percentage' }) => {
+  const SortIcon = ({ column }: { column: 'name' | 'budgeted' | 'consumed' | 'available' | 'percentage' }) => {
     if (sortColumn !== column) return <ArrowUpDown size={14} className="text-slate-400" />;
     return sortDirection === 'asc' 
       ? <ArrowUp size={14} className="text-brand-600" />
@@ -207,6 +217,7 @@ export const ManagerProjectBudget: React.FC = () => {
   // calcula kpis respeitando os filtros
   const totalBudgeted = filteredData.reduce((acc, p) => acc + p.budgeted, 0);
   const totalConsumed = filteredData.reduce((acc, p) => acc + p.consumed, 0);
+  const totalAvailable = filteredData.reduce((acc, p) => acc + p.available, 0);
   const overBudget = filteredData.filter(p => p.status === 'danger').length;
   const atRisk = filteredData.filter(p => p.status === 'warning').length;
 
@@ -222,7 +233,7 @@ export const ManagerProjectBudget: React.FC = () => {
       </div>
 
       {/* cards de kpi */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
         <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
           <p className="text-xs font-bold text-slate-500 uppercase mb-2">Total Orçado</p>
           <div className="text-3xl font-bold text-slate-800">{formatHours(totalBudgeted)}h</div>
@@ -236,6 +247,12 @@ export const ManagerProjectBudget: React.FC = () => {
         </div>
 
         <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
+          <p className="text-xs font-bold text-slate-500 uppercase mb-2">Horas Disponíveis</p>
+          <div className={`text-3xl font-bold ${totalAvailable >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>{formatHours(totalAvailable)}h</div>
+          <p className="text-xs text-slate-400 mt-2">Orçado menos realizado no recorte</p>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
           <p className="text-xs font-bold text-slate-500 uppercase mb-2">Próximos ao Limite</p>
           <div className="text-3xl font-bold text-amber-600">{atRisk}</div>
           <p className="text-xs text-slate-400 mt-2">85-100% do orçado</p>
@@ -244,7 +261,7 @@ export const ManagerProjectBudget: React.FC = () => {
         <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
           <p className="text-xs font-bold text-slate-500 uppercase mb-2">Acima do Orçado</p>
           <div className="text-3xl font-bold text-red-600">{overBudget}</div>
-          <p className="text-xs text-slate-400 mt-2">{formatHours(projectData.filter(p => p.status === 'danger').reduce((acc, p) => acc + (p.consumed - p.budgeted), 0))}h de excesso</p>
+          <p className="text-xs text-slate-400 mt-2">{formatHours(filteredData.filter(p => p.status === 'danger').reduce((acc, p) => acc + (p.consumed - p.budgeted), 0))}h de excesso</p>
         </div>
       </div>
 
@@ -319,7 +336,7 @@ export const ManagerProjectBudget: React.FC = () => {
               <label className="block text-xs font-bold text-slate-500 mb-2">Tipo (Código)</label>
               <select
                 value={codePrefixFilter}
-                onChange={(e) => setCodePrefixFilter(e.target.value)}
+                onChange={(e) => setCodePrefixFilter((e.target.value || '') as ProjectCodeFilter)}
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none"
               >
                 <option value="">Todos</option>
@@ -395,6 +412,15 @@ export const ManagerProjectBudget: React.FC = () => {
                     </div>
                   </th>
                   <th 
+                    onClick={() => handleSort('available')}
+                    className="px-6 py-3 font-semibold text-slate-600 cursor-pointer hover:bg-slate-100 transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      Disponível
+                      <SortIcon column="available" />
+                    </div>
+                  </th>
+                  <th 
                     onClick={() => handleSort('percentage')}
                     className="px-6 py-3 font-semibold text-slate-600 cursor-pointer hover:bg-slate-100 transition-colors"
                   >
@@ -410,7 +436,7 @@ export const ManagerProjectBudget: React.FC = () => {
               <tbody className="divide-y divide-slate-100">
                 {filteredData.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-8 text-center text-slate-400">
+                    <td colSpan={7} className="px-6 py-8 text-center text-slate-400">
                       Nenhum projeto encontrado com os filtros aplicados.
                     </td>
                   </tr>
@@ -427,6 +453,7 @@ export const ManagerProjectBudget: React.FC = () => {
                       </td>
                       <td className="px-6 py-4 font-medium text-slate-700">{formatHours(project.budgeted)}h</td>
                       <td className="px-6 py-4 font-medium text-slate-700">{formatHours(project.consumed)}h</td>
+                      <td className={`px-6 py-4 font-medium ${project.available >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>{formatHours(project.available)}h</td>
                       <td className="px-6 py-4">
                         <span className={`font-bold ${
                           project.status === 'danger' ? 'text-red-600' :

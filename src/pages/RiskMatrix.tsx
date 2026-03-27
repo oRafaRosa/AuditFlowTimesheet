@@ -80,16 +80,16 @@ const IMPACT_BANDS = [
   { min: 0, max: 1.5 },
   { min: 1.5, max: 2.5 },
   { min: 2.5, max: 3.5 },
-  { min: 3.5, max: 4.51 },
-  { min: 4.51, max: 5 }
+  { min: 3.5, max: 4.5 },
+  { min: 4.5, max: 5 }
 ] as const;
 
 const PROBABILITY_BANDS = [
   { min: 0, max: 1.5 },
   { min: 1.5, max: 2.5 },
   { min: 2.5, max: 3.5 },
-  { min: 3.5, max: 4.51 },
-  { min: 4.51, max: 5 }
+  { min: 3.5, max: 4.5 },
+  { min: 4.5, max: 5 }
 ] as const;
 
 const resolveBandProgress = (value: number, min: number, max: number) => {
