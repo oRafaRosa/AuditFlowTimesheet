@@ -45,6 +45,7 @@ interface ConsistencyDayCell {
   deltaHours: number;
   status: ConsistencyDayStatus;
   isFutureDay: boolean;
+  isPaymentDay: boolean;
 }
 
 export const UserDashboard: React.FC = () => {
@@ -543,9 +544,44 @@ export const UserDashboard: React.FC = () => {
         weekDays: ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'],
         leadingEmptyCells: 0,
         trailingEmptyCells: 0,
+        paymentDays: new Set<string>(),
         days: [] as ConsistencyDayCell[]
       };
     }
+
+    const getPaymentDaysForMonth = () => {
+      const paymentDays = new Set<string>();
+      const lastDay = new Date(year, month + 1, 0).getDate();
+
+      let businessDayCounter = 0;
+      for (let day = 1; day <= lastDay; day++) {
+        const dateStr = formatLocalDate(new Date(year, month, day, 12));
+        if (!isExpectedWorkingDay(dateStr, calendarMapsState)) continue;
+
+        businessDayCounter += 1;
+        if (businessDayCounter === 2) {
+          paymentDays.add(dateStr);
+          break;
+        }
+      }
+
+      const fifteenthDate = formatLocalDate(new Date(year, month, 15, 12));
+      if (isExpectedWorkingDay(fifteenthDate, calendarMapsState)) {
+        paymentDays.add(fifteenthDate);
+      } else {
+        for (let day = 14; day >= 1; day--) {
+          const fallbackDate = formatLocalDate(new Date(year, month, day, 12));
+          if (isExpectedWorkingDay(fallbackDate, calendarMapsState)) {
+            paymentDays.add(fallbackDate);
+            break;
+          }
+        }
+      }
+
+      return paymentDays;
+    };
+
+    const paymentDays = getPaymentDaysForMonth();
 
     const monthEntries = entries.filter((entry) => {
       const entryDate = parseDateOnly(entry.date);
@@ -591,7 +627,8 @@ export const UserDashboard: React.FC = () => {
         expectedHours,
         deltaHours,
         status,
-        isFutureDay
+        isFutureDay,
+        isPaymentDay: paymentDays.has(dateStr)
       });
     }
 
@@ -603,6 +640,7 @@ export const UserDashboard: React.FC = () => {
       weekDays: ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'],
       leadingEmptyCells: firstWeekDay,
       trailingEmptyCells,
+      paymentDays,
       days
     };
   }, [activeIndicators.month, activeIndicators.year, calendarMapsState, dashboardPeriod, entries]);
@@ -1013,7 +1051,7 @@ export const UserDashboard: React.FC = () => {
                 <div key={`empty-start-${index}`} className="h-8 rounded-md border border-transparent" />
               ))}
 
-              {consistencyCalendarData.days.map((day) => (
+                {consistencyCalendarData.days.map((day) => (
                 <button
                   key={day.key}
                   type="button"
@@ -1021,11 +1059,17 @@ export const UserDashboard: React.FC = () => {
                   className={`group relative flex h-8 items-center justify-center rounded-md border text-xs font-semibold transition-colors hover:brightness-95 ${getConsistencyDayStyle(day.status)}`}
                   title={`${getConsistencyTooltip(day)}\nClique para abrir no relatório.`}
                 >
-                  {day.dayLabel}
+                  <span>{day.dayLabel}</span>
+                  {day.isPaymentDay && (
+                    <span className="absolute bottom-0.5 right-0.5 text-[9px] opacity-70" aria-hidden="true">🎵</span>
+                  )}
                   <div className="pointer-events-none absolute -top-1 left-1/2 z-10 hidden w-44 -translate-x-1/2 -translate-y-full rounded-md bg-slate-900 px-2 py-1.5 text-[11px] font-medium leading-snug text-white shadow-xl group-hover:block">
                     {getConsistencyTooltip(day).split('\n').map((line) => (
                       <div key={`${day.key}-${line}`}>{line}</div>
                     ))}
+                    {day.isPaymentDay && (
+                      <div className="mt-0.5 text-[10px] font-normal text-slate-300">dia do pagode</div>
+                    )}
                     <div className="mt-1 border-t border-slate-700 pt-1 text-[10px] text-slate-200">Clique para abrir no relatório</div>
                   </div>
                 </button>
