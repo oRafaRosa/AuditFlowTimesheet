@@ -275,10 +275,6 @@ export const ManagerProjectBudget: React.FC = () => {
   const techSlice = totalSegregatedConsumed > 0 ? (technicalConsumed / totalSegregatedConsumed) * 100 : 0;
   const adminSlice = totalSegregatedConsumed > 0 ? (administrativeConsumed / totalSegregatedConsumed) * 100 : 0;
 
-  // fatias do donut "orçado" (relativo ao total orçado)
-  const techBudgetSlice = totalBudgeted > 0 ? (technicalBudgeted / totalBudgeted) * 100 : 0;
-  const adminBudgetSlice = totalBudgeted > 0 ? (administrativeBudgeted / totalBudgeted) * 100 : 0;
-
   // dados do gráfico: orçado vs realizado por área
   const areaChartData = useMemo(() => {
     const byArea = new Map<string, { orcado: number; realizado: number }>();
@@ -288,7 +284,7 @@ export const ManagerProjectBudget: React.FC = () => {
       byArea.set(key, { orcado: curr.orcado + p.budgeted, realizado: curr.realizado + p.consumed });
     });
     return Array.from(byArea.entries())
-      .map(([area, vals]) => ({ area, ...vals }))
+      .map(([area, vals]) => ({ area, ...vals, disponivel: vals.orcado - vals.realizado }))
       .sort((a, b) => b.orcado - a.orcado);
   }, [filteredData]);
 
@@ -326,62 +322,64 @@ export const ManagerProjectBudget: React.FC = () => {
           </div>
         </div>
 
-        {/* dois donuts: orçado e realizado */}
-        <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-4">
-          <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-3">Segregação de Horas</h3>
-          <div className="grid grid-cols-2 gap-3">
-            {/* donut orçado */}
-            <div className="flex flex-col items-center gap-2">
-              <div className="relative h-20 w-20">
-                <div
-                  className="h-20 w-20 rounded-full"
-                  style={{
-                    background: totalBudgeted > 0
-                      ? `conic-gradient(#0033C6 0% ${techBudgetSlice}%, #E71A3B ${techBudgetSlice}% ${techBudgetSlice + adminBudgetSlice}%, #e2e8f0 ${techBudgetSlice + adminBudgetSlice}% 100%)`
-                      : '#e2e8f0'
-                  }}
-                />
-                <div className="absolute inset-3 rounded-full bg-white flex flex-col items-center justify-center text-center">
-                  <span className="text-[8px] font-bold text-slate-800 leading-tight">{formatHours(totalBudgeted)}h</span>
+        {/* card de segregação */}
+        <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-5 flex flex-col justify-center">
+          <div className="flex items-center gap-4">
+            {/* donut realizado */}
+            <div className="flex-shrink-0">
+              {totalBudgeted > 0 ? (
+                <div className="relative h-[88px] w-[88px]">
+                  <div
+                    className="h-[88px] w-[88px] rounded-full"
+                    style={{
+                      background: totalSegregatedConsumed > 0
+                        ? `conic-gradient(#0033C6 0% ${techSlice}%, #E71A3B ${techSlice}% ${techSlice + adminSlice}%, #e2e8f0 ${techSlice + adminSlice}% 100%)`
+                        : '#e2e8f0'
+                    }}
+                  />
+                  <div className="absolute inset-[18px] rounded-full bg-white flex flex-col items-center justify-center text-center">
+                    <span className="text-[8px] text-slate-400 uppercase leading-none">Real.</span>
+                    <span className="text-[11px] font-bold text-slate-800 leading-tight">{formatHours(totalSegregatedConsumed)}h</span>
+                  </div>
                 </div>
-              </div>
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Orçado</span>
-              <div className="w-full space-y-1">
-                <div className="flex items-center justify-between text-[10px]">
-                  <div className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-brand-600 flex-shrink-0" /><span className="text-slate-500">Téc.</span></div>
-                  <span className="font-medium text-slate-700">{formatHours(technicalBudgeted)}h</span>
-                </div>
-                <div className="flex items-center justify-between text-[10px]">
-                  <div className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-red-500 flex-shrink-0" /><span className="text-slate-500">Adm.</span></div>
-                  <span className="font-medium text-slate-700">{formatHours(administrativeBudgeted)}h</span>
-                </div>
-              </div>
+              ) : (
+                <div className="h-[88px] w-[88px] rounded-full bg-slate-100 flex items-center justify-center text-[9px] text-slate-400 text-center">Sem dados</div>
+              )}
             </div>
 
-            {/* donut realizado */}
-            <div className="flex flex-col items-center gap-2">
-              <div className="relative h-20 w-20">
-                <div
-                  className="h-20 w-20 rounded-full"
-                  style={{
-                    background: totalSegregatedConsumed > 0
-                      ? `conic-gradient(#0033C6 0% ${techSlice}%, #E71A3B ${techSlice}% ${techSlice + adminSlice}%, #e2e8f0 ${techSlice + adminSlice}% 100%)`
-                      : '#e2e8f0'
-                  }}
-                />
-                <div className="absolute inset-3 rounded-full bg-white flex flex-col items-center justify-center text-center">
-                  <span className="text-[8px] font-bold text-slate-800 leading-tight">{formatHours(totalSegregatedConsumed)}h</span>
-                </div>
+            {/* tabela comparativa */}
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-2">Segregação de Horas</p>
+              <div className="grid grid-cols-3 text-[10px] text-slate-400 font-semibold uppercase mb-1 gap-x-1">
+                <span></span>
+                <span className="text-right">Orç.</span>
+                <span className="text-right">Real.</span>
               </div>
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Realizado</span>
-              <div className="w-full space-y-1">
-                <div className="flex items-center justify-between text-[10px]">
-                  <div className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-brand-600 flex-shrink-0" /><span className="text-slate-500">Téc.</span></div>
-                  <span className="font-medium text-slate-700">{formatHours(technicalConsumed)}h</span>
+              <div className="space-y-1.5">
+                <div className="grid grid-cols-3 items-center gap-x-1 text-xs">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="h-2 w-2 rounded-full bg-brand-600 flex-shrink-0" />
+                    <span className="text-slate-600 truncate text-[11px]">Técnicas</span>
+                  </div>
+                  <span className="text-slate-500 text-right text-[11px]">{formatHours(technicalBudgeted)}h</span>
+                  <span className="font-bold text-slate-800 text-right text-[11px]">{formatHours(technicalConsumed)}h</span>
                 </div>
-                <div className="flex items-center justify-between text-[10px]">
-                  <div className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-red-500 flex-shrink-0" /><span className="text-slate-500">Adm.</span></div>
-                  <span className="font-medium text-slate-700">{formatHours(administrativeConsumed)}h</span>
+                <div className="grid grid-cols-3 items-center gap-x-1 text-xs">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="h-2 w-2 rounded-full bg-red-500 flex-shrink-0" />
+                    <span className="text-slate-600 truncate text-[11px]">Adm.</span>
+                  </div>
+                  <span className="text-slate-500 text-right text-[11px]">{formatHours(administrativeBudgeted)}h</span>
+                  <span className="font-bold text-slate-800 text-right text-[11px]">{formatHours(administrativeConsumed)}h</span>
+                </div>
+                <div className="border-t border-slate-100 pt-1.5 grid grid-cols-3 items-center gap-x-1">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="h-2 w-2 rounded-full bg-slate-300 flex-shrink-0" />
+                    <span className="text-slate-500 truncate text-[11px]">Saldo</span>
+                  </div>
+                  <span className="col-span-2 text-right text-[11px] font-bold {totalAvailable >= 0 ? 'text-emerald-600' : 'text-red-600'}">
+                    <span className={totalAvailable >= 0 ? 'text-emerald-600' : 'text-red-600'}>{formatHours(totalAvailable)}h</span>
+                  </span>
                 </div>
               </div>
             </div>
@@ -411,17 +409,18 @@ export const ManagerProjectBudget: React.FC = () => {
               <Tooltip
                 formatter={(value: number, name: string) => [
                   `${formatHours(value)}h`,
-                  name === 'orcado' ? 'Orçado' : 'Realizado',
+                  name === 'orcado' ? 'Orçado' : name === 'realizado' ? 'Realizado' : 'Disponível',
                 ]}
                 labelStyle={{ fontSize: 12, fontWeight: 600, color: '#1e293b' }}
                 contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}
               />
               <Legend
-                formatter={(value) => value === 'orcado' ? 'Orçado' : 'Realizado'}
+                formatter={(value) => value === 'orcado' ? 'Orçado' : value === 'realizado' ? 'Realizado' : 'Disponível'}
                 wrapperStyle={{ fontSize: 12, paddingTop: 8 }}
               />
-              <Bar dataKey="orcado" name="orcado" fill="#cbd5e1" radius={[4, 4, 0, 0]} maxBarSize={48} />
-              <Bar dataKey="realizado" name="realizado" fill="#0033C6" radius={[4, 4, 0, 0]} maxBarSize={48} />
+              <Bar dataKey="orcado" name="orcado" fill="#cbd5e1" radius={[4, 4, 0, 0]} maxBarSize={40} />
+              <Bar dataKey="realizado" name="realizado" fill="#0033C6" radius={[4, 4, 0, 0]} maxBarSize={40} />
+              <Bar dataKey="disponivel" name="disponivel" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={40} />
             </BarChart>
           </ResponsiveContainer>
         </div>
