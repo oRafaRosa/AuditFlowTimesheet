@@ -14,6 +14,7 @@ interface ProjectBudgetData {
   areaLabel: string;
   budgeted: number;
   consumed: number;
+  teamConsumed: number;
   available: number;
   percentage: number;
   status: 'safe' | 'warning' | 'danger';
@@ -60,13 +61,20 @@ export const ManagerProjectBudget: React.FC = () => {
     loadData();
   }, []);
 
-  const buildProjectData = (projectsList: Project[], entriesList: TimesheetEntry[]): ProjectBudgetData[] => {
+  const buildProjectData = (
+    projectsList: Project[],
+    entriesList: TimesheetEntry[],
+    teamConsumedByProject?: Map<string, number>
+  ): ProjectBudgetData[] => {
     return projectsList
       .filter((p) => !!p.area)
       .map((p): ProjectBudgetData => {
       const consumed = entriesList
         .filter(e => e.projectId === p.id)
         .reduce((acc, curr) => acc + curr.hours, 0);
+      const teamConsumed = teamConsumedByProject
+        ? (teamConsumedByProject.get(p.id) || 0)
+        : consumed;
       const available = p.budgetedHours - consumed;
 
       const percentage = p.budgetedHours > 0 ? (consumed / p.budgetedHours) * 100 : 0;
@@ -86,6 +94,7 @@ export const ManagerProjectBudget: React.FC = () => {
         areaLabel: AREA_LABEL[area],
         budgeted: p.budgetedHours,
         consumed: consumed,
+        teamConsumed,
         available,
         percentage: percentage,
         status: status
@@ -145,6 +154,19 @@ export const ManagerProjectBudget: React.FC = () => {
     return scopedUsers;
   }, [teamFilter, users]);
 
+  const teamConsumedByProject = useMemo(() => {
+    if (!selectedTeamScopeUserIds || selectedTeamScopeUserIds.size === 0) return null;
+
+    const teamEntries = entries.filter((entry) => selectedTeamScopeUserIds.has(entry.userId));
+    const map = new Map<string, number>();
+
+    teamEntries.forEach((entry) => {
+      map.set(entry.projectId, (map.get(entry.projectId) || 0) + entry.hours);
+    });
+
+    return map;
+  }, [entries, selectedTeamScopeUserIds]);
+
   useEffect(() => {
     let result = projectData;
 
@@ -169,6 +191,11 @@ export const ManagerProjectBudget: React.FC = () => {
     // filtro por área do projeto
     if (areaFilter) {
       result = result.filter(p => p.area === areaFilter);
+    }
+
+    // com filtro de equipe, mantém só projetos com horas da equipe selecionada
+    if (teamFilter) {
+      result = result.filter((p) => p.teamConsumed > 0);
     }
 
     // filtro de status
@@ -202,25 +229,14 @@ export const ManagerProjectBudget: React.FC = () => {
     });
 
     setFilteredData(result);
-  }, [searchTerm, statusFilter, projectData, selectedProjectIds, codePrefixFilter, areaFilter, sortColumn, sortDirection]);
+  }, [searchTerm, statusFilter, projectData, selectedProjectIds, codePrefixFilter, areaFilter, sortColumn, sortDirection, teamFilter]);
 
   useEffect(() => {
     if (!projects.length) return;
 
-    let scopedEntries = entries;
-    let scopedProjects = projects;
-
-    if (selectedTeamScopeUserIds && selectedTeamScopeUserIds.size > 0) {
-      scopedEntries = entries.filter((entry) => selectedTeamScopeUserIds.has(entry.userId));
-      // só mostra projetos que a equipe selecionada teve lançamentos
-      const teamProjectIds = new Set(scopedEntries.map((e) => e.projectId));
-      scopedProjects = projects.filter((p) => teamProjectIds.has(p.id));
-    }
-
-    const updatedData = buildProjectData(scopedProjects, scopedEntries);
+    const updatedData = buildProjectData(projects, entries, teamConsumedByProject || undefined);
     setProjectData(updatedData);
-    setSelectedProjectIds(new Set());
-  }, [selectedTeamScopeUserIds, projects, entries]);
+  }, [projects, entries, teamConsumedByProject]);
 
   const projectOptions = useMemo(() => {
     let result = projectData;
@@ -244,8 +260,12 @@ export const ManagerProjectBudget: React.FC = () => {
       result = result.filter((project) => project.status === statusFilter);
     }
 
+    if (teamFilter) {
+      result = result.filter((project) => project.teamConsumed > 0);
+    }
+
     return [...result].sort((a, b) => a.name.localeCompare(b.name));
-  }, [projectData, searchTerm, codePrefixFilter, areaFilter, statusFilter]);
+  }, [projectData, searchTerm, codePrefixFilter, areaFilter, statusFilter, teamFilter]);
 
   useEffect(() => {
     const availableProjectIds = new Set(projectOptions.map((project) => project.id));
@@ -311,6 +331,7 @@ export const ManagerProjectBudget: React.FC = () => {
   const administrativeBudgetShare = totalBudgeted > 0 ? (administrativeBudgeted / totalBudgeted) * 100 : 0;
   const technicalConsumedShare = totalSegregatedConsumed > 0 ? (technicalConsumed / totalSegregatedConsumed) * 100 : 0;
   const administrativeConsumedShare = totalSegregatedConsumed > 0 ? (administrativeConsumed / totalSegregatedConsumed) * 100 : 0;
+  const showTeamConsumedColumn = !!teamFilter && filteredData.some((project) => Math.abs(project.consumed - project.teamConsumed) > 0.01);
 
   // dados do gráfico: orçado vs realizado por área
   const areaChartData = useMemo(() => {
@@ -659,6 +680,9 @@ export const ManagerProjectBudget: React.FC = () => {
                       <SortIcon column="consumed" />
                     </div>
                   </th>
+                  {showTeamConsumedColumn && (
+                    <th className="px-6 py-3 font-semibold text-slate-600">Realizado (Equipe Filtrada)</th>
+                  )}
                   <th 
                     onClick={() => handleSort('available')}
                     className="px-6 py-3 font-semibold text-slate-600 cursor-pointer hover:bg-slate-100 transition-colors"
@@ -684,7 +708,7 @@ export const ManagerProjectBudget: React.FC = () => {
               <tbody className="divide-y divide-slate-100">
                 {filteredData.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-6 py-8 text-center text-slate-400">
+                    <td colSpan={showTeamConsumedColumn ? 8 : 7} className="px-6 py-8 text-center text-slate-400">
                       Nenhum projeto encontrado com os filtros aplicados.
                     </td>
                   </tr>
@@ -701,6 +725,9 @@ export const ManagerProjectBudget: React.FC = () => {
                       </td>
                       <td className="px-6 py-4 font-medium text-slate-700">{formatHours(project.budgeted)}h</td>
                       <td className="px-6 py-4 font-medium text-slate-700">{formatHours(project.consumed)}h</td>
+                      {showTeamConsumedColumn && (
+                        <td className="px-6 py-4 font-medium text-slate-700">{formatHours(project.teamConsumed)}h</td>
+                      )}
                       <td className={`px-6 py-4 font-medium ${project.available >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>{formatHours(project.available)}h</td>
                       <td className="px-6 py-4">
                         <span className={`font-bold ${
