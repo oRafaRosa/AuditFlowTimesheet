@@ -198,6 +198,33 @@ export const ManagerProjectBudget: React.FC = () => {
     return tooltipByProject;
   }, [entries, selectedTeamScopeUserIds, users]);
 
+  const totalConsumedBreakdownByProject = useMemo(() => {
+    const userNamesById = new Map(users.map((user) => [user.id, user.name]));
+    const projectUserHours = new Map<string, Map<string, number>>();
+
+    entries.forEach((entry) => {
+      const userHours = projectUserHours.get(entry.projectId) || new Map<string, number>();
+      userHours.set(entry.userId, (userHours.get(entry.userId) || 0) + entry.hours);
+      projectUserHours.set(entry.projectId, userHours);
+    });
+
+    const tooltipByProject = new Map<string, string>();
+
+    projectUserHours.forEach((userHours, projectId) => {
+      const lines = Array.from(userHours.entries())
+        .map(([userId, hours]) => ({
+          name: userNamesById.get(userId) || 'Usuario',
+          hours,
+        }))
+        .sort((a, b) => b.hours - a.hours)
+        .map((item) => `${item.name}: ${formatHours(item.hours)}h`);
+
+      tooltipByProject.set(projectId, `Total lançado neste projeto:\n${lines.join('\n')}`);
+    });
+
+    return tooltipByProject;
+  }, [entries, users]);
+
   useEffect(() => {
     let result = projectData;
 
@@ -756,7 +783,12 @@ export const ManagerProjectBudget: React.FC = () => {
                         <div className="text-xs text-slate-500">{project.code}</div>
                       </td>
                       <td className="px-6 py-4 font-medium text-slate-700">{formatHours(project.budgeted)}h</td>
-                      <td className="px-6 py-4 font-medium text-slate-700">{formatHours(project.consumed)}h</td>
+                      <td
+                        className="px-6 py-4 font-medium text-slate-700 cursor-help"
+                        title={totalConsumedBreakdownByProject.get(project.id) || 'Sem lançamentos neste projeto.'}
+                      >
+                        {formatHours(project.consumed)}h
+                      </td>
                       {showTeamConsumedColumn && (
                         <td
                           className="px-6 py-4 font-medium text-slate-700 cursor-help"
