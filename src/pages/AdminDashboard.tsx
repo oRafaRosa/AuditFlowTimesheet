@@ -54,6 +54,17 @@ export const AdminDashboard: React.FC = () => {
     });
     const [userSortColumn, setUserSortColumn] = useState<'name' | 'manager' | 'role'>('name');
     const [userSortDirection, setUserSortDirection] = useState<'asc' | 'desc'>('asc');
+    const [projectSortColumn, setProjectSortColumn] = useState<'project' | 'classification' | 'area' | 'budgetedHours' | 'permissions'>('project');
+    const [projectSortDirection, setProjectSortDirection] = useState<'asc' | 'desc'>('asc');
+    const [projectFilterData, setProjectFilterData] = useState({
+        search: '',
+        classification: '',
+        area: '',
+        status: 'all' as 'all' | 'active' | 'inactive'
+    });
+    const [reportSearchTerm, setReportSearchTerm] = useState('');
+    const [reportSortColumn, setReportSortColumn] = useState<'date' | 'user' | 'project' | 'description' | 'hours'>('date');
+    const [reportSortDirection, setReportSortDirection] = useState<'asc' | 'desc'>('desc');
 
     // estado de usuários
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -86,6 +97,12 @@ export const AdminDashboard: React.FC = () => {
       endDate: ''
   });
   const [filteredEntries, setFilteredEntries] = useState<TimesheetEntry[]>([]);
+
+    const normalizeText = (value?: string) =>
+        (value || '')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toLowerCase();
 
   useEffect(() => {
     refreshData();
@@ -475,13 +492,27 @@ export const AdminDashboard: React.FC = () => {
           const teamUserIds = users.filter(u => u.managerId === filterData.managerId || u.id === filterData.managerId).map(u => u.id);
           result = result.filter(e => teamUserIds.includes(e.userId));
       }
+      if (reportSearchTerm.trim()) {
+          const normalizedSearch = normalizeText(reportSearchTerm.trim());
+          result = result.filter(e => {
+              const userName = getUserName(e.userId);
+              const projectName = getProjectName(e.projectId);
+
+              return [
+                  e.description,
+                  e.date,
+                  userName,
+                  projectName
+              ].some(value => normalizeText(value).includes(normalizedSearch));
+          });
+      }
 
       setFilteredEntries(result);
   };
 
   useEffect(() => {
     if(activeTab === 'reports') applyFilters();
-  }, [filterData, activeTab, entries]);
+  }, [filterData, activeTab, entries, reportSearchTerm, users, projects]);
 
 
     // helpers
@@ -497,6 +528,13 @@ export const AdminDashboard: React.FC = () => {
   const getManagerName = (id?: string) => users.find(u => u.id === id)?.name || '-';
   const getUserName = (id: string) => users.find(u => u.id === id)?.name || 'Desconhecido';
   const getProjectName = (id: string) => projects.find(p => p.id === id)?.name || 'Desconhecido';
+    const getProjectPermissionsLabel = (project: Project) => {
+        if (!project.allowedManagerIds || project.allowedManagerIds.length === 0) {
+            return 'Todos';
+        }
+
+        return `${project.allowedManagerIds.length} Equipes`;
+    };
   const totalPendingManagerApprovals = managerApprovalBacklog.reduce((acc, group) => acc + group.pendingCount, 0);
   const formatPeriodLabel = (year: number, month: number) =>
     new Date(year, month, 1).toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' });
@@ -524,6 +562,40 @@ export const AdminDashboard: React.FC = () => {
             : <ArrowDown size={14} className="text-brand-600" />;
     };
 
+    const handleProjectSort = (column: 'project' | 'classification' | 'area' | 'budgetedHours' | 'permissions') => {
+        if (projectSortColumn === column) {
+            setProjectSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+            return;
+        }
+
+        setProjectSortColumn(column);
+        setProjectSortDirection('asc');
+    };
+
+    const ProjectSortIcon = ({ column }: { column: 'project' | 'classification' | 'area' | 'budgetedHours' | 'permissions' }) => {
+        if (projectSortColumn !== column) return <ArrowUpDown size={14} className="text-slate-400" />;
+        return projectSortDirection === 'asc'
+            ? <ArrowUp size={14} className="text-brand-600" />
+            : <ArrowDown size={14} className="text-brand-600" />;
+    };
+
+    const handleReportSort = (column: 'date' | 'user' | 'project' | 'description' | 'hours') => {
+        if (reportSortColumn === column) {
+            setReportSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+            return;
+        }
+
+        setReportSortColumn(column);
+        setReportSortDirection(column === 'date' ? 'desc' : 'asc');
+    };
+
+    const ReportSortIcon = ({ column }: { column: 'date' | 'user' | 'project' | 'description' | 'hours' }) => {
+        if (reportSortColumn !== column) return <ArrowUpDown size={14} className="text-slate-400" />;
+        return reportSortDirection === 'asc'
+            ? <ArrowUp size={14} className="text-brand-600" />
+            : <ArrowDown size={14} className="text-brand-600" />;
+    };
+
     const sortedUsers = React.useMemo(() => {
         const sorted = [...users].sort((a, b) => {
             let comparison = 0;
@@ -541,6 +613,84 @@ export const AdminDashboard: React.FC = () => {
 
         return sorted;
     }, [users, userSortColumn, userSortDirection]);
+
+    const filteredProjects = React.useMemo(() => {
+        const normalizedSearch = normalizeText(projectFilterData.search.trim());
+
+        return projects.filter(project => {
+            if (projectFilterData.classification && project.classification !== projectFilterData.classification) {
+                return false;
+            }
+
+            if (projectFilterData.area && (project.area || '') !== projectFilterData.area) {
+                return false;
+            }
+
+            if (projectFilterData.status === 'active' && !project.active) {
+                return false;
+            }
+
+            if (projectFilterData.status === 'inactive' && project.active) {
+                return false;
+            }
+
+            if (!normalizedSearch) {
+                return true;
+            }
+
+            return [
+                project.code,
+                project.name,
+                project.classification,
+                project.area ? areaLabelMap[project.area] : '',
+                getProjectPermissionsLabel(project)
+            ].some(value => normalizeText(value).includes(normalizedSearch));
+        });
+    }, [projects, projectFilterData]);
+
+    const sortedProjects = React.useMemo(() => {
+        const sorted = [...filteredProjects].sort((a, b) => {
+            let comparison = 0;
+
+            if (projectSortColumn === 'project') {
+                comparison = `${a.code} ${a.name}`.localeCompare(`${b.code} ${b.name}`, 'pt-BR', { numeric: true });
+            } else if (projectSortColumn === 'classification') {
+                comparison = a.classification.localeCompare(b.classification, 'pt-BR');
+            } else if (projectSortColumn === 'area') {
+                comparison = (a.area ? areaLabelMap[a.area] : '').localeCompare(b.area ? areaLabelMap[b.area] : '', 'pt-BR');
+            } else if (projectSortColumn === 'budgetedHours') {
+                comparison = a.budgetedHours - b.budgetedHours;
+            } else {
+                comparison = getProjectPermissionsLabel(a).localeCompare(getProjectPermissionsLabel(b), 'pt-BR', { numeric: true });
+            }
+
+            return projectSortDirection === 'asc' ? comparison : -comparison;
+        });
+
+        return sorted;
+    }, [filteredProjects, projectSortColumn, projectSortDirection]);
+
+    const sortedFilteredEntries = React.useMemo(() => {
+        const sorted = [...filteredEntries].sort((a, b) => {
+            let comparison = 0;
+
+            if (reportSortColumn === 'date') {
+                comparison = a.date.localeCompare(b.date);
+            } else if (reportSortColumn === 'user') {
+                comparison = getUserName(a.userId).localeCompare(getUserName(b.userId), 'pt-BR');
+            } else if (reportSortColumn === 'project') {
+                comparison = getProjectName(a.projectId).localeCompare(getProjectName(b.projectId), 'pt-BR');
+            } else if (reportSortColumn === 'description') {
+                comparison = a.description.localeCompare(b.description, 'pt-BR');
+            } else {
+                comparison = a.hours - b.hours;
+            }
+
+            return reportSortDirection === 'asc' ? comparison : -comparison;
+        });
+
+        return sorted;
+    }, [filteredEntries, reportSortColumn, reportSortDirection, users, projects]);
 
     if (loading && users.length === 0) {
         return (
@@ -854,20 +1004,102 @@ export const AdminDashboard: React.FC = () => {
                   <div className="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
                       <h3 className="font-semibold text-slate-600">Trabalhos Cadastrados</h3>
                   </div>
+                  <div className="p-4 border-b border-gray-100 bg-white">
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+                          <div className="md:col-span-2">
+                              <label className="block text-xs font-bold text-slate-500 mb-1">Busca rápida</label>
+                              <input
+                                  type="text"
+                                  className="w-full border border-gray-300 p-2 rounded-lg text-sm"
+                                  placeholder="Código, nome, tipo, área ou permissão"
+                                  value={projectFilterData.search}
+                                  onChange={e => setProjectFilterData({ ...projectFilterData, search: e.target.value })}
+                              />
+                          </div>
+                          <div>
+                              <label className="block text-xs font-bold text-slate-500 mb-1">Tipo</label>
+                              <select className="w-full border border-gray-300 p-2 rounded-lg text-sm" value={projectFilterData.classification} onChange={e => setProjectFilterData({ ...projectFilterData, classification: e.target.value })}>
+                                  <option value="">Todos</option>
+                                  <option value="Audit">Auditoria</option>
+                                  <option value="Backoffice">Backoffice</option>
+                                  <option value="Consulting">Consultoria</option>
+                                  <option value="Training">Treinamento</option>
+                                  <option value="Vacation">Férias/Ausência</option>
+                              </select>
+                          </div>
+                          <div>
+                              <label className="block text-xs font-bold text-slate-500 mb-1">Área</label>
+                              <select className="w-full border border-gray-300 p-2 rounded-lg text-sm" value={projectFilterData.area} onChange={e => setProjectFilterData({ ...projectFilterData, area: e.target.value })}>
+                                  <option value="">Todas</option>
+                                  <option value="AUDITORIA_INTERNA">Auditoria Interna</option>
+                                  <option value="CONTROLES_INTERNOS">Controles Internos</option>
+                                  <option value="COMPLIANCE">Compliance</option>
+                                  <option value="CANAL_DENUNCIAS">Canal de Denuncias</option>
+                                  <option value="GESTAO_RISCOS_DIGITAIS">Gestao de Riscos Digitais</option>
+                                  <option value="OUTROS">Outros</option>
+                              </select>
+                          </div>
+                      </div>
+                      <div className="mt-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                          <div>
+                              <label className="block text-xs font-bold text-slate-500 mb-1">Status</label>
+                              <select className="w-full md:w-[180px] border border-gray-300 p-2 rounded-lg text-sm" value={projectFilterData.status} onChange={e => setProjectFilterData({ ...projectFilterData, status: e.target.value as 'all' | 'active' | 'inactive' })}>
+                                  <option value="all">Todos</option>
+                                  <option value="active">Ativos</option>
+                                  <option value="inactive">Inativos</option>
+                              </select>
+                          </div>
+                          <div className="flex items-center gap-3">
+                              <span className="text-xs text-slate-400">{sortedProjects.length} resultado(s)</span>
+                              <button
+                                  type="button"
+                                  onClick={() => setProjectFilterData({ search: '', classification: '', area: '', status: 'all' })}
+                                  className="text-sm text-brand-600 hover:text-brand-700 font-medium"
+                              >
+                                  Limpar filtros
+                              </button>
+                          </div>
+                      </div>
+                  </div>
                   <div className="overflow-x-auto">
                       <table className="w-full text-left text-sm">
                           <thead className="bg-gray-50 font-semibold text-slate-500 border-b border-gray-200">
                               <tr>
-                                  <th className="px-6 py-3">Projeto</th>
-                                  <th className="px-6 py-3">Tipo</th>
-                                  <th className="px-6 py-3">Area</th>
-                                  <th className="px-6 py-3">Orçamento</th>
-                                  <th className="px-6 py-3">Permissões</th>
+                                  <th className="px-6 py-3">
+                                      <button type="button" onClick={() => handleProjectSort('project')} className="inline-flex items-center gap-2 hover:text-slate-700 transition-colors">
+                                          Projeto
+                                          <ProjectSortIcon column="project" />
+                                      </button>
+                                  </th>
+                                  <th className="px-6 py-3">
+                                      <button type="button" onClick={() => handleProjectSort('classification')} className="inline-flex items-center gap-2 hover:text-slate-700 transition-colors">
+                                          Tipo
+                                          <ProjectSortIcon column="classification" />
+                                      </button>
+                                  </th>
+                                  <th className="px-6 py-3">
+                                      <button type="button" onClick={() => handleProjectSort('area')} className="inline-flex items-center gap-2 hover:text-slate-700 transition-colors">
+                                          Area
+                                          <ProjectSortIcon column="area" />
+                                      </button>
+                                  </th>
+                                  <th className="px-6 py-3">
+                                      <button type="button" onClick={() => handleProjectSort('budgetedHours')} className="inline-flex items-center gap-2 hover:text-slate-700 transition-colors">
+                                          Orçamento
+                                          <ProjectSortIcon column="budgetedHours" />
+                                      </button>
+                                  </th>
+                                  <th className="px-6 py-3">
+                                      <button type="button" onClick={() => handleProjectSort('permissions')} className="inline-flex items-center gap-2 hover:text-slate-700 transition-colors">
+                                          Permissões
+                                          <ProjectSortIcon column="permissions" />
+                                      </button>
+                                  </th>
                                   <th className="px-6 py-3 text-right">Ação</th>
                               </tr>
                           </thead>
                           <tbody className="divide-y divide-gray-100">
-                              {projects.map(p => (
+                              {sortedProjects.map(p => (
                                   <tr key={p.id} className={!p.active ? 'opacity-50 bg-gray-50' : ''}>
                                       <td className="px-6 py-3">
                                           <div className="font-mono text-xs text-slate-400">{p.code}</div>
@@ -879,7 +1111,7 @@ export const AdminDashboard: React.FC = () => {
                                       <td className="px-6 py-3 text-xs text-slate-500 max-w-[150px] truncate">
                                           {!p.allowedManagerIds || p.allowedManagerIds.length === 0 
                                               ? <span className="text-green-600 font-semibold">Todos</span>
-                                              : p.allowedManagerIds.length + ' Equipes'
+                                              : getProjectPermissionsLabel(p)
                                           }
                                       </td>
                                       <td className="px-6 py-3 text-right">
@@ -889,6 +1121,11 @@ export const AdminDashboard: React.FC = () => {
                                       </td>
                                   </tr>
                               ))}
+                              {sortedProjects.length === 0 && (
+                                  <tr>
+                                      <td colSpan={6} className="p-8 text-center text-slate-400">Nenhum trabalho encontrado para os filtros selecionados.</td>
+                                  </tr>
+                              )}
                           </tbody>
                       </table>
                   </div>
@@ -981,7 +1218,7 @@ export const AdminDashboard: React.FC = () => {
         {activeTab === 'reports' && (
           <div className="space-y-6">
               <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
-                  <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+                  <div className="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
                       <div>
                           <label className="block text-xs font-bold text-slate-500 mb-1">Data Início</label>
                           <input type="date" className="w-full border border-gray-300 p-2 rounded-lg text-sm" value={filterData.startDate} onChange={e => setFilterData({...filterData, startDate: e.target.value})} />
@@ -1011,6 +1248,28 @@ export const AdminDashboard: React.FC = () => {
                               {projects.map(p => <option key={p.id} value={p.id}>{p.code}</option>)}
                           </select>
                       </div>
+                      <div>
+                          <label className="block text-xs font-bold text-slate-500 mb-1">Busca rápida</label>
+                          <input
+                              type="text"
+                              className="w-full border border-gray-300 p-2 rounded-lg text-sm"
+                              placeholder="Usuário, projeto, data ou descrição"
+                              value={reportSearchTerm}
+                              onChange={e => setReportSearchTerm(e.target.value)}
+                          />
+                      </div>
+                  </div>
+                  <div className="mt-4 flex justify-end">
+                      <button
+                          type="button"
+                          onClick={() => {
+                              setFilterData({ userId: '', managerId: '', projectId: '', startDate: '', endDate: '' });
+                              setReportSearchTerm('');
+                          }}
+                          className="text-sm text-brand-600 hover:text-brand-700 font-medium"
+                      >
+                          Limpar filtros
+                      </button>
                   </div>
               </div>
 
@@ -1025,15 +1284,40 @@ export const AdminDashboard: React.FC = () => {
                       <table className="w-full text-left text-sm">
                           <thead className="bg-white sticky top-0 z-10 font-semibold text-slate-500 border-b border-gray-200 shadow-sm">
                               <tr>
-                                  <th className="px-6 py-3">Data</th>
-                                  <th className="px-6 py-3">Usuário</th>
-                                  <th className="px-6 py-3">Projeto</th>
-                                  <th className="px-6 py-3">Descrição</th>
-                                  <th className="px-6 py-3 text-right">Horas</th>
+                                  <th className="px-6 py-3">
+                                      <button type="button" onClick={() => handleReportSort('date')} className="inline-flex items-center gap-2 hover:text-slate-700 transition-colors">
+                                          Data
+                                          <ReportSortIcon column="date" />
+                                      </button>
+                                  </th>
+                                  <th className="px-6 py-3">
+                                      <button type="button" onClick={() => handleReportSort('user')} className="inline-flex items-center gap-2 hover:text-slate-700 transition-colors">
+                                          Usuário
+                                          <ReportSortIcon column="user" />
+                                      </button>
+                                  </th>
+                                  <th className="px-6 py-3">
+                                      <button type="button" onClick={() => handleReportSort('project')} className="inline-flex items-center gap-2 hover:text-slate-700 transition-colors">
+                                          Projeto
+                                          <ReportSortIcon column="project" />
+                                      </button>
+                                  </th>
+                                  <th className="px-6 py-3">
+                                      <button type="button" onClick={() => handleReportSort('description')} className="inline-flex items-center gap-2 hover:text-slate-700 transition-colors">
+                                          Descrição
+                                          <ReportSortIcon column="description" />
+                                      </button>
+                                  </th>
+                                  <th className="px-6 py-3 text-right">
+                                      <button type="button" onClick={() => handleReportSort('hours')} className="inline-flex items-center gap-2 hover:text-slate-700 transition-colors ml-auto">
+                                          Horas
+                                          <ReportSortIcon column="hours" />
+                                      </button>
+                                  </th>
                               </tr>
                           </thead>
                           <tbody className="divide-y divide-gray-100">
-                              {filteredEntries.map(e => (
+                              {sortedFilteredEntries.map(e => (
                                   <tr key={e.id} className="hover:bg-slate-50">
                                       <td className="px-6 py-3 whitespace-nowrap">{formatDateForDisplay(e.date)}</td>
                                       <td className="px-6 py-3">{getUserName(e.userId)}</td>
@@ -1042,7 +1326,7 @@ export const AdminDashboard: React.FC = () => {
                                       <td className="px-6 py-3 text-right font-medium">{e.hours}</td>
                                   </tr>
                               ))}
-                              {filteredEntries.length === 0 && (
+                              {sortedFilteredEntries.length === 0 && (
                                   <tr><td colSpan={5} className="p-8 text-center text-slate-400">Nenhum registro encontrado para os filtros selecionados.</td></tr>
                               )}
                           </tbody>

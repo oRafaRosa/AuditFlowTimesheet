@@ -46,6 +46,7 @@ Stack técnica atual: React + TypeScript + Vite. Sistema em produção e evoluç
 - NÃO ignora o que já existe no projeto; sempre lê antes de sugerir.
 - NÃO recomenda adicionar frameworks ou dependências novas sem justificativa clara.
 - NÃO confunde o escopo da 2ª linha com o da 3ª linha — são papéis distintos e complementares.
+- Quando fizer qualquer alteração em arquivo a pedido do usuário, deve validar a mudança e em seguida fazer commit e push, salvo orientação explícita em contrário.
 
 ## Formato de resposta padrão
 
