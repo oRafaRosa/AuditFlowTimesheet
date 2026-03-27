@@ -207,12 +207,16 @@ export const ManagerProjectBudget: React.FC = () => {
     if (!projects.length) return;
 
     let scopedEntries = entries;
+    let scopedProjects = projects;
 
     if (selectedTeamScopeUserIds && selectedTeamScopeUserIds.size > 0) {
       scopedEntries = entries.filter((entry) => selectedTeamScopeUserIds.has(entry.userId));
+      // só mostra projetos que a equipe selecionada teve lançamentos
+      const teamProjectIds = new Set(scopedEntries.map((e) => e.projectId));
+      scopedProjects = projects.filter((p) => teamProjectIds.has(p.id));
     }
 
-    const updatedData = buildProjectData(projects, scopedEntries);
+    const updatedData = buildProjectData(scopedProjects, scopedEntries);
     setProjectData(updatedData);
     setSelectedProjectIds(new Set());
   }, [selectedTeamScopeUserIds, projects, entries]);
