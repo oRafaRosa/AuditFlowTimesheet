@@ -255,8 +255,6 @@ export const ManagerProjectBudget: React.FC = () => {
   const totalBudgeted = filteredData.reduce((acc, p) => acc + p.budgeted, 0);
   const totalConsumed = filteredData.reduce((acc, p) => acc + p.consumed, 0);
   const totalAvailable = filteredData.reduce((acc, p) => acc + p.available, 0);
-  const overBudget = filteredData.filter(p => p.status === 'danger').length;
-  const atRisk = filteredData.filter(p => p.status === 'warning').length;
 
   const technicalConsumed = filteredData
     .filter((project) => isTechnicalProject(project.code, project.classification))
@@ -264,9 +262,18 @@ export const ManagerProjectBudget: React.FC = () => {
   const administrativeConsumed = filteredData
     .filter((project) => !isTechnicalProject(project.code, project.classification))
     .reduce((acc, project) => acc + project.consumed, 0);
+  const technicalBudgeted = filteredData
+    .filter((project) => isTechnicalProject(project.code, project.classification))
+    .reduce((acc, project) => acc + project.budgeted, 0);
+  const administrativeBudgeted = filteredData
+    .filter((project) => !isTechnicalProject(project.code, project.classification))
+    .reduce((acc, project) => acc + project.budgeted, 0);
   const totalSegregatedConsumed = technicalConsumed + administrativeConsumed;
-  const technicalConsumedPercentage = totalSegregatedConsumed > 0 ? (technicalConsumed / totalSegregatedConsumed) * 100 : 0;
-  const administrativeConsumedPercentage = totalSegregatedConsumed > 0 ? (administrativeConsumed / totalSegregatedConsumed) * 100 : 0;
+
+  // fatias da pizza relativas ao orçado total (3 fatias: técnico, admin, saldo)
+  const techSlice = totalBudgeted > 0 ? (technicalConsumed / totalBudgeted) * 100 : 0;
+  const adminSlice = totalBudgeted > 0 ? (administrativeConsumed / totalBudgeted) * 100 : 0;
+  const remainingSlice = Math.max(0, 100 - techSlice - adminSlice);
 
   if (loading) {
     return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin text-brand-600" size={48} /></div>;
@@ -280,7 +287,7 @@ export const ManagerProjectBudget: React.FC = () => {
       </div>
 
       {/* cards de kpi */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
           <p className="text-xs font-bold text-slate-500 uppercase mb-2">Total Orçado</p>
           <div className="text-3xl font-bold text-slate-800">{formatHours(totalBudgeted)}h</div>
@@ -298,61 +305,70 @@ export const ManagerProjectBudget: React.FC = () => {
           <div className={`text-3xl font-bold ${totalAvailable >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>{formatHours(totalAvailable)}h</div>
           <p className="text-xs text-slate-400 mt-2">Orçado menos realizado no recorte</p>
         </div>
-
-        <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
-          <p className="text-xs font-bold text-slate-500 uppercase mb-2">Próximos ao Limite</p>
-          <div className="text-3xl font-bold text-amber-600">{atRisk}</div>
-          <p className="text-xs text-slate-400 mt-2">85-100% do orçado</p>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
-          <p className="text-xs font-bold text-slate-500 uppercase mb-2">Acima do Orçado</p>
-          <div className="text-3xl font-bold text-red-600">{overBudget}</div>
-          <p className="text-xs text-slate-400 mt-2">{formatHours(filteredData.filter(p => p.status === 'danger').reduce((acc, p) => acc + (p.consumed - p.budgeted), 0))}h de excesso</p>
-        </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wide">Segregação de Horas Realizadas</h3>
-            <p className="text-xs text-slate-500 mt-1">Dinâmico conforme filtros aplicados no relatório.</p>
-
-            <div className="mt-4 space-y-2">
-              <div className="flex items-center gap-3">
-                <span className="h-3 w-3 rounded-full bg-sky-500" />
-                <span className="text-sm text-slate-700">Horas Técnicas</span>
-                <span className="text-sm font-bold text-slate-800">{formatHours(technicalConsumed)}h</span>
-                <span className="text-xs text-slate-500">({formatPercentage(technicalConsumedPercentage)}%)</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="h-3 w-3 rounded-full bg-amber-500" />
-                <span className="text-sm text-slate-700">Administrativas / Backoffice</span>
-                <span className="text-sm font-bold text-slate-800">{formatHours(administrativeConsumed)}h</span>
-                <span className="text-xs text-slate-500">({formatPercentage(administrativeConsumedPercentage)}%)</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex justify-center">
-            {totalSegregatedConsumed > 0 ? (
-              <div className="relative h-44 w-44">
+      <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-4">
+        <div className="flex items-center gap-6">
+          {/* donut */}
+          <div className="flex-shrink-0">
+            {totalBudgeted > 0 ? (
+              <div className="relative h-28 w-28">
                 <div
-                  className="h-44 w-44 rounded-full"
+                  className="h-28 w-28 rounded-full"
                   style={{
-                    background: `conic-gradient(#0ea5e9 0% ${technicalConsumedPercentage}%, #f59e0b ${technicalConsumedPercentage}% 100%)`
+                    background: totalSegregatedConsumed > 0
+                      ? `conic-gradient(#0033C6 0% ${techSlice}%, #E71A3B ${techSlice}% ${techSlice + adminSlice}%, #e2e8f0 ${techSlice + adminSlice}% 100%)`
+                      : '#e2e8f0'
                   }}
                 />
-                <div className="absolute inset-6 rounded-full bg-white border border-slate-100 flex flex-col items-center justify-center text-center px-2">
-                  <span className="text-[10px] font-bold text-slate-500 uppercase">Total Realizado</span>
-                  <span className="text-lg font-bold text-slate-800">{formatHours(totalSegregatedConsumed)}h</span>
+                <div className="absolute inset-5 rounded-full bg-white flex flex-col items-center justify-center text-center">
+                  <span className="text-[9px] font-bold text-slate-400 uppercase leading-tight">Realizado</span>
+                  <span className="text-sm font-bold text-slate-800 leading-tight">{formatHours(totalSegregatedConsumed)}h</span>
                 </div>
               </div>
             ) : (
-              <div className="h-44 w-44 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-xs text-slate-500 text-center px-6">
-                Sem horas no recorte atual
+              <div className="h-28 w-28 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-[10px] text-slate-400 text-center px-3">
+                Sem dados
               </div>
             )}
+          </div>
+
+          {/* legenda */}
+          <div className="flex-1 min-w-0">
+            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-3">Segregação de Horas</h3>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="h-2.5 w-2.5 rounded-full bg-brand-600 flex-shrink-0" />
+                  <span className="text-xs text-slate-600 truncate">Técnicas</span>
+                </div>
+                <div className="flex items-center gap-3 text-xs text-right flex-shrink-0">
+                  <span className="text-slate-400">orç. <span className="text-slate-600 font-medium">{formatHours(technicalBudgeted)}h</span></span>
+                  <span className="font-bold text-slate-800">{formatHours(technicalConsumed)}h</span>
+                  <span className="text-slate-400 w-8">{totalBudgeted > 0 ? `${formatPercentage(techSlice)}%` : '–'}</span>
+                </div>
+              </div>
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="h-2.5 w-2.5 rounded-full bg-red-500 flex-shrink-0" />
+                  <span className="text-xs text-slate-600 truncate">Administrativas</span>
+                </div>
+                <div className="flex items-center gap-3 text-xs text-right flex-shrink-0">
+                  <span className="text-slate-400">orç. <span className="text-slate-600 font-medium">{formatHours(administrativeBudgeted)}h</span></span>
+                  <span className="font-bold text-slate-800">{formatHours(administrativeConsumed)}h</span>
+                  <span className="text-slate-400 w-8">{totalBudgeted > 0 ? `${formatPercentage(adminSlice)}%` : '–'}</span>
+                </div>
+              </div>
+              <div className="border-t border-slate-100 pt-2 flex items-center justify-between gap-4">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="h-2.5 w-2.5 rounded-full bg-slate-200 flex-shrink-0" />
+                  <span className="text-xs text-slate-500 truncate">Saldo disponível</span>
+                </div>
+                <span className={`text-xs font-bold flex-shrink-0 ${totalAvailable >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                  {formatHours(totalAvailable)}h
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
