@@ -276,9 +276,10 @@ export const ManagerProjectBudget: React.FC = () => {
     .reduce((acc, project) => acc + project.budgeted, 0);
   const totalSegregatedConsumed = technicalConsumed + administrativeConsumed;
 
-  // fatias do donut "realizado" (relativo ao total consumido)
-  const techSlice = totalSegregatedConsumed > 0 ? (technicalConsumed / totalSegregatedConsumed) * 100 : 0;
-  const adminSlice = totalSegregatedConsumed > 0 ? (administrativeConsumed / totalSegregatedConsumed) * 100 : 0;
+  const technicalBudgetShare = totalBudgeted > 0 ? (technicalBudgeted / totalBudgeted) * 100 : 0;
+  const administrativeBudgetShare = totalBudgeted > 0 ? (administrativeBudgeted / totalBudgeted) * 100 : 0;
+  const technicalConsumedShare = totalSegregatedConsumed > 0 ? (technicalConsumed / totalSegregatedConsumed) * 100 : 0;
+  const administrativeConsumedShare = totalSegregatedConsumed > 0 ? (administrativeConsumed / totalSegregatedConsumed) * 100 : 0;
 
   // dados do gráfico: orçado vs realizado por área
   const areaChartData = useMemo(() => {
@@ -336,65 +337,93 @@ export const ManagerProjectBudget: React.FC = () => {
         </div>
 
         {/* card de segregação */}
-        <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-5 flex flex-col justify-center">
-          <div className="flex items-center gap-4">
-            {/* donut realizado */}
-            <div className="flex-shrink-0">
-              {totalBudgeted > 0 ? (
-                <div className="relative h-[88px] w-[88px]">
-                  <div
-                    className="h-[88px] w-[88px] rounded-full"
-                    style={{
-                      background: totalSegregatedConsumed > 0
-                        ? `conic-gradient(#0033C6 0% ${techSlice}%, #E71A3B ${techSlice}% ${techSlice + adminSlice}%, #e2e8f0 ${techSlice + adminSlice}% 100%)`
-                        : '#e2e8f0'
-                    }}
-                  />
-                  <div className="absolute inset-[18px] rounded-full bg-white flex flex-col items-center justify-center text-center">
-                    <span className="text-[8px] text-slate-400 uppercase leading-none">Real.</span>
-                    <span className="text-[11px] font-bold text-slate-800 leading-tight">{formatHours(totalSegregatedConsumed)}h</span>
-                  </div>
+        <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-5">
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Segregação de Horas</p>
+            <div className="flex items-center gap-3 text-[10px] text-slate-500">
+              <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-brand-600" />Técnicas</span>
+              <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-red-500" />Adm.</span>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="rounded-lg border border-slate-100 bg-slate-50/70 p-3">
+              <div className="flex items-start justify-between gap-3 mb-2">
+                <div>
+                  <p className="text-[11px] font-bold text-slate-700 uppercase tracking-wide">Orçado</p>
+                  <p className="text-[10px] text-slate-400">Distribuição planejada das horas</p>
                 </div>
-              ) : (
-                <div className="h-[88px] w-[88px] rounded-full bg-slate-100 flex items-center justify-center text-[9px] text-slate-400 text-center">Sem dados</div>
-              )}
+                <div className="text-right">
+                  <p className="text-lg font-bold text-slate-800">{formatHours(totalBudgeted)}h</p>
+                  <p className="text-[10px] text-slate-400">base total</p>
+                </div>
+              </div>
+
+              <div className="h-3 w-full overflow-hidden rounded-full bg-slate-200">
+                <div className="flex h-full w-full">
+                  <div className="bg-brand-600" style={{ width: `${technicalBudgetShare}%` }} />
+                  <div className="bg-red-500" style={{ width: `${administrativeBudgetShare}%` }} />
+                </div>
+              </div>
+
+              <div className="mt-2 grid grid-cols-2 gap-2 text-[11px]">
+                <div className="rounded-md bg-white px-2 py-1.5 border border-slate-100">
+                  <div className="flex items-center justify-between gap-2 text-slate-500">
+                    <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-brand-600" />Técnicas</span>
+                    <span>{formatPercentage(technicalBudgetShare)}%</span>
+                  </div>
+                  <p className="mt-1 font-bold text-slate-800">{formatHours(technicalBudgeted)}h</p>
+                </div>
+                <div className="rounded-md bg-white px-2 py-1.5 border border-slate-100">
+                  <div className="flex items-center justify-between gap-2 text-slate-500">
+                    <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-red-500" />Adm.</span>
+                    <span>{formatPercentage(administrativeBudgetShare)}%</span>
+                  </div>
+                  <p className="mt-1 font-bold text-slate-800">{formatHours(administrativeBudgeted)}h</p>
+                </div>
+              </div>
             </div>
 
-            {/* tabela comparativa */}
-            <div className="flex-1 min-w-0">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-2">Segregação de Horas</p>
-              <div className="grid grid-cols-3 text-[10px] text-slate-400 font-semibold uppercase mb-1 gap-x-1">
-                <span></span>
-                <span className="text-right">Orç.</span>
-                <span className="text-right">Real.</span>
-              </div>
-              <div className="space-y-1.5">
-                <div className="grid grid-cols-3 items-center gap-x-1 text-xs">
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <span className="h-2 w-2 rounded-full bg-brand-600 flex-shrink-0" />
-                    <span className="text-slate-600 truncate text-[11px]">Técnicas</span>
-                  </div>
-                  <span className="text-slate-500 text-right text-[11px]">{formatHours(technicalBudgeted)}h</span>
-                  <span className="font-bold text-slate-800 text-right text-[11px]">{formatHours(technicalConsumed)}h</span>
+            <div className="rounded-lg border border-slate-100 bg-slate-50/70 p-3">
+              <div className="flex items-start justify-between gap-3 mb-2">
+                <div>
+                  <p className="text-[11px] font-bold text-slate-700 uppercase tracking-wide">Realizado</p>
+                  <p className="text-[10px] text-slate-400">Como as horas foram consumidas</p>
                 </div>
-                <div className="grid grid-cols-3 items-center gap-x-1 text-xs">
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <span className="h-2 w-2 rounded-full bg-red-500 flex-shrink-0" />
-                    <span className="text-slate-600 truncate text-[11px]">Adm.</span>
-                  </div>
-                  <span className="text-slate-500 text-right text-[11px]">{formatHours(administrativeBudgeted)}h</span>
-                  <span className="font-bold text-slate-800 text-right text-[11px]">{formatHours(administrativeConsumed)}h</span>
-                </div>
-                <div className="border-t border-slate-100 pt-1.5 grid grid-cols-3 items-center gap-x-1">
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <span className="h-2 w-2 rounded-full bg-slate-300 flex-shrink-0" />
-                    <span className="text-slate-500 truncate text-[11px]">Saldo</span>
-                  </div>
-                  <span className={`col-span-2 text-right text-[11px] font-bold ${totalAvailable >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                    {formatHours(totalAvailable)}h
-                  </span>
+                <div className="text-right">
+                  <p className="text-lg font-bold text-slate-800">{formatHours(totalSegregatedConsumed)}h</p>
+                  <p className="text-[10px] text-slate-400">{totalBudgeted > 0 ? `${formatPercentage((totalSegregatedConsumed / totalBudgeted) * 100)}% do orçado` : 'sem base'}</p>
                 </div>
               </div>
+
+              <div className="h-3 w-full overflow-hidden rounded-full bg-slate-200">
+                <div className="flex h-full w-full">
+                  <div className="bg-brand-600" style={{ width: `${technicalConsumedShare}%` }} />
+                  <div className="bg-red-500" style={{ width: `${administrativeConsumedShare}%` }} />
+                </div>
+              </div>
+
+              <div className="mt-2 grid grid-cols-2 gap-2 text-[11px]">
+                <div className="rounded-md bg-white px-2 py-1.5 border border-slate-100">
+                  <div className="flex items-center justify-between gap-2 text-slate-500">
+                    <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-brand-600" />Técnicas</span>
+                    <span>{formatPercentage(technicalConsumedShare)}%</span>
+                  </div>
+                  <p className="mt-1 font-bold text-slate-800">{formatHours(technicalConsumed)}h</p>
+                </div>
+                <div className="rounded-md bg-white px-2 py-1.5 border border-slate-100">
+                  <div className="flex items-center justify-between gap-2 text-slate-500">
+                    <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-red-500" />Adm.</span>
+                    <span>{formatPercentage(administrativeConsumedShare)}%</span>
+                  </div>
+                  <p className="mt-1 font-bold text-slate-800">{formatHours(administrativeConsumed)}h</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2">
+              <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wide">Disponível</span>
+              <span className={`text-sm font-bold ${totalAvailable >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>{formatHours(totalAvailable)}h</span>
             </div>
           </div>
         </div>
