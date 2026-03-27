@@ -313,31 +313,31 @@ export const ManagerProjectBudget: React.FC = () => {
         <p className="text-slate-500">Visão consolidada de horas por projeto em toda a diretoria</p>
       </div>
 
-      {/* topo: kpis + segregação lado a lado */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      {/* topo otimizado: kpis compactos, gráfico por área e segregação ocupando duas linhas */}
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 items-stretch">
         {/* kpis */}
-        <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
+        <div className="xl:col-span-7 grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-5">
             <p className="text-xs font-bold text-slate-500 uppercase mb-2">Total Orçado</p>
-            <div className="text-3xl font-bold text-slate-800">{formatHours(totalBudgeted)}h</div>
-            <p className="text-xs text-slate-400 mt-2">{filteredData.length} projetos</p>
+            <div className="text-[2rem] leading-none font-bold text-slate-800">{formatHours(totalBudgeted)}h</div>
+            <p className="text-xs text-slate-400 mt-3">{filteredData.length} projetos</p>
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
+          <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-5">
             <p className="text-xs font-bold text-slate-500 uppercase mb-2">Total Realizado</p>
-            <div className="text-3xl font-bold text-slate-800">{formatHours(totalConsumed)}h</div>
-            <p className="text-xs text-slate-400 mt-2">{totalBudgeted > 0 ? formatPercentage((totalConsumed / totalBudgeted) * 100) : '0'}% consumido</p>
+            <div className="text-[2rem] leading-none font-bold text-slate-800">{formatHours(totalConsumed)}h</div>
+            <p className="text-xs text-slate-400 mt-3">{totalBudgeted > 0 ? formatPercentage((totalConsumed / totalBudgeted) * 100) : '0'}% consumido</p>
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
+          <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-5">
             <p className="text-xs font-bold text-slate-500 uppercase mb-2">Horas Disponíveis</p>
-            <div className={`text-3xl font-bold ${totalAvailable >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>{formatHours(totalAvailable)}h</div>
-            <p className="text-xs text-slate-400 mt-2">Orçado menos realizado no recorte</p>
+            <div className={`text-[2rem] leading-none font-bold ${totalAvailable >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>{formatHours(totalAvailable)}h</div>
+            <p className="text-xs text-slate-400 mt-3">Orçado menos realizado no recorte</p>
           </div>
         </div>
 
         {/* card de segregação */}
-        <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-5">
+        <div className="xl:col-span-5 xl:row-span-2 bg-white rounded-xl shadow-sm border border-slate-100 p-5 h-full">
           <div className="flex items-center justify-between gap-3 mb-4">
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Segregação de Horas</p>
             <div className="flex items-center gap-3 text-[10px] text-slate-500">
@@ -427,11 +427,10 @@ export const ManagerProjectBudget: React.FC = () => {
             </div>
           </div>
         </div>
-      </div>
 
-      {/* gráfico orçado vs realizado por área */}
-      {areaChartData.length > 0 && (
-        <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
+        {/* gráfico orçado vs realizado por área */}
+        {areaChartData.length > 0 && (
+          <div className="xl:col-span-7 bg-white rounded-xl shadow-sm border border-slate-100 p-5">
           <div className="flex items-start justify-between gap-4 mb-4">
             <div>
               <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wide">Orçado vs Realizado por Área</h3>
@@ -447,7 +446,7 @@ export const ManagerProjectBudget: React.FC = () => {
               </button>
             )}
           </div>
-          <ResponsiveContainer width="100%" height={220}>
+          <ResponsiveContainer width="100%" height={180}>
             <BarChart data={areaChartData} margin={{ top: 4, right: 16, left: 0, bottom: 4 }} barGap={4}>
               <XAxis
                 dataKey="area"
@@ -479,8 +478,9 @@ export const ManagerProjectBudget: React.FC = () => {
               <Bar dataKey="disponivel" name="disponivel" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={40} cursor="pointer" onClick={handleAreaChartClick} />
             </BarChart>
           </ResponsiveContainer>
-        </div>
-      )}
+          </div>
+        )}
+      </div>
 
       {/* filtros e tabela */}
       <div className="space-y-4">
