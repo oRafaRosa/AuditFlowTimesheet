@@ -1,15 +1,5 @@
 # AuditFlow
 
-## Objetivo deste README
-
-Este arquivo existe como documentacao interna do projeto.
-
-O foco aqui nao e ensinar instalacao ou publicacao. O objetivo e centralizar contexto funcional e tecnico para:
-
-- organizar a evolucao do produto;
-- facilitar a criacao de manuais e documentos futuros;
-- registrar rapidamente o estado atual da aplicacao;
-- servir como ponto de entrada para manutencao do codigo.
 
 ## Visao geral
 
@@ -244,3 +234,7 @@ Quando uma nova feature for documentada, vale registrar pelo menos:
 Se precisar explicar rapidamente o projeto para criar outro material, a definicao base hoje e:
 
 > AuditFlow e uma plataforma privada em evolucao para GRC, com operacao atual centrada em timesheet, gestao de horas, capacidade, administracao e matriz de riscos, desenhada para evoluir de forma incremental para cobrir Auditoria Interna, Riscos, Compliance e Canal de Denuncias.
+
+## Assinatura
+
+Desenvolvido por **R² Solutions Group**.
