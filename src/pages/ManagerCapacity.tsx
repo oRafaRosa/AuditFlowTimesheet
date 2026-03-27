@@ -193,42 +193,23 @@ export const ManagerCapacity: React.FC = () => {
     const scope = new Set<string>([selectedManagerId]);
     let changed = true;
 
+    // Adicionar toda a hierarquia de subordinados diretos/indiretos.
+    // Também inclui a equipe delegada a este gestor.
     while (changed) {
       changed = false;
 
       scopedUsers.forEach((user) => {
+        // Subordinado direto (manager_id aponta para alguém no escopo)
         if (user.managerId && scope.has(user.managerId) && !scope.has(user.id)) {
           scope.add(user.id);
           changed = true;
         }
+        // Também inclui quem delegou sua equipe para o gestor selecionado
+        if (user.delegatedManagerId === selectedManagerId && !scope.has(user.id)) {
+          scope.add(user.id);
+          changed = true;
+        }
       });
-    }
-
-    // Se o gestor selecionado recebeu delegação, exclui do filtro os gestores titulares
-    // que delegaram para ele e toda a subárvore desses gestores.
-    const delegatedRoots = new Set(
-      scopedUsers
-        .filter((user) => user.id !== selectedManagerId)
-        .filter((user) => user.delegatedManagerId === selectedManagerId)
-        .map((user) => user.id)
-    );
-
-    if (delegatedRoots.size > 0) {
-      const blockedIds = new Set<string>(delegatedRoots);
-      let blockedChanged = true;
-
-      while (blockedChanged) {
-        blockedChanged = false;
-
-        scopedUsers.forEach((user) => {
-          if (user.managerId && blockedIds.has(user.managerId) && !blockedIds.has(user.id)) {
-            blockedIds.add(user.id);
-            blockedChanged = true;
-          }
-        });
-      }
-
-      blockedIds.forEach((id) => scope.delete(id));
     }
 
     return scope;
