@@ -767,6 +767,23 @@ class StoreService {
 
   async updateProject(id: string, data: Partial<Project>) {
     const dbUpdate: any = {};
+    const shouldTrackBudgetChange = data.budgetedHours !== undefined;
+    let previousBudgetHours: number | null = null;
+
+    if (shouldTrackBudgetChange) {
+      const { data: currentProject, error: currentProjectError } = await supabase
+        .from('projects')
+        .select('budgeted_hours')
+        .eq('id', id)
+        .maybeSingle();
+
+      if (currentProjectError) {
+        console.error('Erro ao buscar orçamento atual do trabalho:', currentProjectError);
+      } else if (currentProject && currentProject.budgeted_hours !== undefined && currentProject.budgeted_hours !== null) {
+        previousBudgetHours = Number(currentProject.budgeted_hours);
+      }
+    }
+
     if (data.name) dbUpdate.name = data.name;
     if (data.code) dbUpdate.code = data.code;
     if (data.classification) dbUpdate.classification = data.classification;
@@ -777,7 +794,36 @@ class StoreService {
     if (data.active !== undefined) dbUpdate.active = data.active;
     if (data.allowedManagerIds) dbUpdate.allowed_manager_ids = data.allowedManagerIds;
 
-    await supabase.from('projects').update(dbUpdate).eq('id', id);
+    const { error } = await supabase.from('projects').update(dbUpdate).eq('id', id);
+    if (error) {
+      console.error('Erro ao atualizar trabalho:', error);
+      throw error;
+    }
+
+    if (shouldTrackBudgetChange && previousBudgetHours !== null) {
+      const nextBudgetedHours = Number(data.budgetedHours);
+      if (Number.isFinite(nextBudgetedHours) && nextBudgetedHours !== previousBudgetHours) {
+        const adjustedAt = data.budgetAdjustedAt || new Date().toISOString();
+        const currentUser = this.getCurrentUser();
+        const adjustmentPayload = {
+          project_id: id,
+          old_budgeted_hours: previousBudgetHours,
+          new_budgeted_hours: nextBudgetedHours,
+          delta_hours: Math.round((nextBudgetedHours - previousBudgetHours) * 100) / 100,
+          justification: data.budgetAdjustmentJustification || null,
+          adjusted_at: adjustedAt,
+          adjusted_by: currentUser && isUuid(currentUser.id) ? currentUser.id : null
+        };
+
+        const { error: logError } = await supabase
+          .from('project_budget_adjustments')
+          .insert(adjustmentPayload);
+
+        if (logError && !this.isMissingRelationError(logError)) {
+          console.warn('Erro ao registrar histórico de ajuste de horas do trabalho:', logError);
+        }
+      }
+    }
   }
 
   // --- lançamentos ---
@@ -1735,6 +1781,20 @@ create table if not exists projects (
 
 alter table projects add column if not exists budget_adjustment_justification text;
 alter table projects add column if not exists budget_adjusted_at timestamp with time zone;
+
+create table if not exists project_budget_adjustments (
+  id uuid default gen_random_uuid() primary key,
+  project_id uuid references projects(id) not null,
+  old_budgeted_hours numeric not null,
+  new_budgeted_hours numeric not null,
+  delta_hours numeric not null,
+  justification text,
+  adjusted_by uuid references profiles(id),
+  adjusted_at timestamp with time zone default timezone('utc'::text, now())
+);
+
+create index if not exists idx_project_budget_adjustments_project_date
+  on project_budget_adjustments (project_id, adjusted_at desc);
 
 alter table projects drop constraint if exists projects_area_check;
 alter table projects
