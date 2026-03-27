@@ -194,20 +194,12 @@ export const ManagerCapacity: React.FC = () => {
     if (!selectedManagerId || selectedManagerId === NO_MANAGER_FILTER) return new Set<string>();
 
     const scope = new Set<string>([selectedManagerId]);
-    let changed = true;
 
-    // Adiciona somente a hierarquia de subordinados diretos/indiretos do gestor selecionado.
-    while (changed) {
-      changed = false;
-
-      scopedUsers.forEach((user) => {
-        // Subordinado direto/indireto (manager_id aponta para alguém no escopo)
-        if (user.managerId && scope.has(user.managerId) && !scope.has(user.id)) {
-          scope.add(user.id);
-          changed = true;
-        }
-      });
-    }
+    scopedUsers.forEach((user) => {
+      if (user.managerId === selectedManagerId) {
+        scope.add(user.id);
+      }
+    });
 
     return scope;
   }, [selectedManagerId, scopedUsers]);
