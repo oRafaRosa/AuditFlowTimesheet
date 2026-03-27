@@ -157,7 +157,8 @@ export const ManagerCapacity: React.FC = () => {
     if (!currentUser) return [] as User[];
 
     if (currentUser.role === 'ADMIN') {
-      return users;
+      // ADMINs veem todos exceto outros ADMINs (que geralmente não têm manager_id)
+      return users.filter((user) => user.role !== 'ADMIN' || user.id === currentUser.id);
     }
 
     const managedIds = new Set<string>([currentUser.id]);
@@ -173,7 +174,7 @@ export const ManagerCapacity: React.FC = () => {
       });
     }
 
-    return users.filter((user) => managedIds.has(user.id));
+    return users.filter((user) => managedIds.has(user.id) && user.role !== 'ADMIN');
   }, [users, currentUser]);
 
   const managerMap = useMemo(() => {
