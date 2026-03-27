@@ -167,6 +167,37 @@ export const ManagerProjectBudget: React.FC = () => {
     return map;
   }, [entries, selectedTeamScopeUserIds]);
 
+  const teamConsumedBreakdownByProject = useMemo(() => {
+    if (!selectedTeamScopeUserIds || selectedTeamScopeUserIds.size === 0) return new Map<string, string>();
+
+    const userNamesById = new Map(users.map((user) => [user.id, user.name]));
+    const projectUserHours = new Map<string, Map<string, number>>();
+
+    entries
+      .filter((entry) => selectedTeamScopeUserIds.has(entry.userId))
+      .forEach((entry) => {
+        const userHours = projectUserHours.get(entry.projectId) || new Map<string, number>();
+        userHours.set(entry.userId, (userHours.get(entry.userId) || 0) + entry.hours);
+        projectUserHours.set(entry.projectId, userHours);
+      });
+
+    const tooltipByProject = new Map<string, string>();
+
+    projectUserHours.forEach((userHours, projectId) => {
+      const lines = Array.from(userHours.entries())
+        .map(([userId, hours]) => ({
+          name: userNamesById.get(userId) || 'Usuario',
+          hours,
+        }))
+        .sort((a, b) => b.hours - a.hours)
+        .map((item) => `${item.name}: ${formatHours(item.hours)}h`);
+
+      tooltipByProject.set(projectId, `Equipe filtrada neste projeto:\n${lines.join('\n')}`);
+    });
+
+    return tooltipByProject;
+  }, [entries, selectedTeamScopeUserIds, users]);
+
   useEffect(() => {
     let result = projectData;
 
@@ -312,13 +343,14 @@ export const ManagerProjectBudget: React.FC = () => {
   const totalBudgeted = filteredData.reduce((acc, p) => acc + p.budgeted, 0);
   const totalConsumed = filteredData.reduce((acc, p) => acc + p.consumed, 0);
   const totalAvailable = filteredData.reduce((acc, p) => acc + p.available, 0);
+  const useTeamConsumedOnSegregation = !!teamFilter;
 
   const technicalConsumed = filteredData
     .filter((project) => isTechnicalProject(project.code, project.classification))
-    .reduce((acc, project) => acc + project.consumed, 0);
+    .reduce((acc, project) => acc + (useTeamConsumedOnSegregation ? project.teamConsumed : project.consumed), 0);
   const administrativeConsumed = filteredData
     .filter((project) => !isTechnicalProject(project.code, project.classification))
-    .reduce((acc, project) => acc + project.consumed, 0);
+    .reduce((acc, project) => acc + (useTeamConsumedOnSegregation ? project.teamConsumed : project.consumed), 0);
   const technicalBudgeted = filteredData
     .filter((project) => isTechnicalProject(project.code, project.classification))
     .reduce((acc, project) => acc + project.budgeted, 0);
@@ -726,7 +758,12 @@ export const ManagerProjectBudget: React.FC = () => {
                       <td className="px-6 py-4 font-medium text-slate-700">{formatHours(project.budgeted)}h</td>
                       <td className="px-6 py-4 font-medium text-slate-700">{formatHours(project.consumed)}h</td>
                       {showTeamConsumedColumn && (
-                        <td className="px-6 py-4 font-medium text-slate-700">{formatHours(project.teamConsumed)}h</td>
+                        <td
+                          className="px-6 py-4 font-medium text-slate-700 cursor-help"
+                          title={teamConsumedBreakdownByProject.get(project.id) || 'Sem lançamentos da equipe neste projeto.'}
+                        >
+                          {formatHours(project.teamConsumed)}h
+                        </td>
                       )}
                       <td className={`px-6 py-4 font-medium ${project.available >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>{formatHours(project.available)}h</td>
                       <td className="px-6 py-4">
