@@ -84,6 +84,11 @@ export const AdminDashboard: React.FC = () => {
     // estado de projetos
   const [editingProject, setEditingProject] = useState<Project | null>(null);
     const [projectData, setProjectData] = useState({ name: '', code: '', classification: 'Audit' as any, area: '' as UserArea | '', budgetedHours: 0, active: true, allowedManagerIds: [] as string[] });
+    const [projectAdjustmentData, setProjectAdjustmentData] = useState({
+        enabled: false,
+        adjustedHours: '',
+        justification: ''
+    });
 
     // estado de exceções do calendário
   const [exceptionData, setExceptionData] = useState({ date: '', type: 'OFFDAY' as any, name: '' });
@@ -425,18 +430,49 @@ export const AdminDashboard: React.FC = () => {
           active: p.active,
           allowedManagerIds: p.allowedManagerIds || []
       });
+      setProjectAdjustmentData({
+          enabled: false,
+          adjustedHours: String(p.budgetedHours || 0),
+          justification: ''
+      });
   };
 
   const handleCancelEditProject = () => {
       setEditingProject(null);
       setProjectData({ name: '', code: '', classification: 'Audit', area: '', budgetedHours: 0, active: true, allowedManagerIds: [] });
+      setProjectAdjustmentData({ enabled: false, adjustedHours: '', justification: '' });
   };
 
   const handleSaveProject = async (e: React.FormEvent) => {
     e.preventDefault();
+        let nextBudgetedHours = Number(projectData.budgetedHours);
+        let adjustmentJustification: string | undefined;
+        let adjustedAt: string | undefined;
+
+        if (editingProject && projectAdjustmentData.enabled) {
+            const parsedAdjustedHours = Number(projectAdjustmentData.adjustedHours);
+            if (!Number.isFinite(parsedAdjustedHours) || parsedAdjustedHours < 0) {
+                alert('Informe um valor válido para as horas ajustadas.');
+                return;
+            }
+
+            const normalizedJustification = projectAdjustmentData.justification.trim();
+            if (!normalizedJustification) {
+                alert('Informe a justificativa do ajuste de horas.');
+                return;
+            }
+
+            nextBudgetedHours = parsedAdjustedHours;
+            adjustmentJustification = normalizedJustification;
+            adjustedAt = new Date().toISOString();
+        }
+
         const normalizedProjectData = {
             ...projectData,
-            area: projectData.area || undefined
+            area: projectData.area || undefined,
+            budgetedHours: nextBudgetedHours,
+            budgetAdjustmentJustification: adjustmentJustification,
+            budgetAdjustedAt: adjustedAt
         };
 
     if (editingProject) {
@@ -446,6 +482,7 @@ export const AdminDashboard: React.FC = () => {
                 await store.addProject(normalizedProjectData);
     }
     setProjectData({ name: '', code: '', classification: 'Audit', area: '', budgetedHours: 0, active: true, allowedManagerIds: [] });
+        setProjectAdjustmentData({ enabled: false, adjustedHours: '', justification: '' });
     refreshData();
   };
 
@@ -1107,7 +1144,13 @@ export const AdminDashboard: React.FC = () => {
                                       </td>
                                       <td className="px-6 py-3">{p.classification}</td>
                                       <td className="px-6 py-3">{p.area ? areaLabelMap[p.area] : '-'}</td>
-                                      <td className="px-6 py-3">{p.budgetedHours}h</td>
+                                      <td className="px-6 py-3">{p.budgetedHours}h
+                                          {p.budgetAdjustedAt && (
+                                              <div className="text-[11px] text-amber-700 font-medium mt-1">
+                                                  Ajustado em {formatTimestamp(p.budgetAdjustedAt)}
+                                              </div>
+                                          )}
+                                      </td>
                                       <td className="px-6 py-3 text-xs text-slate-500 max-w-[150px] truncate">
                                           {!p.allowedManagerIds || p.allowedManagerIds.length === 0 
                                               ? <span className="text-green-600 font-semibold">Todos</span>
@@ -1170,6 +1213,50 @@ export const AdminDashboard: React.FC = () => {
                           <label className="block text-xs font-bold text-slate-500 mb-1">Orçamento (h)</label>
                           <input type="number" className="w-full border border-gray-300 p-2 rounded-lg text-sm" value={projectData.budgetedHours} onChange={e => setProjectData({...projectData, budgetedHours: Number(e.target.value)})} />
                       </div>
+
+                      {editingProject && (
+                          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 space-y-3">
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                  <input
+                                      type="checkbox"
+                                      checked={projectAdjustmentData.enabled}
+                                      onChange={e => setProjectAdjustmentData({
+                                          ...projectAdjustmentData,
+                                          enabled: e.target.checked,
+                                          adjustedHours: e.target.checked ? String(projectData.budgetedHours || 0) : ''
+                                      })}
+                                      className="rounded text-amber-600"
+                                  />
+                                  <span className="text-sm font-semibold text-amber-900">Ajustar horas deste trabalho</span>
+                              </label>
+
+                              {projectAdjustmentData.enabled && (
+                                  <div className="grid grid-cols-1 gap-3">
+                                      <div>
+                                          <label className="block text-xs font-bold text-slate-600 mb-1">Horas ajustadas</label>
+                                          <input
+                                              type="number"
+                                              min={0}
+                                              className="w-full border border-amber-200 p-2 rounded-lg text-sm"
+                                              value={projectAdjustmentData.adjustedHours}
+                                              onChange={e => setProjectAdjustmentData({ ...projectAdjustmentData, adjustedHours: e.target.value })}
+                                              required={projectAdjustmentData.enabled}
+                                          />
+                                      </div>
+                                      <div>
+                                          <label className="block text-xs font-bold text-slate-600 mb-1">Justificativa do ajuste</label>
+                                          <textarea
+                                              className="w-full border border-amber-200 p-2 rounded-lg text-sm min-h-[76px]"
+                                              placeholder="Descreva o motivo da alteração de horas"
+                                              value={projectAdjustmentData.justification}
+                                              onChange={e => setProjectAdjustmentData({ ...projectAdjustmentData, justification: e.target.value })}
+                                              required={projectAdjustmentData.enabled}
+                                          />
+                                      </div>
+                                  </div>
+                              )}
+                          </div>
+                      )}
                       
                       <div>
                           <label className="block text-xs font-bold text-slate-500 mb-1">Equipes Permitidas (Quem pode ver?)</label>

@@ -742,6 +742,8 @@ class StoreService {
           classification: p.classification,
           area: p.area || undefined,
           budgetedHours: p.budgeted_hours,
+          budgetAdjustmentJustification: p.budget_adjustment_justification || undefined,
+          budgetAdjustedAt: p.budget_adjusted_at || undefined,
           active: p.active,
           allowedManagerIds: p.allowed_manager_ids || []
       }));
@@ -755,6 +757,8 @@ class StoreService {
         classification: project.classification,
       area: project.area || null,
         budgeted_hours: project.budgetedHours,
+        budget_adjustment_justification: project.budgetAdjustmentJustification || null,
+        budget_adjusted_at: project.budgetAdjustedAt || null,
         active: project.active,
         allowed_manager_ids: project.allowedManagerIds
     };
@@ -768,6 +772,8 @@ class StoreService {
     if (data.classification) dbUpdate.classification = data.classification;
     if (data.area !== undefined) dbUpdate.area = data.area || null;
     if (data.budgetedHours !== undefined) dbUpdate.budgeted_hours = data.budgetedHours;
+    if (data.budgetAdjustmentJustification !== undefined) dbUpdate.budget_adjustment_justification = data.budgetAdjustmentJustification || null;
+    if (data.budgetAdjustedAt !== undefined) dbUpdate.budget_adjusted_at = data.budgetAdjustedAt || null;
     if (data.active !== undefined) dbUpdate.active = data.active;
     if (data.allowedManagerIds) dbUpdate.allowed_manager_ids = data.allowedManagerIds;
 
@@ -1720,10 +1726,15 @@ create table if not exists projects (
   classification text,
   area text,
   budgeted_hours numeric default 0,
+  budget_adjustment_justification text,
+  budget_adjusted_at timestamp with time zone,
   active boolean default true,
   allowed_manager_ids text[], 
   created_at timestamp with time zone default timezone('utc'::text, now())
 );
+
+alter table projects add column if not exists budget_adjustment_justification text;
+alter table projects add column if not exists budget_adjusted_at timestamp with time zone;
 
 alter table projects drop constraint if exists projects_area_check;
 alter table projects
