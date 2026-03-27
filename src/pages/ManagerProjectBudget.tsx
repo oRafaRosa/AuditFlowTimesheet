@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { store } from '../services/store';
 import { Project, TimesheetEntry, User, UserArea, formatHours, formatPercentage } from '../types';
 import { Search, TrendingUp, AlertTriangle, CheckCircle, Loader2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
@@ -275,6 +276,19 @@ export const ManagerProjectBudget: React.FC = () => {
   const adminSlice = totalBudgeted > 0 ? (administrativeConsumed / totalBudgeted) * 100 : 0;
   const remainingSlice = Math.max(0, 100 - techSlice - adminSlice);
 
+  // dados do gráfico: orçado vs realizado por área
+  const areaChartData = useMemo(() => {
+    const byArea = new Map<string, { orcado: number; realizado: number }>();
+    filteredData.forEach((p) => {
+      const key = p.areaLabel;
+      const curr = byArea.get(key) || { orcado: 0, realizado: 0 };
+      byArea.set(key, { orcado: curr.orcado + p.budgeted, realizado: curr.realizado + p.consumed });
+    });
+    return Array.from(byArea.entries())
+      .map(([area, vals]) => ({ area, ...vals }))
+      .sort((a, b) => b.orcado - a.orcado);
+  }, [filteredData]);
+
   if (loading) {
     return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin text-brand-600" size={48} /></div>;
   }
@@ -286,92 +300,134 @@ export const ManagerProjectBudget: React.FC = () => {
         <p className="text-slate-500">Visão consolidada de horas por projeto em toda a diretoria</p>
       </div>
 
-      {/* cards de kpi */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
-          <p className="text-xs font-bold text-slate-500 uppercase mb-2">Total Orçado</p>
-          <div className="text-3xl font-bold text-slate-800">{formatHours(totalBudgeted)}h</div>
-          <p className="text-xs text-slate-400 mt-2">{filteredData.length} projetos</p>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
-          <p className="text-xs font-bold text-slate-500 uppercase mb-2">Total Realizado</p>
-          <div className="text-3xl font-bold text-slate-800">{formatHours(totalConsumed)}h</div>
-          <p className="text-xs text-slate-400 mt-2">{totalBudgeted > 0 ? formatPercentage((totalConsumed / totalBudgeted) * 100) : '0'}% consumido</p>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
-          <p className="text-xs font-bold text-slate-500 uppercase mb-2">Horas Disponíveis</p>
-          <div className={`text-3xl font-bold ${totalAvailable >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>{formatHours(totalAvailable)}h</div>
-          <p className="text-xs text-slate-400 mt-2">Orçado menos realizado no recorte</p>
-        </div>
-      </div>
-
-      <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-4">
-        <div className="flex items-center gap-6">
-          {/* donut */}
-          <div className="flex-shrink-0">
-            {totalBudgeted > 0 ? (
-              <div className="relative h-28 w-28">
-                <div
-                  className="h-28 w-28 rounded-full"
-                  style={{
-                    background: totalSegregatedConsumed > 0
-                      ? `conic-gradient(#0033C6 0% ${techSlice}%, #E71A3B ${techSlice}% ${techSlice + adminSlice}%, #e2e8f0 ${techSlice + adminSlice}% 100%)`
-                      : '#e2e8f0'
-                  }}
-                />
-                <div className="absolute inset-5 rounded-full bg-white flex flex-col items-center justify-center text-center">
-                  <span className="text-[9px] font-bold text-slate-400 uppercase leading-tight">Realizado</span>
-                  <span className="text-sm font-bold text-slate-800 leading-tight">{formatHours(totalSegregatedConsumed)}h</span>
-                </div>
-              </div>
-            ) : (
-              <div className="h-28 w-28 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-[10px] text-slate-400 text-center px-3">
-                Sem dados
-              </div>
-            )}
+      {/* topo: kpis + segregação lado a lado */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* kpis */}
+        <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
+            <p className="text-xs font-bold text-slate-500 uppercase mb-2">Total Orçado</p>
+            <div className="text-3xl font-bold text-slate-800">{formatHours(totalBudgeted)}h</div>
+            <p className="text-xs text-slate-400 mt-2">{filteredData.length} projetos</p>
           </div>
 
-          {/* legenda */}
-          <div className="flex-1 min-w-0">
-            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-3">Segregação de Horas</h3>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="h-2.5 w-2.5 rounded-full bg-brand-600 flex-shrink-0" />
-                  <span className="text-xs text-slate-600 truncate">Técnicas</span>
+          <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
+            <p className="text-xs font-bold text-slate-500 uppercase mb-2">Total Realizado</p>
+            <div className="text-3xl font-bold text-slate-800">{formatHours(totalConsumed)}h</div>
+            <p className="text-xs text-slate-400 mt-2">{totalBudgeted > 0 ? formatPercentage((totalConsumed / totalBudgeted) * 100) : '0'}% consumido</p>
+          </div>
+
+          <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
+            <p className="text-xs font-bold text-slate-500 uppercase mb-2">Horas Disponíveis</p>
+            <div className={`text-3xl font-bold ${totalAvailable >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>{formatHours(totalAvailable)}h</div>
+            <p className="text-xs text-slate-400 mt-2">Orçado menos realizado no recorte</p>
+          </div>
+        </div>
+
+        {/* card de segregação */}
+        <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-4 flex flex-col justify-center">
+          <div className="flex items-center gap-4">
+            {/* donut */}
+            <div className="flex-shrink-0">
+              {totalBudgeted > 0 ? (
+                <div className="relative h-24 w-24">
+                  <div
+                    className="h-24 w-24 rounded-full"
+                    style={{
+                      background: totalSegregatedConsumed > 0
+                        ? `conic-gradient(#0033C6 0% ${techSlice}%, #E71A3B ${techSlice}% ${techSlice + adminSlice}%, #e2e8f0 ${techSlice + adminSlice}% 100%)`
+                        : '#e2e8f0'
+                    }}
+                  />
+                  <div className="absolute inset-4 rounded-full bg-white flex flex-col items-center justify-center text-center">
+                    <span className="text-[8px] font-bold text-slate-400 uppercase leading-tight">Realizado</span>
+                    <span className="text-xs font-bold text-slate-800 leading-tight">{formatHours(totalSegregatedConsumed)}h</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-3 text-xs text-right flex-shrink-0">
-                  <span className="text-slate-400">orç. <span className="text-slate-600 font-medium">{formatHours(technicalBudgeted)}h</span></span>
-                  <span className="font-bold text-slate-800">{formatHours(technicalConsumed)}h</span>
-                  <span className="text-slate-400 w-8">{totalBudgeted > 0 ? `${formatPercentage(techSlice)}%` : '–'}</span>
+              ) : (
+                <div className="h-24 w-24 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-[10px] text-slate-400 text-center px-2">
+                  Sem dados
                 </div>
-              </div>
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="h-2.5 w-2.5 rounded-full bg-red-500 flex-shrink-0" />
-                  <span className="text-xs text-slate-600 truncate">Administrativas</span>
+              )}
+            </div>
+
+            {/* legenda */}
+            <div className="flex-1 min-w-0">
+              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Segregação de Horas</h3>
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="h-2 w-2 rounded-full bg-brand-600 flex-shrink-0" />
+                    <span className="text-xs text-slate-600 truncate">Técnicas</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs flex-shrink-0">
+                    <span className="text-slate-400">orç. <span className="text-slate-600 font-medium">{formatHours(technicalBudgeted)}h</span></span>
+                    <span className="font-bold text-slate-800">{formatHours(technicalConsumed)}h</span>
+                    <span className="text-slate-400 w-7 text-right">{totalBudgeted > 0 ? `${formatPercentage(techSlice)}%` : '–'}</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-3 text-xs text-right flex-shrink-0">
-                  <span className="text-slate-400">orç. <span className="text-slate-600 font-medium">{formatHours(administrativeBudgeted)}h</span></span>
-                  <span className="font-bold text-slate-800">{formatHours(administrativeConsumed)}h</span>
-                  <span className="text-slate-400 w-8">{totalBudgeted > 0 ? `${formatPercentage(adminSlice)}%` : '–'}</span>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="h-2 w-2 rounded-full bg-red-500 flex-shrink-0" />
+                    <span className="text-xs text-slate-600 truncate">Administrativas</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs flex-shrink-0">
+                    <span className="text-slate-400">orç. <span className="text-slate-600 font-medium">{formatHours(administrativeBudgeted)}h</span></span>
+                    <span className="font-bold text-slate-800">{formatHours(administrativeConsumed)}h</span>
+                    <span className="text-slate-400 w-7 text-right">{totalBudgeted > 0 ? `${formatPercentage(adminSlice)}%` : '–'}</span>
+                  </div>
                 </div>
-              </div>
-              <div className="border-t border-slate-100 pt-2 flex items-center justify-between gap-4">
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="h-2.5 w-2.5 rounded-full bg-slate-200 flex-shrink-0" />
-                  <span className="text-xs text-slate-500 truncate">Saldo disponível</span>
+                <div className="border-t border-slate-100 pt-1.5 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="h-2 w-2 rounded-full bg-slate-200 flex-shrink-0" />
+                    <span className="text-xs text-slate-500 truncate">Saldo</span>
+                  </div>
+                  <span className={`text-xs font-bold flex-shrink-0 ${totalAvailable >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                    {formatHours(totalAvailable)}h
+                  </span>
                 </div>
-                <span className={`text-xs font-bold flex-shrink-0 ${totalAvailable >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                  {formatHours(totalAvailable)}h
-                </span>
               </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* gráfico orçado vs realizado por área */}
+      {areaChartData.length > 0 && (
+        <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
+          <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-4">Orçado vs Realizado por Área</h3>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={areaChartData} margin={{ top: 4, right: 16, left: 0, bottom: 4 }} barGap={4}>
+              <XAxis
+                dataKey="area"
+                tick={{ fontSize: 11, fill: '#64748b' }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <YAxis
+                tickFormatter={(v) => `${formatHours(v)}h`}
+                tick={{ fontSize: 11, fill: '#94a3b8' }}
+                axisLine={false}
+                tickLine={false}
+                width={60}
+              />
+              <Tooltip
+                formatter={(value: number, name: string) => [
+                  `${formatHours(value)}h`,
+                  name === 'orcado' ? 'Orçado' : 'Realizado',
+                ]}
+                labelStyle={{ fontSize: 12, fontWeight: 600, color: '#1e293b' }}
+                contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}
+              />
+              <Legend
+                formatter={(value) => value === 'orcado' ? 'Orçado' : 'Realizado'}
+                wrapperStyle={{ fontSize: 12, paddingTop: 8 }}
+              />
+              <Bar dataKey="orcado" name="orcado" fill="#cbd5e1" radius={[4, 4, 0, 0]} maxBarSize={48} />
+              <Bar dataKey="realizado" name="realizado" fill="#0033C6" radius={[4, 4, 0, 0]} maxBarSize={48} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
 
       {/* filtros e tabela */}
       <div className="space-y-4">
