@@ -1,5 +1,5 @@
 import { CalendarException, Holiday, TimesheetEntry, HOURS_PER_DAY } from '../types';
-import { formatLocalDate, parseDateOnly } from './date';
+import { formatLocalDate, normalizeDateValue, parseDateOnly } from './date';
 
 export interface PendingDay {
   date: string;
@@ -22,16 +22,21 @@ export const buildCalendarMaps = (
   const workdayMap: Record<string, string> = {};
 
   holidays.forEach((holiday) => {
-    holidayMap[holiday.date] = holiday.name;
+    const normalizedDate = normalizeDateValue(holiday.date);
+    if (!normalizedDate) return;
+    holidayMap[normalizedDate] = holiday.name;
   });
 
   exceptions.forEach((exception) => {
+    const normalizedDate = normalizeDateValue(exception.date);
+    if (!normalizedDate) return;
+
     if (exception.type === 'WORKDAY') {
-      workdayMap[exception.date] = exception.name || 'Dia útil extra';
+      workdayMap[normalizedDate] = exception.name || 'Dia útil extra';
       return;
     }
 
-    offdayMap[exception.date] = exception.name || 'Folga/Ponte';
+    offdayMap[normalizedDate] = exception.name || 'Folga/Ponte';
   });
 
   return { holidayMap, offdayMap, workdayMap };

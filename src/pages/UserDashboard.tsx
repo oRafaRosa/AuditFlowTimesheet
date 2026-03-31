@@ -9,7 +9,7 @@ import { GamificationSnapshot } from '../components/GamificationSnapshot';
 import { DashboardLoadingState } from '../components/DashboardLoadingState';
 import { BirthdayBalloons } from '../components/BirthdayBalloons';
 import { BirthdaySidebarCard } from '../components/BirthdaySidebarCard';
-import { formatDateForDisplay, formatLocalDate, parseDateOnly } from '../utils/date';
+import { formatDateForDisplay, formatLocalDate, normalizeDateValue, parseDateOnly } from '../utils/date';
 import { buildCalendarMaps, listPendingDaysForMonth, PendingDay, isExpectedWorkingDay, CalendarMaps } from '../utils/workCalendar';
 import { getMonthlyBirthdays, getUpcomingBirthdays, isBirthdayToday } from '../utils/birthdays';
 
@@ -159,12 +159,16 @@ export const UserDashboard: React.FC = () => {
 
     const markers: Record<string, HolidayMarker> = {};
     holidays.forEach((holiday: Holiday) => {
-      markers[holiday.date] = { name: holiday.name, kind: 'holiday' };
+      const normalizedDate = normalizeDateValue(holiday.date);
+      if (!normalizedDate) return;
+      markers[normalizedDate] = { name: holiday.name, kind: 'holiday' };
     });
     exceptions
       .filter((exception: CalendarException) => exception.type === 'OFFDAY')
       .forEach((exception: CalendarException) => {
-        markers[exception.date] = { name: exception.name || 'Folga/Ponte', kind: 'offday' };
+        const normalizedDate = normalizeDateValue(exception.date);
+        if (!normalizedDate) return;
+        markers[normalizedDate] = { name: exception.name || 'Folga/Ponte', kind: 'offday' };
       });
     setHolidayMarkers(markers);
     setFrequentTemplates(store.getFrequentEntryTemplates(user.id).slice(0, 6));
