@@ -40,6 +40,8 @@ interface ConsistencyDayCell {
   key: string;
   date: string;
   dayLabel: number;
+  holidayName: string | null;
+  isHoliday: boolean;
   loggedHours: number;
   expectedHours: number;
   deltaHours: number;
@@ -601,6 +603,7 @@ export const UserDashboard: React.FC = () => {
     for (let day = 1; day <= lastDay; day++) {
       const currentDate = new Date(year, month, day, 12);
       const dateStr = formatLocalDate(currentDate);
+      const holidayName = calendarMapsState.holidayMap[dateStr] || null;
       const loggedHours = totalsByDate[dateStr] || 0;
       const expectedHours = isExpectedWorkingDay(dateStr, calendarMapsState) ? HOURS_PER_DAY : 0;
       const deltaHours = Math.round((loggedHours - expectedHours) * 100) / 100;
@@ -623,6 +626,8 @@ export const UserDashboard: React.FC = () => {
         key: `${year}-${month + 1}-${day}`,
         date: dateStr,
         dayLabel: day,
+        holidayName,
+        isHoliday: Boolean(holidayName),
         loggedHours,
         expectedHours,
         deltaHours,
@@ -645,7 +650,12 @@ export const UserDashboard: React.FC = () => {
     };
   }, [activeIndicators.month, activeIndicators.year, calendarMapsState, dashboardPeriod, entries]);
 
-  const getConsistencyDayStyle = (status: ConsistencyDayStatus) => {
+  const getConsistencyDayStyle = (day: ConsistencyDayCell) => {
+    if (day.isHoliday) {
+      return 'border-sky-300 bg-sky-100 text-sky-800';
+    }
+
+    const { status } = day;
     if (status === 'on-track') {
       return 'border-emerald-200 bg-emerald-100 text-emerald-800';
     }
@@ -659,6 +669,14 @@ export const UserDashboard: React.FC = () => {
   };
 
   const getConsistencyTooltip = (day: ConsistencyDayCell) => {
+    if (day.isHoliday && day.holidayName) {
+      if (day.loggedHours === 0) {
+        return `${formatDateForDisplay(day.date)}\nFeriado: ${day.holidayName}.`;
+      }
+
+      return `${formatDateForDisplay(day.date)}\nFeriado: ${day.holidayName}.\nLançado: ${formatHours(day.loggedHours)}h.`;
+    }
+
     if (day.isFutureDay && day.loggedHours === 0) {
       return `${formatDateForDisplay(day.date)}\nDia futuro sem lançamento.`;
     }
@@ -1056,7 +1074,7 @@ export const UserDashboard: React.FC = () => {
                   key={day.key}
                   type="button"
                   onClick={() => handleConsistencyDayClick(day.date)}
-                  className={`group relative flex h-8 items-center justify-center rounded-md border text-xs font-semibold transition-colors hover:brightness-95 ${getConsistencyDayStyle(day.status)}`}
+                  className={`group relative flex h-8 items-center justify-center rounded-md border text-xs font-semibold transition-colors hover:brightness-95 ${getConsistencyDayStyle(day)}`}
                   title={`${getConsistencyTooltip(day)}\nClique para abrir no relatório.`}
                 >
                   <span>{day.dayLabel}</span>
