@@ -41,6 +41,7 @@ interface ConsistencyDayCell {
   date: string;
   dayLabel: number;
   holidayName: string | null;
+  holidayKind: 'holiday' | 'offday' | null;
   isHoliday: boolean;
   loggedHours: number;
   expectedHours: number;
@@ -505,8 +506,22 @@ export const UserDashboard: React.FC = () => {
       }
   };
 
-  const handleConsistencyDayClick = (date: string) => {
-    navigate(`/reports?startDate=${date}&endDate=${date}`);
+  const handleConsistencyDayClick = (day: ConsistencyDayCell) => {
+    if (day.loggedHours <= 0 && !isUserInactive && !isCurrentPeriodLocked) {
+      setEditingId(null);
+      setFormMode('single');
+      setFormData({
+        projectId: '',
+        date: day.date,
+        endDate: day.date,
+        hours: HOURS_PER_DAY,
+        description: ''
+      });
+      setIsFormOpen(true);
+      return;
+    }
+
+    navigate(`/reports?startDate=${day.date}&endDate=${day.date}`);
   };
 
   const isDuplicate = (entry: TimesheetEntry) => {
@@ -607,7 +622,12 @@ export const UserDashboard: React.FC = () => {
     for (let day = 1; day <= lastDay; day++) {
       const currentDate = new Date(year, month, day, 12);
       const dateStr = formatLocalDate(currentDate);
-      const holidayName = calendarMapsState.holidayMap[dateStr] || null;
+      const holidayName = calendarMapsState.holidayMap[dateStr] || calendarMapsState.offdayMap[dateStr] || null;
+      const holidayKind: 'holiday' | 'offday' | null = calendarMapsState.holidayMap[dateStr]
+        ? 'holiday'
+        : calendarMapsState.offdayMap[dateStr]
+          ? 'offday'
+          : null;
       const loggedHours = totalsByDate[dateStr] || 0;
       const expectedHours = isExpectedWorkingDay(dateStr, calendarMapsState) ? HOURS_PER_DAY : 0;
       const deltaHours = Math.round((loggedHours - expectedHours) * 100) / 100;
@@ -631,6 +651,7 @@ export const UserDashboard: React.FC = () => {
         date: dateStr,
         dayLabel: day,
         holidayName,
+        holidayKind,
         isHoliday: Boolean(holidayName),
         loggedHours,
         expectedHours,
@@ -674,11 +695,12 @@ export const UserDashboard: React.FC = () => {
 
   const getConsistencyTooltip = (day: ConsistencyDayCell) => {
     if (day.isHoliday && day.holidayName) {
+      const holidayPrefix = day.holidayKind === 'offday' ? 'Folga/Ponte' : 'Feriado';
       if (day.loggedHours === 0) {
-        return `${formatDateForDisplay(day.date)}\nFeriado: ${day.holidayName}.`;
+        return `${formatDateForDisplay(day.date)}\n${holidayPrefix}: ${day.holidayName}.`;
       }
 
-      return `${formatDateForDisplay(day.date)}\nFeriado: ${day.holidayName}.\nLançado: ${formatHours(day.loggedHours)}h.`;
+      return `${formatDateForDisplay(day.date)}\n${holidayPrefix}: ${day.holidayName}.\nLançado: ${formatHours(day.loggedHours)}h.`;
     }
 
     if (day.isFutureDay && day.loggedHours === 0) {
@@ -1077,9 +1099,9 @@ export const UserDashboard: React.FC = () => {
                 <button
                   key={day.key}
                   type="button"
-                  onClick={() => handleConsistencyDayClick(day.date)}
+                  onClick={() => handleConsistencyDayClick(day)}
                   className={`group relative flex h-8 items-center justify-center rounded-md border text-xs font-semibold transition-colors hover:brightness-95 ${getConsistencyDayStyle(day)}`}
-                  title={`${getConsistencyTooltip(day)}\nClique para abrir no relatório.`}
+                  title={`${getConsistencyTooltip(day)}\n${day.loggedHours <= 0 && !isUserInactive && !isCurrentPeriodLocked ? 'Clique para lançar horas.' : 'Clique para abrir no relatório.'}`}
                 >
                   <span>{day.dayLabel}</span>
                   {day.isPaymentDay && (
@@ -1092,7 +1114,11 @@ export const UserDashboard: React.FC = () => {
                     {day.isPaymentDay && (
                       <div className="mt-0.5 text-[10px] font-normal text-slate-300">dia do pagode</div>
                     )}
-                    <div className="mt-1 border-t border-slate-700 pt-1 text-[10px] text-slate-200">Clique para abrir no relatório</div>
+                    <div className="mt-1 border-t border-slate-700 pt-1 text-[10px] text-slate-200">
+                      {day.loggedHours <= 0 && !isUserInactive && !isCurrentPeriodLocked
+                        ? 'Clique para lançar horas'
+                        : 'Clique para abrir no relatório'}
+                    </div>
                   </div>
                 </button>
               ))}
