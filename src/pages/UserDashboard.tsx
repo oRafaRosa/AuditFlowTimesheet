@@ -57,6 +57,7 @@ export const UserDashboard: React.FC = () => {
   const [entries, setEntries] = useState<TimesheetEntry[]>([]);
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [periodStatus, setPeriodStatus] = useState<TimesheetPeriod | null>(null);
+  const [previousPeriodStatus, setPreviousPeriodStatus] = useState<TimesheetPeriod | null>(null);
   
     // separação de estado:
     // selectableProjects = projetos ativos liberados pra criar novo lançamento
@@ -121,11 +122,15 @@ export const UserDashboard: React.FC = () => {
     const today = new Date();
     const currentYear = today.getFullYear();
     const currentMonth = today.getMonth();
+    const previousDate = new Date(currentYear, currentMonth - 1, 1);
+    const previousYear = previousDate.getFullYear();
+    const previousMonth = previousDate.getMonth();
 
-    const [allEntries, allProjects, status, holidays, exceptions, configuredDailyHourLimit, directoryUsers] = await Promise.all([
+    const [allEntries, allProjects, status, previousStatus, holidays, exceptions, configuredDailyHourLimit, directoryUsers] = await Promise.all([
         store.getEntries(user.id),
         store.getProjects(),
         store.getPeriodStatus(user.id, currentYear, currentMonth),
+        store.getPeriodStatus(user.id, previousYear, previousMonth),
         store.getHolidays(),
       store.getExceptions(),
       store.getDailyHourLimit(),
@@ -133,6 +138,7 @@ export const UserDashboard: React.FC = () => {
     ]);
 
     setPeriodStatus(status);
+    setPreviousPeriodStatus(previousStatus);
     setEntries(allEntries.sort((a, b) => parseDateOnly(b.date).getTime() - parseDateOnly(a.date).getTime()));
     
     // soma do dia pra regra de alerta
@@ -193,9 +199,6 @@ export const UserDashboard: React.FC = () => {
     setUpcomingLeaves(userLeaves.filter((l) => l.startDate >= todayKey && l.startDate <= limitKey));
 
     // calcula kpis do mês atual e anterior
-    const previousDate = new Date(currentYear, currentMonth - 1, 1);
-    const previousYear = previousDate.getFullYear();
-    const previousMonth = previousDate.getMonth();
 
     const buildIndicators = async (
       year: number,
@@ -536,6 +539,12 @@ export const UserDashboard: React.FC = () => {
 
     // check visual do botão "novo lançamento" (mês atual)
   const isCurrentPeriodLocked = periodStatus?.status === 'SUBMITTED' || periodStatus?.status === 'APPROVED';
+  const isUserInactive = user?.isActive === false;
+  const shouldShowSubmissionPendingIndicator =
+    user?.requiresTimesheet !== false &&
+    !isUserInactive &&
+    previousPeriodStatus?.status === 'OPEN';
+  const pendingPeriodLabel = indicators.previous.label || 'mês anterior';
   const activeIndicators = indicators[dashboardPeriod];
   const activePendingSummary = pendingDaysByPeriod[dashboardPeriod];
   const expectedLabel = dashboardPeriod === 'current' ? 'Horas Esperadas (Hoje)' : 'Horas Esperadas (Mês)';
@@ -545,7 +554,6 @@ export const UserDashboard: React.FC = () => {
   const pendingHelpText = dashboardPeriod === 'current'
     ? 'Divergência acumulada até hoje'
     : 'Divergência do mês encerrado';
-  const isUserInactive = user?.isActive === false;
   const passiveCardClass = 'group bg-white rounded-xl shadow-sm border border-slate-100 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md';
   const monthlyBirthdays = useMemo(() => getMonthlyBirthdays(allUsers), [allUsers]);
   const upcomingBirthdays = useMemo(() => getUpcomingBirthdays(allUsers, 8), [allUsers]);
@@ -742,6 +750,19 @@ export const UserDashboard: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {shouldShowSubmissionPendingIndicator && (
+        <button
+          type="button"
+          onClick={() => navigate('/timesheet')}
+          className="relative w-full overflow-hidden rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-2 text-left transition-colors hover:bg-amber-100"
+        >
+          <span className="absolute inset-x-0 top-0 h-1 bg-amber-500" aria-hidden="true" />
+          <div className="pt-1 text-xs text-amber-900">
+            <span className="font-semibold">Pendência de envio:</span> {pendingPeriodLabel} ainda não foi enviado para aprovação do gestor.
+          </div>
+        </button>
+      )}
+
       <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-2">
